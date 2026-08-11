@@ -1,1 +1,91 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-english-green: #3D8B68;
+    --color-english-green-dark: #2D6A4F;
+    --color-english-green-light: #52B788;
+    --color-english-green-soft: #D8F3DC;
+    --color-english-yellow: #FFF9E6;
+    --color-english-yellow-accent: #F59E0B;
+    --color-english-gold: #D97706;
+    --color-cream-bg: #F4F9F5;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  }
+
+  body {
+    background-color: #FFFFFF;
+    color: #1F2937;
+    overflow-x: hidden;
+  }
+}
+
+/* Lighter Fresh Green Utilities */
+.bg-english-green {
+  background-color: #3D8B68;
+}
+
+.bg-english-green-dark {
+  background-color: #2D6A4F;
+}
+
+.bg-english-green-light {
+  background-color: #52B788;
+}
+
+.bg-english-green-soft {
+  background-color: #E8F5EE;
+}
+
+.text-english-green {
+  color: #2D6A4F;
+}
+
+.border-english-green {
+  border-color: #3D8B68;
+}
+
+.bg-english-yellow {
+  background-color: #FFF9E6;
+}
+
+.bg-english-yellow-light {
+  background-color: #FFFDF0;
+}
+
+.text-english-yellow-accent {
+  color: #D97706;
+}
+
+.bg-cream-soft {
+  background-color: #F4F9F5;
+}
+
+/* Hide Scrollbar for Horizontal Scrollable elements */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Glassmorphism Header */
+.glass-header {
+  background-color: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Smooth Horizontal Snap Scroll */
+.scroll-snap-x {
+  scroll-snap-type: x mandatory;
+}
+
+.scroll-snap-item {
+  scroll-snap-align: start;
+}

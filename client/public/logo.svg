@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <defs>
+    <!-- Soft Off-White Background -->
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFDF9" />
+      <stop offset="100%" stop-color="#F7F1E8" />
+    </radialGradient>
+
+    <!-- Metallic Gold Ring -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D4AF37" />
+      <stop offset="50%" stop-color="#F3E5AB" />
+      <stop offset="100%" stop-color="#AA7C11" />
+    </linearGradient>
+
+    <!-- Curved Text Paths -->
+    <path id="topArc" d="M 65 250 A 185 185 0 1 1 435 250" fill="none" />
+    <path id="bottomArc" d="M 410 250 A 160 160 0 0 1 90 250" fill="none" />
+  </defs>
+
+  <!-- Outer Double Circular Frame -->
+  <circle cx="250" cy="250" r="240" fill="url(#bgGrad)" stroke="#2E6B4D" stroke-width="3" />
+  <circle cx="250" cy="250" r="232" fill="none" stroke="#2E6B4D" stroke-width="1.5" stroke-dasharray="2 2" />
+
+  <!-- Inner Gold Accent Ring -->
+  <circle cx="250" cy="250" r="172" fill="none" stroke="url(#goldGrad)" stroke-width="4" />
+
+  <!-- Curved Top Text: ROYAL CHAIRS AND SOFA MAKER -->
+  <text font-family="'Times New Roman', Georgia, serif" font-size="25" font-weight="bold" fill="#2E6B4D" letter-spacing="3.5">
+    <textPath href="#topArc" startOffset="50%" text-anchor="middle">
+      ROYAL CHAIRS AND SOFA MAKER
+    </textPath>
+  </text>
+
+  <!-- Side Diamond Accents -->
+  <polygon points="68,250 75,244 82,250 75,256" fill="#D4AF37" />
+  <polygon points="418,250 425,244 432,250 425,256" fill="#D4AF37" />
+
+  <!-- Curved Bottom Text: PUNE -->
+  <text font-family="'Times New Roman', Georgia, serif" font-size="26" font-weight="bold" fill="#2E6B4D" letter-spacing="8">
+    <textPath href="#bottomArc" startOffset="50%" text-anchor="middle">
+      PUNE
+    </textPath>
+  </text>
+
+  <!-- Center Monogram Group: RC + Armchair Silhouette -->
+  <g transform="translate(0, -5)">
+    <!-- Gold Seat Cushion Shape inside armchair -->
+    <path d="M 190 235 Q 250 265 310 235 Q 318 260 305 270 Q 250 280 195 270 Q 182 260 190 235 Z" fill="#E6C365" opacity="0.95" />
+
+    <!-- Armchair Shell Outer Contour (Forest Green) -->
+    <path d="M 165 200 C 160 270 175 305 240 310 L 240 338 L 198 338 L 198 344 L 302 344 L 302 338 L 260 338 L 260 310 C 325 305 340 270 335 200 C 320 200 310 215 310 230 C 310 258 290 285 250 285 C 210 285 190 258 190 230 C 190 215 180 200 165 200 Z" fill="#2E6B4D" />
+
+    <!-- Armchair Legs Base -->
+    <path d="M 195 344 L 175 365 L 184 367 L 250 348 L 316 367 L 325 365 L 305 344 Z" fill="#2E6B4D" />
+
+    <!-- Intertwined Serif Letters 'RC' Monogram -->
+    <!-- Letter R -->
+    <text x="175" y="238" font-family="'Times New Roman', Georgia, serif" font-size="115" font-weight="bold" fill="#2E6B4D" stroke="#FFFDF9" stroke-width="3">R</text>
+    <!-- Letter C -->
+    <text x="240" y="240" font-family="'Times New Roman', Georgia, serif" font-size="115" font-weight="bold" fill="#2E6B4D" stroke="#FFFDF9" stroke-width="3">C</text>
+  </g>
+</svg>

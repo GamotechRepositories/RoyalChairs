@@ -21,10 +21,10 @@ export default function Footer() {
         <div className="bg-emerald-800/90 rounded-3xl p-8 lg:p-10 border border-emerald-700 shadow-2xl mb-16 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
           <div>
             <div className="inline-block bg-amber-400 text-emerald-950 text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full mb-3">
-              ROYAL PRIVILEGE CLUB
+              ROYAL MEMBER CLUB
             </div>
             <h3 className="text-2xl sm:text-3xl font-black text-white font-serif">
-              Join for Exclusive 10% Off & Secret VIP Drops
+              Join for Exclusive Member Updates &amp; Secret Drops
             </h3>
             <p className="text-emerald-200 text-xs sm:text-sm mt-2">
               Subscribe to receive private showroom previews, maintenance guides, and members-only flash sales.
@@ -35,14 +35,14 @@ export default function Footer() {
             {subscribed ? (
               <div className="bg-emerald-950 p-4 rounded-2xl border border-amber-300 text-amber-300 text-sm font-extrabold flex items-center space-x-2">
                 <CheckCircle2 className="w-5 h-5 text-amber-400" />
-                <span>Welcome to Royal Privilege! Check your inbox for your 10% coupon.</span>
+                <span>Welcome to Royal Member Club! Check your inbox for updates.</span>
               </div>
             ) : (
               <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-2">
                 <input
                   type="email"
                   required
-                  placeholder="Enter your VIP email address..."
+                  placeholder="Enter your email address..."
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-emerald-950/90 text-white placeholder-emerald-300 text-sm px-4 py-3.5 rounded-xl border border-emerald-700 focus:outline-hidden focus:border-amber-400 flex-1"

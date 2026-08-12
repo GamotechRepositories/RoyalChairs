@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CartProvider, useCart } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
+import { AuthProvider } from './context/AuthContext';
 
 import Navbar from './components/layout/Navbar';
 import BannerSlideshow from './components/home/BannerSlideshow';
@@ -125,7 +126,9 @@ export default function App() {
   return (
     <CartProvider>
       <WishlistProvider>
-        <DashboardContent />
+        <AuthProvider>
+          <DashboardContent />
+        </AuthProvider>
       </WishlistProvider>
     </CartProvider>
   );

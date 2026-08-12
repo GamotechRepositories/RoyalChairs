@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Star, Heart, Eye, ShoppingBag, Check } from 'lucide-react';
+import { Star, Heart, ShoppingBag, Check } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 
@@ -7,8 +7,8 @@ export default function ProductCard({ product, onQuickView }) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const [selectedColor, setSelectedColor] = useState((product.colors && product.colors[0]) || '#3D8B68');
-  const [isHovered, setIsHovered] = useState(false);
   const [addedAnim, setAddedAnim] = useState(false);
+  const [isCardHovered, setIsCardHovered] = useState(false);
 
   const inWishlist = isInWishlist(product.id);
 
@@ -19,25 +19,55 @@ export default function ProductCard({ product, onQuickView }) {
     setTimeout(() => setAddedAnim(false), 1500);
   };
 
+  const defaultFallbackImage = 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=800&q=80';
+
   return (
     <div
-      className="bg-white rounded-2xl p-4 border border-emerald-100 hover:border-emerald-400 hover:shadow-xl transition-all duration-300 flex flex-col justify-between group relative"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => setIsCardHovered(true)}
+      onMouseLeave={() => setIsCardHovered(false)}
+      className={`bg-white rounded-2xl p-4 transition-all duration-300 flex flex-col justify-between relative h-full border ${
+        isCardHovered
+          ? 'border-emerald-500 shadow-lg ring-1 ring-emerald-500/20'
+          : 'border-emerald-100 shadow-xs'
+      }`}
     >
       <div>
-        {/* Image Container */}
-        <div className="relative h-64 sm:h-72 w-full rounded-xl overflow-hidden bg-cream-soft mb-4 cursor-pointer" onClick={() => onQuickView(product)}>
+        {/* Image Container with strict overflow-hidden so ONLY the inner image scales */}
+        <div
+          className="relative h-64 sm:h-72 w-full rounded-xl overflow-hidden bg-cream-soft mb-4 cursor-pointer"
+          onClick={() => onQuickView(product)}
+        >
+          {/* Primary Main Image - Zooms smoothly on hover of THIS specific card */}
           <img
-            src={isHovered && product.hoverImage ? product.hoverImage : product.mainImage}
+            src={product.mainImage}
             alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+            onError={(e) => {
+              e.target.src = defaultFallbackImage;
+            }}
+            className={`w-full h-full object-cover transform transition-all duration-700 ease-out ${
+              isCardHovered ? 'scale-105' : 'scale-100'
+            } ${product.hoverImage && isCardHovered ? 'opacity-0 delay-200' : 'opacity-100'}`}
             loading="lazy"
           />
 
+          {/* Secondary Alternate Image - Appears smoothly after minor delay (200ms) on hover of THIS specific card */}
+          {product.hoverImage && (
+            <img
+              src={product.hoverImage}
+              alt={`${product.name} alternate view`}
+              onError={(e) => {
+                e.target.src = defaultFallbackImage;
+              }}
+              className={`absolute inset-0 w-full h-full object-cover transform transition-all duration-700 ease-out delay-200 pointer-events-none ${
+                isCardHovered ? 'opacity-100 scale-105' : 'opacity-0 scale-100'
+              }`}
+              loading="lazy"
+            />
+          )}
+
           {/* Top Left Badge */}
           {product.badge && (
-            <div className="absolute top-3 left-3 bg-emerald-700 text-amber-300 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md border border-amber-300/30">
+            <div className="absolute top-3 left-3 bg-emerald-700 text-amber-300 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md border border-amber-300/30 z-10">
               {product.badge}
             </div>
           )}
@@ -48,7 +78,7 @@ export default function ProductCard({ product, onQuickView }) {
               e.stopPropagation();
               toggleWishlist(product);
             }}
-            className={`absolute top-3 right-3 p-2 rounded-full shadow-md backdrop-blur-xs transition ${
+            className={`absolute top-3 right-3 p-2 rounded-full shadow-md backdrop-blur-xs transition z-10 ${
               inWishlist
                 ? 'bg-rose-500 text-white'
                 : 'bg-white/80 text-gray-700 hover:bg-white hover:text-rose-600'
@@ -57,20 +87,6 @@ export default function ProductCard({ product, onQuickView }) {
           >
             <Heart className={`w-4 h-4 ${inWishlist ? 'fill-current' : ''}`} />
           </button>
-
-          {/* Quick Preview Hover Trigger */}
-          <div className="absolute inset-x-0 bottom-3 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-4">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onQuickView(product);
-              }}
-              className="w-full py-2 bg-white/95 hover:bg-emerald-700 hover:text-white text-emerald-900 text-xs font-extrabold rounded-xl shadow-lg flex items-center justify-center space-x-1.5 transition backdrop-blur-xs"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>Quick Preview</span>
-            </button>
-          </div>
         </div>
 
         {/* Product Title & Category */}
@@ -81,7 +97,9 @@ export default function ProductCard({ product, onQuickView }) {
 
           <h3
             onClick={() => onQuickView(product)}
-            className="text-base font-extrabold text-gray-900 group-hover:text-emerald-700 transition line-clamp-1 cursor-pointer font-serif"
+            className={`text-base font-extrabold text-gray-900 transition line-clamp-1 cursor-pointer font-serif ${
+              isCardHovered ? 'text-emerald-700' : ''
+            }`}
           >
             {product.name}
           </h3>

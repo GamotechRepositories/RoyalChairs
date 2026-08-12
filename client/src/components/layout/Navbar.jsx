@@ -1,11 +1,13 @@
 import { useState, useId } from 'react';
-import { Search, ShoppingBag, Heart, Menu, X, Sparkles, Percent, Truck, User } from 'lucide-react';
+import { Search, ShoppingBag, Heart, Menu, X, Sparkles, Percent, Truck, User, Crown } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Navbar({ onOpenSearch, onOpenTrackOrder, onOpenAccount, onNavigateHome, onNavigateShopCategories }) {
   const { cartCount, setIsCartOpen } = useCart();
   const { wishlistCount } = useWishlist();
+  const { user, isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const searchInputId = useId();
 
@@ -89,11 +91,22 @@ export default function Navbar({ onOpenSearch, onOpenTrackOrder, onOpenAccount, 
             {/* 5. Account Button */}
             <button
               onClick={onOpenAccount}
-              className="flex items-center space-x-1 p-2 sm:px-3 sm:py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl transition border border-emerald-200/80 shadow-xs"
-              title="Account / VIP Sign In"
+              className="flex items-center space-x-1.5 p-2 sm:px-3 sm:py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl transition border border-emerald-200/80 shadow-xs"
+              title="Account / Sign In"
             >
-              <User className="w-4 h-4 text-emerald-700" />
-              <span className="hidden sm:inline">Account</span>
+              {isAuthenticated ? (
+                <>
+                  <Crown className="w-4 h-4 text-amber-600" />
+                  <span className="hidden sm:inline font-extrabold text-emerald-900">
+                    {user?.name ? user.name.split(' ')[0] : 'Member'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <User className="w-4 h-4 text-emerald-700" />
+                  <span className="hidden sm:inline">Account</span>
+                </>
+              )}
             </button>
 
             {/* 6. Wishlist Icon */}
@@ -165,7 +178,9 @@ export default function Navbar({ onOpenSearch, onOpenTrackOrder, onOpenAccount, 
               className="w-full text-left flex items-center space-x-2 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-emerald-50 rounded-lg"
             >
               <User className="w-4 h-4 text-emerald-700" />
-              <span>Account / VIP Login</span>
+              <span>
+                {isAuthenticated ? `Signed in as ${user?.name}` : 'Account / Sign In'}
+              </span>
             </button>
           </div>
         )}

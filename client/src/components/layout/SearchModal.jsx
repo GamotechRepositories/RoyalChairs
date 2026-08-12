@@ -1,12 +1,23 @@
-import { useState, useId } from 'react';
-import { Search, X, ShoppingBag, Star, ArrowRight } from 'lucide-react';
+import { useState, useEffect, useId } from 'react';
+import { Search, X, ShoppingBag, Star, ArrowRight, Plus, Minus } from 'lucide-react';
 import { PRODUCTS } from '../../data/chairProductsData';
 import { useCart } from '../../context/CartContext';
 
 export default function SearchModal({ isOpen, onClose, onQuickView }) {
   const [query, setQuery] = useState('');
   const searchInputId = useId();
-  const { addToCart } = useCart();
+  const { addToCart, updateQuantity, getItemQuantity } = useCart();
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -19,8 +30,14 @@ export default function SearchModal({ isOpen, onClose, onQuickView }) {
       );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4 bg-black/60 backdrop-blur-xs transition-opacity animate-fadeIn">
-      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-emerald-900/10">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4 bg-black/60 backdrop-blur-xs transition-opacity animate-fadeIn cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-emerald-900/10 cursor-default"
+      >
         {/* Search Input Bar */}
         <div className="relative p-4 border-b border-gray-100 flex items-center bg-cream-soft">
           <label htmlFor={searchInputId} className="sr-only">Search Chairs</label>
@@ -51,7 +68,7 @@ export default function SearchModal({ isOpen, onClose, onQuickView }) {
         </div>
 
         {/* Results List */}
-        <div className="max-h-96 overflow-y-auto p-4 divide-y divide-gray-100">
+        <div className="max-h-96 overflow-y-auto overscroll-contain p-4 divide-y divide-gray-100">
           <div className="text-xs font-bold uppercase tracking-wider text-emerald-900 mb-3 px-2 flex justify-between">
             <span>{query ? `Search Results (${filteredProducts.length})` : 'Popular Recommendations'}</span>
             <span className="text-amber-600">Pure English Luxury</span>
@@ -92,16 +109,38 @@ export default function SearchModal({ isOpen, onClose, onQuickView }) {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => {
-                      addToCart(product);
-                    }}
-                    className="p-2 rounded-lg bg-emerald-900 hover:bg-emerald-800 text-white transition flex items-center text-xs font-semibold"
-                    title="Add to Cart"
-                  >
-                    <ShoppingBag className="w-4 h-4 mr-1" />
-                    <span>Buy</span>
-                  </button>
+                  {getItemQuantity(product.id) > 0 ? (
+                    <div className="w-24 h-8 rounded-full bg-emerald-900 text-white flex items-center justify-between overflow-hidden border border-amber-300/40 shadow-xs">
+                      <button
+                        onClick={() => updateQuantity(product.id, null, -1)}
+                        className="w-8 h-full flex items-center justify-center hover:bg-emerald-800 text-amber-300 transition cursor-pointer"
+                        title="Decrease quantity"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="flex-1 text-center text-xs font-bold text-white font-mono select-none">
+                        {getItemQuantity(product.id)}
+                      </span>
+                      <button
+                        onClick={() => updateQuantity(product.id, null, 1)}
+                        className="w-8 h-full flex items-center justify-center hover:bg-emerald-800 text-amber-300 transition cursor-pointer"
+                        title="Increase quantity"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        addToCart(product);
+                      }}
+                      className="w-24 h-8 rounded-full bg-emerald-900 hover:bg-emerald-800 text-white transition flex items-center justify-center text-xs font-semibold cursor-pointer"
+                      title="Add to Cart"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5 mr-1" />
+                      <span>Buy</span>
+                    </button>
+                  )}
                 </div>
               </div>
             ))

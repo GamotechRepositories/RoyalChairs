@@ -16,6 +16,7 @@ import CategoryShopPage from './components/shop/CategoryShopPage';
 import SearchModal from './components/layout/SearchModal';
 import TrackOrderModal from './components/layout/TrackOrderModal';
 import AccountModal from './components/layout/AccountModal';
+import WishlistModal from './components/layout/WishlistModal';
 import CartDrawer from './components/ui/CartDrawer';
 import QuickViewModal from './components/home/QuickViewModal';
 import { Sparkles } from 'lucide-react';
@@ -27,6 +28,7 @@ function DashboardContent() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [trackOrderOpen, setTrackOrderOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [wishlistOpen, setWishlistOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
   const { toastMessage } = useCart();
@@ -52,6 +54,7 @@ function DashboardContent() {
         onOpenSearch={() => setSearchOpen(true)}
         onOpenTrackOrder={() => setTrackOrderOpen(true)}
         onOpenAccount={() => setAccountOpen(true)}
+        onOpenWishlist={() => setWishlistOpen(true)}
         onNavigateHome={() => setActiveView('dashboard')}
         onNavigateShopCategories={() => handleOpenCategory('wooden')}
       />
@@ -110,6 +113,12 @@ function DashboardContent() {
       <AccountModal
         isOpen={accountOpen}
         onClose={() => setAccountOpen(false)}
+      />
+
+      <WishlistModal
+        isOpen={wishlistOpen}
+        onClose={() => setWishlistOpen(false)}
+        onQuickView={(prod) => setQuickViewProduct(prod)}
       />
 
       <CartDrawer />

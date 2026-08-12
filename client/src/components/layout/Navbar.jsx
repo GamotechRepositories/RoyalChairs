@@ -4,7 +4,7 @@ import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useAuth } from '../../context/AuthContext';
 
-export default function Navbar({ onOpenSearch, onOpenTrackOrder, onOpenAccount, onNavigateHome, onNavigateShopCategories }) {
+export default function Navbar({ onOpenSearch, onOpenTrackOrder, onOpenAccount, onOpenWishlist, onNavigateHome, onNavigateShopCategories }) {
   const { cartCount, setIsCartOpen } = useCart();
   const { wishlistCount } = useWishlist();
   const { user, isAuthenticated } = useAuth();
@@ -109,10 +109,10 @@ export default function Navbar({ onOpenSearch, onOpenTrackOrder, onOpenAccount, 
               )}
             </button>
 
-            {/* 6. Wishlist Icon */}
-            <a
-              href="#best-sellers"
-              className="relative p-2 text-gray-700 hover:text-rose-600 transition"
+            {/* 6. Wishlist Icon Button */}
+            <button
+              onClick={onOpenWishlist}
+              className="relative p-2 text-gray-700 hover:text-rose-600 transition cursor-pointer"
               title="Wishlist"
             >
               <Heart className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-800" />
@@ -121,7 +121,7 @@ export default function Navbar({ onOpenSearch, onOpenTrackOrder, onOpenAccount, 
                   {wishlistCount}
                 </span>
               )}
-            </a>
+            </button>
 
             {/* 7. Cart Icon */}
             <button

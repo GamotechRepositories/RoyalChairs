@@ -41,10 +41,6 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
     (p) => p.category === activeCategoryId || p.type.toLowerCase() === activeCategoryId.toLowerCase()
   );
 
-  if (categoryProducts.length < 3) {
-    categoryProducts = PRODUCTS;
-  }
-
   // Filter by Subcategory if not 'All'
   if (activeSubcategory !== 'All') {
     const subQuery = activeSubcategory.toLowerCase();
@@ -109,6 +105,9 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
               <div className="space-y-2">
                 {CATEGORIES.map((cat) => {
                   const isSelected = activeCategoryId === cat.id;
+                  const catCount = PRODUCTS.filter(
+                    (p) => p.category === cat.id || p.type.toLowerCase() === cat.id.toLowerCase()
+                  ).length;
                   return (
                     <button
                       key={cat.id}
@@ -132,7 +131,7 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
                           isSelected ? 'bg-amber-300 text-emerald-950' : 'bg-gray-200 text-gray-600'
                         }`}
                       >
-                        {cat.count}
+                        {catCount}
                       </span>
                     </button>
                   );

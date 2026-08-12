@@ -1,10 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Package, Search, Truck, CheckCircle2, Clock } from 'lucide-react';
 
 export default function TrackOrderModal({ isOpen, onClose }) {
   const [orderId, setOrderId] = useState('');
   const [email, setEmail] = useState('');
   const [trackedOrder, setTrackedOrder] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -27,8 +38,14 @@ export default function TrackOrderModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-emerald-900/10 relative p-6 sm:p-8">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-emerald-900/10 relative p-6 sm:p-8 cursor-default"
+      >
         
         <button
           onClick={onClose}

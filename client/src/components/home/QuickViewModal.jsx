@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Star, ShoppingBag, Heart, Shield, Check, Plus, Minus, Truck, RefreshCw } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
@@ -6,6 +6,17 @@ import { useWishlist } from '../../context/WishlistContext';
 export default function QuickViewModal({ product, onClose }) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
+
+  useEffect(() => {
+    if (product) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [product]);
 
   if (!product) return null;
 
@@ -21,8 +32,14 @@ export default function QuickViewModal({ product, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden border border-emerald-900/10 max-h-[90vh] overflow-y-auto relative">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden border border-emerald-900/10 max-h-[90vh] overflow-y-auto overscroll-contain relative cursor-default"
+      >
         
         {/* Close Button */}
         <button
@@ -41,11 +58,7 @@ export default function QuickViewModal({ product, onClose }) {
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
-              {product.badge && (
-                <span className="absolute top-4 left-4 bg-emerald-950 text-amber-300 text-xs font-extrabold px-3 py-1 rounded-md shadow-md border border-amber-300/30">
-                  {product.badge}
-                </span>
-              )}
+
             </div>
 
             {/* Thumbnail Pickers */}

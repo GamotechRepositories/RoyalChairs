@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Star, Heart, ShoppingBag, Check } from 'lucide-react';
+import { Star, Heart, ShoppingBag, Check, Plus, Minus } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 
 export default function ProductCard({ product, onQuickView }) {
-  const { addToCart } = useCart();
+  const { addToCart, updateQuantity, getItemQuantity } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const [selectedColor, setSelectedColor] = useState((product.colors && product.colors[0]) || '#3D8B68');
   const [addedAnim, setAddedAnim] = useState(false);
   const [isCardHovered, setIsCardHovered] = useState(false);
+
+  const currentQty = getItemQuantity(product.id, selectedColor);
+
 
   const inWishlist = isInWishlist(product.id);
 
@@ -65,12 +68,7 @@ export default function ProductCard({ product, onQuickView }) {
             />
           )}
 
-          {/* Top Left Badge */}
-          {product.badge && (
-            <div className="absolute top-3 left-3 bg-emerald-700 text-amber-300 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md border border-amber-300/30 z-10">
-              {product.badge}
-            </div>
-          )}
+
 
           {/* Wishlist Button */}
           <button
@@ -154,26 +152,57 @@ export default function ProductCard({ product, onQuickView }) {
           )}
         </div>
 
-        <button
-          onClick={handleAddToCart}
-          className={`px-3.5 py-2.5 rounded-xl font-bold text-xs flex items-center space-x-1.5 transition shadow-sm ${
-            addedAnim
-              ? 'bg-amber-400 text-emerald-950'
-              : 'bg-emerald-700 hover:bg-emerald-600 text-white'
-          }`}
-        >
-          {addedAnim ? (
-            <>
-              <Check className="w-4 h-4" />
-              <span>Added!</span>
-            </>
-          ) : (
-            <>
-              <ShoppingBag className="w-4 h-4" />
-              <span>Add to Bag</span>
-            </>
-          )}
-        </button>
+        {currentQty > 0 ? (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-32 h-10 rounded-full bg-emerald-700 text-white flex items-center justify-between shadow-sm overflow-hidden border border-emerald-800/30"
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                updateQuantity(product.id, selectedColor, -1);
+              }}
+              className="w-10 h-full flex items-center justify-center hover:bg-emerald-800 text-amber-300 transition font-extrabold cursor-pointer"
+              title="Decrease quantity"
+            >
+              <Minus className="w-3.5 h-3.5 stroke-[3]" />
+            </button>
+            <span className="flex-1 text-center text-xs font-black text-white font-mono select-none">
+              {currentQty}
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                updateQuantity(product.id, selectedColor, 1);
+              }}
+              className="w-10 h-full flex items-center justify-center hover:bg-emerald-800 text-amber-300 transition font-extrabold cursor-pointer"
+              title="Increase quantity"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleAddToCart}
+            className={`w-32 h-10 rounded-full font-bold text-xs flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer ${
+              addedAnim
+                ? 'bg-amber-400 text-emerald-950'
+                : 'bg-emerald-700 hover:bg-emerald-600 text-white'
+            }`}
+          >
+            {addedAnim ? (
+              <>
+                <Check className="w-4 h-4" />
+                <span>Added!</span>
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="w-4 h-4" />
+                <span>Add to Bag</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

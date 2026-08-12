@@ -76,6 +76,16 @@ export const CartProvider = ({ children }) => {
     );
   };
 
+  const getItemQuantity = (productId, colorSelected = null) => {
+    const matching = cartItems.filter((item) => item.id === productId);
+    if (matching.length === 0) return 0;
+    if (colorSelected) {
+      const exact = matching.find((item) => item.color === colorSelected);
+      return exact ? exact.quantity : 0;
+    }
+    return matching.reduce((sum, item) => sum + item.quantity, 0);
+  };
+
   const clearCart = () => {
     setCartItems([]);
   };
@@ -92,6 +102,7 @@ export const CartProvider = ({ children }) => {
         addToCart,
         removeFromCart,
         updateQuantity,
+        getItemQuantity,
         clearCart,
         cartCount,
         cartSubtotal,

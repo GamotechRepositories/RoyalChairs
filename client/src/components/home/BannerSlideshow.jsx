@@ -36,22 +36,22 @@ export default function BannerSlideshow() {
           return (
             <div
               key={slide.id}
-              className={`absolute inset-0 transition-opacity duration-700 ease-in-out flex flex-col lg:flex-row items-center ${
+              className={`absolute inset-0 transition-opacity duration-700 ease-in-out flex flex-col lg:flex-row items-stretch ${
                 isActive ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
               }`}
             >
               {/* Text Overlay Container */}
-              <div className="w-full lg:w-1/2 p-6 sm:p-12 lg:p-20 flex flex-col justify-center items-start z-10 max-w-3xl">
+              <div className="w-full lg:w-1/2 p-6 sm:p-10 lg:p-16 flex flex-col justify-center items-start z-10 max-w-2xl">
                 <div className="inline-flex items-center space-x-2 bg-amber-100 border border-amber-300/60 text-emerald-950 text-xs font-extrabold px-3.5 py-1.5 rounded-full mb-4 shadow-xs">
                   <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                   <span>{slide.badge}</span>
                 </div>
 
-                <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black text-emerald-950 leading-tight font-serif tracking-tight">
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black text-emerald-950 leading-tight font-serif tracking-tight">
                   {slide.title}
                 </h1>
 
-                <h2 className="text-base sm:text-xl font-bold text-emerald-800 mt-2 font-sans">
+                <h2 className="text-base sm:text-lg lg:text-xl font-bold text-emerald-800 mt-2 font-sans">
                   {slide.subtitle}
                 </h2>
 
@@ -90,15 +90,19 @@ export default function BannerSlideshow() {
                 </div>
               </div>
 
-              {/* Full Width High-Res Hero Image */}
-              <div className="w-full lg:w-1/2 h-64 sm:h-80 lg:h-full relative overflow-hidden">
+              {/* Full Width High-Res Hero Image Container */}
+              <div className="w-full lg:w-1/2 h-72 sm:h-96 lg:h-auto relative overflow-hidden bg-emerald-950 flex-1">
                 <img
                   src={slide.image}
                   alt={slide.title}
+                  onError={(e) => {
+                    e.target.src = 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=1600&q=85';
+                  }}
                   className="w-full h-full object-cover object-center transform hover:scale-105 transition duration-1000"
                   loading="eager"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-white via-white/40 to-transparent pointer-events-none" />
+                {/* Smooth left gradient blend */}
+                <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-white via-white/20 to-transparent lg:w-1/3 pointer-events-none" />
               </div>
             </div>
           );

@@ -5,6 +5,8 @@ import { CATEGORIES } from '../../data/chairProductsData';
 export default function ShopByCategory({ onSelectCategory }) {
   const scrollRef = useRef(null);
 
+  const defaultFallbackImage = 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=600&q=80';
+
   const scroll = (direction) => {
     if (scrollRef.current) {
       const { scrollLeft, clientWidth } = scrollRef.current;
@@ -53,7 +55,7 @@ export default function ShopByCategory({ onSelectCategory }) {
             <ChevronRight className="w-6 h-6 stroke-[2.5]" />
           </button>
 
-          {/* Enlarged Circular Category Photo Bubbles */}
+          {/* Circular Category Photo Bubbles */}
           <div
             ref={scrollRef}
             className="flex space-x-6 sm:space-x-10 overflow-x-auto no-scrollbar py-4 px-2 snap-x snap-mandatory items-start"
@@ -63,20 +65,23 @@ export default function ShopByCategory({ onSelectCategory }) {
               <button
                 key={cat.id}
                 onClick={() => onSelectCategory && onSelectCategory(cat.id)}
-                className="flex-none snap-start flex flex-col items-center text-center group cursor-pointer w-32 sm:w-40"
+                className="flex-none snap-start flex flex-col items-center text-center cursor-pointer w-32 sm:w-40"
               >
-                {/* Enlarged Circular Photo Bubble Container */}
-                <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-cream-soft group-hover:bg-emerald-100/60 p-2.5 mb-3.5 shadow-sm border border-emerald-100/80 group-hover:border-emerald-500/60 group-hover:shadow-lg transition-all duration-300 flex items-center justify-center overflow-hidden">
+                {/* Circular Photo Bubble Container */}
+                <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-cream-soft p-2.5 mb-3.5 shadow-sm border border-emerald-100/80 flex items-center justify-center overflow-hidden">
                   <img
                     src={cat.image}
                     alt={cat.name}
-                    className="w-full h-full object-cover rounded-full transform group-hover:scale-110 transition duration-500"
+                    onError={(e) => {
+                      e.target.src = defaultFallbackImage;
+                    }}
+                    className="w-full h-full object-cover rounded-full"
                     loading="lazy"
                   />
                 </div>
 
                 {/* Category Title Label */}
-                <span className="text-sm sm:text-base font-black text-emerald-950 group-hover:text-emerald-700 transition font-serif leading-tight">
+                <span className="text-sm sm:text-base font-black text-emerald-950 font-serif leading-tight">
                   {cat.name}
                 </span>
               </button>

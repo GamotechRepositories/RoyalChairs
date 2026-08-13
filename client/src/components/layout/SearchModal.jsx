@@ -14,10 +14,20 @@ export default function SearchModal({ isOpen, onClose, onQuickView }) {
     } else {
       document.body.style.overflow = '';
     }
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -61,7 +71,7 @@ export default function SearchModal({ isOpen, onClose, onQuickView }) {
           )}
           <button
             onClick={onClose}
-            className="ml-2 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg transition"
+            className="ml-2 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg transition cursor-pointer"
           >
             ESC
           </button>
@@ -71,7 +81,6 @@ export default function SearchModal({ isOpen, onClose, onQuickView }) {
         <div className="max-h-96 overflow-y-auto overscroll-contain p-4 divide-y divide-gray-100">
           <div className="text-xs font-bold uppercase tracking-wider text-emerald-900 mb-3 px-2 flex justify-between">
             <span>{query ? `Search Results (${filteredProducts.length})` : 'Popular Recommendations'}</span>
-            <span className="text-amber-600">Pure English Luxury</span>
           </div>
 
           {filteredProducts.length === 0 ? (
@@ -96,9 +105,9 @@ export default function SearchModal({ isOpen, onClose, onQuickView }) {
                       {product.name}
                     </h4>
                     <div className="flex items-center space-x-2 mt-1">
-                      <span className="text-xs font-bold text-emerald-900">${product.price}</span>
+                      <span className="text-xs font-bold text-emerald-900">₹{product.price}</span>
                       {product.originalPrice > product.price && (
-                        <span className="text-xs text-gray-400 line-through">${product.originalPrice}</span>
+                        <span className="text-xs text-gray-400 line-through">₹{product.originalPrice}</span>
                       )}
                       <div className="flex items-center text-amber-500 text-xs ml-2">
                         <Star className="w-3.5 h-3.5 fill-current mr-0.5" />
@@ -145,14 +154,6 @@ export default function SearchModal({ isOpen, onClose, onQuickView }) {
               </div>
             ))
           )}
-        </div>
-
-        {/* Modal Footer */}
-        <div className="bg-emerald-950 text-white p-3 px-5 text-xs flex justify-between items-center">
-          <span className="text-emerald-200">Free White-Glove Shipping on all orders</span>
-          <a href="#shop-by-category" onClick={onClose} className="text-amber-300 hover:underline flex items-center font-medium">
-            Browse All Categories <ArrowRight className="w-3.5 h-3.5 ml-1" />
-          </a>
         </div>
       </div>
     </div>

@@ -1,26 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
-import { Percent, Clock, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
-import { PRODUCTS } from '../../data/chairProductsData';
+import { useState, useRef } from 'react';
+import { Percent, Tag, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { PRODUCTS, ADMIN_OFFER_BANNER } from '../../data/chairProductsData';
 import ProductCard from '../ui/ProductCard';
 
 export default function HighDiscountOffers({ onQuickView }) {
   const [filterThreshold, setFilterThreshold] = useState(0);
   const scrollRef = useRef(null);
-
-  // Live Flash Sale Countdown Timer
-  const [timeLeft, setTimeLeft] = useState({ hours: 14, minutes: 32, seconds: 45 });
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
-        if (prev.minutes > 0) return { ...prev, minutes: 59, seconds: 59 };
-        if (prev.hours > 0) return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        return { hours: 24, minutes: 0, seconds: 0 };
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const scroll = (direction) => {
     if (scrollRef.current) {
@@ -57,30 +42,57 @@ export default function HighDiscountOffers({ onQuickView }) {
               Curated luxury seats sorted strictly by maximum price reduction. Save up to 50% today.
             </p>
           </div>
+        </div>
 
-          {/* Flash Sale Countdown Timer */}
-          <div className="flex items-center space-x-4 bg-emerald-700 text-white p-4 rounded-2xl border border-amber-300/40 shadow-md">
-            <Clock className="w-6 h-6 text-amber-300 animate-pulse" />
+        {/* Admin Configurable Featured Offer Banner Card */}
+        {ADMIN_OFFER_BANNER && (
+          <div className="bg-emerald-900 text-white rounded-3xl p-6 sm:p-10 lg:p-12 mb-10 relative overflow-hidden grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center shadow-xl border border-emerald-800">
             <div>
-              <span className="text-[10px] uppercase font-bold text-amber-200 tracking-wider block">
-                Offer Ends In
-              </span>
-              <div className="flex items-center space-x-2 text-lg font-black font-mono">
-                <span className="bg-emerald-800 px-2 py-0.5 rounded text-amber-300">
-                  {String(timeLeft.hours).padStart(2, '0')}h
-                </span>
-                <span>:</span>
-                <span className="bg-emerald-800 px-2 py-0.5 rounded text-amber-300">
-                  {String(timeLeft.minutes).padStart(2, '0')}m
-                </span>
-                <span>:</span>
-                <span className="bg-emerald-800 px-2 py-0.5 rounded text-amber-300">
-                  {String(timeLeft.seconds).padStart(2, '0')}s
-                </span>
+              <div className="inline-flex items-center space-x-1.5 bg-amber-400 text-emerald-950 text-xs font-black px-3.5 py-1 rounded-full mb-4 shadow-sm tracking-wider uppercase">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{ADMIN_OFFER_BANNER.badge || 'SPECIAL PROMOTIONAL OFFER'}</span>
               </div>
+
+              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black font-serif leading-tight text-white mb-4">
+                {ADMIN_OFFER_BANNER.title}
+              </h3>
+
+              <p className="text-emerald-100 text-sm sm:text-base leading-relaxed mb-6">
+                {ADMIN_OFFER_BANNER.description}
+              </p>
+
+              {ADMIN_OFFER_BANNER.highlights && ADMIN_OFFER_BANNER.highlights.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  {ADMIN_OFFER_BANNER.highlights.map((h, i) => (
+                    <div key={i} className="bg-emerald-800/80 p-3.5 rounded-xl border border-emerald-700/80 text-xs">
+                      <strong className="text-amber-300 block mb-1 text-xs font-bold">{h.title}</strong>
+                      <span className="text-emerald-100/90 text-[11px] leading-snug block">{h.desc}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Featured Promo Image */}
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl h-72 sm:h-80 lg:h-96 group border-2 border-emerald-700/60">
+              <img
+                src={ADMIN_OFFER_BANNER.image}
+                alt={ADMIN_OFFER_BANNER.title}
+                onError={(e) => {
+                  e.target.src = 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=1000&q=80';
+                }}
+                className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+              />
+              {ADMIN_OFFER_BANNER.imageCaption && (
+                <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/85 via-transparent to-transparent flex items-end p-4 sm:p-6">
+                  <span className="text-xs font-extrabold text-amber-200 bg-emerald-950/85 backdrop-blur-md px-3.5 py-2 rounded-xl border border-amber-300/30 shadow-md">
+                    {ADMIN_OFFER_BANNER.imageCaption}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
         {/* Filter Bar */}
         <div className="flex items-center space-x-3 mb-6 overflow-x-auto no-scrollbar pb-2 sm:pb-0">

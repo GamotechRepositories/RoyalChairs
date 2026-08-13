@@ -13,6 +13,8 @@ import WhyChooseUs from './components/home/WhyChooseUs';
 import Footer from './components/layout/Footer';
 
 import CategoryShopPage from './components/shop/CategoryShopPage';
+import CartPage from './components/shop/CartPage';
+import WishlistPage from './components/shop/WishlistPage';
 import SearchModal from './components/layout/SearchModal';
 import TrackOrderModal from './components/layout/TrackOrderModal';
 import AccountModal from './components/layout/AccountModal';
@@ -22,7 +24,7 @@ import QuickViewModal from './components/home/QuickViewModal';
 import { Sparkles } from 'lucide-react';
 
 function DashboardContent() {
-  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' or 'category-page'
+  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard', 'category-page', 'cart-page', 'wishlist-page'
   const [selectedCategoryId, setSelectedCategoryId] = useState('gaming');
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -36,6 +38,11 @@ function DashboardContent() {
   const handleOpenCategory = (catId) => {
     setSelectedCategoryId(catId || 'gaming');
     setActiveView('category-page');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleNavigateView = (viewName) => {
+    setActiveView(viewName);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -54,31 +61,44 @@ function DashboardContent() {
         onOpenSearch={() => setSearchOpen(true)}
         onOpenTrackOrder={() => setTrackOrderOpen(true)}
         onOpenAccount={() => setAccountOpen(true)}
-        onOpenWishlist={() => setWishlistOpen(true)}
-        onNavigateHome={() => setActiveView('dashboard')}
+        onOpenWishlist={() => handleNavigateView('wishlist-page')}
+        onOpenCart={() => handleNavigateView('cart-page')}
+        onNavigateHome={() => handleNavigateView('dashboard')}
         onNavigateShopCategories={() => handleOpenCategory('wooden')}
       />
 
       <main>
         {activeView === 'category-page' ? (
-          /* DEDICATED CATEGORY SHOP PAGE VIEW (Category highlighted on left sidebar) */
+          /* DEDICATED CATEGORY SHOP PAGE VIEW */
           <CategoryShopPage
             initialCategory={selectedCategoryId}
-            onBackToHome={() => setActiveView('dashboard')}
+            onBackToHome={() => handleNavigateView('dashboard')}
+            onQuickView={(prod) => setQuickViewProduct(prod)}
+          />
+        ) : activeView === 'cart-page' ? (
+          /* DEDICATED SHOPPING CART PAGE VIEW */
+          <CartPage
+            onBackToHome={() => handleNavigateView('dashboard')}
+            onQuickView={(prod) => setQuickViewProduct(prod)}
+          />
+        ) : activeView === 'wishlist-page' ? (
+          /* DEDICATED MY WISHLIST PAGE VIEW */
+          <WishlistPage
+            onBackToHome={() => handleNavigateView('dashboard')}
             onQuickView={(prod) => setQuickViewProduct(prod)}
           />
         ) : (
-          /* MAIN HOMEPAGE DASHBOARD (All sections show complete catalog by default) */
+          /* MAIN HOMEPAGE DASHBOARD */
           <>
-            {/* 2. Banner Slideshow (Full Width edge-to-edge) */}
+            {/* 2. Banner Slideshow */}
             <BannerSlideshow />
 
-            {/* 3. Shop By List (Clean icon list, clicking any opens Category Page) */}
+            {/* 3. Shop By List */}
             <ShopByCategory
               onSelectCategory={(catId) => handleOpenCategory(catId)}
             />
 
-            {/* 4. Best Seller (Displays ALL best sellers by default) */}
+            {/* 4. Best Seller */}
             <BestSellers
               onQuickView={(prod) => setQuickViewProduct(prod)}
             />
@@ -86,7 +106,7 @@ function DashboardContent() {
             {/* 5. New Collection */}
             <NewCollection onQuickView={(prod) => setQuickViewProduct(prod)} />
 
-            {/* 6. Offers (High to Low % wise) */}
+            {/* 6. Offers */}
             <HighDiscountOffers onQuickView={(prod) => setQuickViewProduct(prod)} />
 
             {/* 7. Why Choose Us */}

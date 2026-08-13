@@ -78,7 +78,7 @@ export const HERO_SLIDES = [
     ctaText: 'Explore Collection',
     ctaLink: '#new-collection',
     secondaryCta: 'View 50% Off Deals',
-    tag: 'Save up to $450 Today',
+    tag: 'Save up to ₹35,000 Today',
   },
   {
     id: 2,
@@ -1015,7 +1015,39 @@ export const REVIEWS = [
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
     location: 'Edinburgh, UK',
   },
+  {
+    id: 4,
+    name: 'Sophia Montgomery',
+    role: 'Luxury Villa Designer',
+    rating: 5,
+    comment: 'The Kensington Solid Oak Dining Armchair is sheer perfection. Solid English oak weight, flawless velvet upholstery stitching, and incredible stability. Exceptional craftsmanship!',
+    productName: 'Kensington Solid Oak Dining Armchair',
+    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80',
+    location: 'Cambridge, UK',
+  },
+  {
+    id: 5,
+    name: 'Julian Beauchamp',
+    role: 'Creative Director & Founder',
+    rating: 5,
+    comment: 'Hands down the most comfortable armchair I have ever owned. The velvet feel is plush and soft, yet resistant to accidental spills. Truly world-class seating.',
+    productName: 'Royal Chesterfield Tufted Armchair',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+    location: 'Bath, UK',
+  },
 ];
+
+export const ADMIN_OFFER_BANNER = {
+  badge: 'SPECIAL PROMOTIONAL OFFER',
+  title: 'Handcrafted Luxury Armchairs & VIP Season Savings',
+  description: 'Co-developed with spine orthopedists. Hand-stitched Italian Nappa leathers, plush English velvets, and 100% FSC-certified solid oak frames offered with up to 50% discount.',
+  highlights: [
+    { title: 'Top-Grain Nappa & Velvet', desc: 'Hand-selected, breathable, and treated to resist spills while aging gracefully.' },
+    { title: 'Free White-Glove Shipping', desc: 'Pre-assembled white-glove room delivery on all promotional orders.' },
+  ],
+  image: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=1000&q=80',
+  imageCaption: 'Master Craftsman Workshop • Exclusive 2026 Collection',
+};
 
 export const WHY_CHOOSE_US_ITEMS = [
   {

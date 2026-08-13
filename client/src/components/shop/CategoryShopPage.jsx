@@ -163,13 +163,13 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
             </div>
 
             {/* Subcategory Filter & Sort Toolbar */}
-            <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-xs flex flex-wrap items-center justify-between gap-4">
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-emerald-100 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
               
               {/* Filter by Subcategory Pills */}
-              <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar py-1 flex-1">
-                <span className="text-xs font-bold text-gray-500 flex items-center space-x-1 mr-1 flex-shrink-0">
+              <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar py-1 min-w-0 flex-1 pr-2">
+                <span className="text-xs font-extrabold text-emerald-950 flex items-center space-x-1.5 mr-1 flex-shrink-0 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-100/80">
                   <Tag className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>Filter by Subcategory:</span>
+                  <span>Subcategory:</span>
                 </span>
                 
                 {subcategoryPills.map((sub) => {
@@ -178,10 +178,10 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
                     <button
                       key={sub}
                       onClick={() => setActiveSubcategory(sub)}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex-shrink-0 ${
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex-shrink-0 cursor-pointer ${
                         isSubActive
-                          ? 'bg-emerald-700 text-white shadow-xs'
-                          : 'bg-cream-soft text-gray-700 hover:bg-emerald-50 border border-gray-200'
+                          ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-700/30'
+                          : 'bg-cream-soft text-gray-700 hover:bg-emerald-100/60 hover:text-emerald-900 border border-gray-200/80'
                       }`}
                     >
                       {sub}
@@ -191,13 +191,13 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
               </div>
 
               {/* Sort Selector */}
-              <div className="flex items-center space-x-2 flex-shrink-0">
+              <div className="flex items-center space-x-2 flex-shrink-0 md:pl-4 md:border-l md:border-emerald-100/80 pt-2 md:pt-0 border-t border-gray-100 md:border-t-0 justify-end">
                 <ArrowUpDown className="w-4 h-4 text-emerald-700" />
-                <span className="text-xs font-bold text-gray-600">Sort By:</span>
+                <span className="text-xs font-bold text-gray-700 whitespace-nowrap">Sort By:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-cream-soft text-xs font-bold text-gray-800 border border-gray-200 rounded-xl px-3 py-1.5 focus:outline-hidden focus:border-emerald-700"
+                  className="bg-cream-soft text-xs font-bold text-gray-800 border border-gray-200 rounded-xl px-3 py-1.5 focus:outline-hidden focus:border-emerald-700 cursor-pointer shadow-2xs"
                 >
                   <option value="recommended">Featured Recommendation</option>
                   <option value="discount">Highest Discount %</option>

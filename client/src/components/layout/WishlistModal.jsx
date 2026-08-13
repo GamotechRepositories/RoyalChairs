@@ -15,10 +15,20 @@ export default function WishlistModal({ isOpen, onClose, onQuickView }) {
     } else {
       document.body.style.overflow = '';
     }
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -133,9 +143,9 @@ export default function WishlistModal({ isOpen, onClose, onQuickView }) {
                     {/* Star Rating & Price */}
                     <div className="flex items-center space-x-3 mt-1">
                       <div className="flex items-baseline space-x-1">
-                        <span className="text-sm font-extrabold text-emerald-900">${product.price}</span>
+                        <span className="text-sm font-extrabold text-emerald-900">₹{product.price}</span>
                         {product.originalPrice > product.price && (
-                          <span className="text-xs text-gray-400 line-through">${product.originalPrice}</span>
+                          <span className="text-xs text-gray-400 line-through">₹{product.originalPrice}</span>
                         )}
                       </div>
 

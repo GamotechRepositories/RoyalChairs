@@ -1,9 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ShieldCheck, Sparkles, Award, Truck, Star, Quote, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { REVIEWS, WHY_CHOOSE_US_ITEMS } from '../../data/chairProductsData';
 
 export default function WhyChooseUs() {
   const [activeReviewIdx, setActiveReviewIdx] = useState(0);
+
+  // Auto-play slideshow timer for reviews - rotates continuously every 3.5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveReviewIdx((prev) => (prev + 1) % REVIEWS.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, []);
 
   const iconMap = {
     ShieldCheck: <ShieldCheck className="w-8 h-8 text-emerald-700" />,
@@ -112,8 +120,12 @@ export default function WhyChooseUs() {
           </div>
         </div>
 
-        {/* Customer Reviews */}
-        <div className="bg-cream-soft rounded-3xl p-8 sm:p-12 border border-emerald-900/10 shadow-lg">
+        {/* Customer Reviews Slideshow */}
+        <div
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+          className="bg-cream-soft rounded-3xl p-8 sm:p-12 border border-emerald-900/10 shadow-lg relative"
+        >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
             <div>
               <div className="flex items-center space-x-1 text-amber-500 mb-2">
@@ -128,22 +140,31 @@ export default function WhyChooseUs() {
             </div>
 
             <div className="flex items-center space-x-3 mt-4 sm:mt-0">
+              <span className="text-xs font-extrabold text-emerald-900 bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-200 mr-2">
+                Review {activeReviewIdx + 1} of {REVIEWS.length}
+              </span>
               <button
                 onClick={handlePrevReview}
-                className="p-3 rounded-full bg-white border border-gray-200 text-emerald-950 hover:bg-emerald-800 hover:text-white transition shadow-xs"
+                className="p-3 rounded-full bg-white border border-gray-200 text-emerald-950 hover:bg-emerald-800 hover:text-white transition shadow-xs cursor-pointer"
+                title="Previous Review"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={handleNextReview}
-                className="p-3 rounded-full bg-white border border-gray-200 text-emerald-950 hover:bg-emerald-800 hover:text-white transition shadow-xs"
+                className="p-3 rounded-full bg-white border border-gray-200 text-emerald-950 hover:bg-emerald-800 hover:text-white transition shadow-xs cursor-pointer"
+                title="Next Review"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-emerald-900/10 shadow-sm relative">
+          {/* Active Review Slide */}
+          <div
+            key={activeReviewIdx}
+            className="bg-white rounded-2xl p-6 sm:p-10 border border-emerald-900/10 shadow-sm relative min-h-[220px] flex flex-col justify-between transition-all duration-500 animate-fadeIn"
+          >
             <Quote className="w-12 h-12 text-amber-300/40 absolute top-6 right-6 pointer-events-none" />
 
             <p className="text-gray-800 text-base sm:text-lg italic leading-relaxed mb-6 font-serif">
@@ -155,21 +176,35 @@ export default function WhyChooseUs() {
                 <img
                   src={REVIEWS[activeReviewIdx].avatar}
                   alt={REVIEWS[activeReviewIdx].name}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-emerald-800/20"
+                  className="w-12 h-12 rounded-full object-cover border-2 border-emerald-800/20 shadow-xs"
                 />
                 <div>
                   <h4 className="text-sm font-extrabold text-emerald-950 font-serif">
                     {REVIEWS[activeReviewIdx].name}
                   </h4>
-                  <p className="text-xs text-gray-500">{REVIEWS[activeReviewIdx].role} • {REVIEWS[activeReviewIdx].location}</p>
+                  <p className="text-xs text-gray-500 font-medium">{REVIEWS[activeReviewIdx].role} • {REVIEWS[activeReviewIdx].location}</p>
                 </div>
               </div>
 
               <div className="text-right hidden sm:block">
-                <span className="text-xs text-gray-400 block">Purchased Chair</span>
-                <span className="text-xs font-bold text-emerald-800">{REVIEWS[activeReviewIdx].productName}</span>
+                <span className="text-xs text-gray-400 block font-medium">Purchased Chair</span>
+                <span className="text-xs font-extrabold text-emerald-800">{REVIEWS[activeReviewIdx].productName}</span>
               </div>
             </div>
+          </div>
+
+          {/* Review Indicator Dots */}
+          <div className="flex justify-center items-center space-x-2 mt-6">
+            {REVIEWS.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActiveReviewIdx(idx)}
+                className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                  activeReviewIdx === idx ? 'w-8 bg-emerald-800' : 'w-2.5 bg-gray-300 hover:bg-gray-400'
+                }`}
+                title={`Go to review ${idx + 1}`}
+              />
+            ))}
           </div>
 
         </div>

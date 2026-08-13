@@ -107,7 +107,7 @@ export default function CartDrawer() {
                         </button>
                       </div>
                       <span className="text-sm font-extrabold text-emerald-950">
-                        ${(item.price * item.quantity).toLocaleString()}
+                        ₹{(item.price * item.quantity).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -122,7 +122,7 @@ export default function CartDrawer() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>Subtotal</span>
-                  <span className="font-bold text-gray-900">${cartSubtotal.toLocaleString()}</span>
+                  <span className="font-bold text-gray-900">₹{cartSubtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>White-Glove Shipping</span>
@@ -130,7 +130,7 @@ export default function CartDrawer() {
                 </div>
                 <div className="flex justify-between text-base font-extrabold text-emerald-950 pt-2 border-t border-gray-200">
                   <span>Total Amount</span>
-                  <span className="text-lg text-emerald-900">${cartSubtotal.toLocaleString()}</span>
+                  <span className="text-lg text-emerald-900">₹{cartSubtotal.toLocaleString()}</span>
                 </div>
               </div>
 
@@ -140,7 +140,7 @@ export default function CartDrawer() {
               </div>
 
               <button
-                onClick={() => alert(`Proceeding to checkout for $${cartSubtotal.toLocaleString()}! Thank you for choosing RoyalChairs.`)}
+                onClick={() => alert(`Proceeding to checkout for ₹${cartSubtotal.toLocaleString()}! Thank you for choosing RoyalChairs.`)}
                 className="w-full py-4 bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold rounded-xl shadow-lg flex items-center justify-center space-x-2 transition tracking-wide text-sm"
               >
                 <span>Proceed to Checkout</span>

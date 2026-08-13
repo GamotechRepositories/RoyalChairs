@@ -18,10 +18,20 @@ export default function AccountModal({ isOpen, onClose }) {
     } else {
       document.body.style.overflow = '';
     }
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -51,223 +61,245 @@ export default function AccountModal({ isOpen, onClose }) {
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm animate-fadeIn cursor-pointer"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-emerald-900/10 relative p-6 sm:p-8 cursor-default"
+        className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-emerald-900/15 relative cursor-default transition-all duration-300"
       >
-        
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full bg-cream-soft hover:bg-gray-200 text-gray-700 transition"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Luxury Banner Header */}
+        <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 text-white p-6 sm:p-7 relative overflow-hidden">
+          {/* Subtle Ambient Light Circle */}
+          <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-amber-400/10 blur-2xl pointer-events-none" />
 
-        {isAuthenticated && user ? (
-          /* LOGGED IN USER PROFILE VIEW */
-          <div className="text-center py-4 space-y-5">
-            <div className="w-20 h-20 rounded-full bg-emerald-700 text-amber-300 flex items-center justify-center mx-auto shadow-lg border-2 border-amber-300">
-              <Crown className="w-10 h-10" />
-            </div>
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/90 transition backdrop-blur-xs cursor-pointer z-10"
+            title="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
 
-            <div>
-              <h3 className="text-2xl font-black text-emerald-950 font-serif">
-                Welcome, {user.name}!
-              </h3>
-              <span className="inline-block mt-1 bg-amber-100 text-emerald-900 text-xs font-black px-3 py-1 rounded-full border border-amber-300">
-                ROYAL MEMBER • {user.role.toUpperCase()}
-              </span>
-            </div>
-
-            <div className="bg-cream-soft p-5 rounded-2xl text-left text-xs space-y-2.5 border border-emerald-100 shadow-xs">
-              <div className="flex justify-between border-b border-gray-200/60 pb-2">
-                <span className="text-gray-500 font-semibold">Account Email:</span>
-                <span className="font-bold text-gray-900">{user.email}</span>
-              </div>
-              <div className="flex justify-between border-b border-gray-200/60 pb-2">
-                <span className="text-gray-500 font-semibold">Member Status:</span>
-                <span className="font-bold text-emerald-700">Verified Member</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500 font-semibold">Room Delivery:</span>
-                <span className="font-bold text-emerald-700">White-Glove Free</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                logout();
-                onClose();
-              }}
-              className="w-full py-3.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition flex items-center justify-center space-x-2"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Sign Out of Account</span>
-            </button>
-          </div>
-        ) : (
-          /* LOGIN & REGISTER FORM VIEW */
-          <div>
-            {/* Modal Brand Header */}
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-11 h-11 rounded-xl bg-emerald-700 text-amber-300 flex items-center justify-center shadow-md flex-shrink-0">
-                <Crown className="w-6 h-6 stroke-[2.2]" />
+          {isAuthenticated && user ? (
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 rounded-2xl bg-amber-400 text-emerald-950 flex items-center justify-center shadow-lg border-2 border-amber-300 flex-shrink-0">
+                <Crown className="w-7 h-7" />
               </div>
               <div>
-                <h3 className="text-xl font-black text-emerald-950 font-serif">
-                  {isLoginTab ? 'Member Login' : 'Create Account'}
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-300">
+                  Royal Member Dashboard
+                </span>
+                <h3 className="text-xl font-black font-serif text-white leading-tight">
+                  Welcome, {user.name}!
                 </h3>
-                <p className="text-xs text-gray-500">Access your saved chairs &amp; order history</p>
               </div>
             </div>
+          ) : (
+            <div className="flex items-center space-x-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-amber-400/90 text-emerald-950 flex items-center justify-center shadow-md flex-shrink-0">
+                <Crown className="w-6 h-6 stroke-[2.4]" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-300">
+                  Handcrafted Seating Portal
+                </span>
+                <h3 className="text-xl font-black font-serif text-white">
+                  {isLoginTab ? 'Member Sign In' : 'Create Member Account'}
+                </h3>
+              </div>
+            </div>
+          )}
+        </div>
 
-            {/* Login / Register Toggle Tabs */}
-            <div className="flex bg-cream-soft p-1 rounded-xl border border-gray-200 mb-5">
+        {/* Modal Body Content */}
+        <div className="p-6 sm:p-7">
+          {isAuthenticated && user ? (
+            /* LOGGED IN USER PROFILE VIEW */
+            <div className="space-y-5">
+              <div className="bg-cream-soft p-5 rounded-2xl text-xs space-y-3 border border-emerald-100 shadow-2xs">
+                <div className="flex justify-between items-center border-b border-gray-200/80 pb-2.5">
+                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Account Holder</span>
+                  <span className="font-extrabold text-emerald-950">{user.name}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-gray-200/80 pb-2.5">
+                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Email Address</span>
+                  <span className="font-bold text-gray-800">{user.email}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-gray-200/80 pb-2.5">
+                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Membership Tier</span>
+                  <span className="font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    VIP ROYAL MEMBER
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">White-Glove Service</span>
+                  <span className="font-bold text-emerald-700">Included Free</span>
+                </div>
+              </div>
+
               <button
-                type="button"
-                onClick={() => handleSwitchTab(true)}
-                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition ${
-                  isLoginTab ? 'bg-emerald-700 text-white shadow-xs' : 'text-gray-600 hover:text-emerald-900'
-                }`}
+                onClick={() => {
+                  logout();
+                  onClose();
+                }}
+                className="w-full py-3.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold text-xs rounded-xl border border-rose-200 transition flex items-center justify-center space-x-2 cursor-pointer shadow-2xs"
               >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSwitchTab(false)}
-                className={`flex-1 py-2 text-xs font-extrabold rounded-lg transition ${
-                  !isLoginTab ? 'bg-emerald-700 text-white shadow-xs' : 'text-gray-600 hover:text-emerald-900'
-                }`}
-              >
-                Register
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out of Account</span>
               </button>
             </div>
-
-            {/* Express Error Notification Banner */}
-            {authError && (
-              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                <span>{authError}</span>
+          ) : (
+            /* LOGIN & REGISTER FORM VIEW */
+            <div>
+              {/* Tab Selector */}
+              <div className="flex bg-gray-100 p-1.5 rounded-2xl mb-6 border border-gray-200/80">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchTab(true)}
+                  className={`flex-1 py-2.5 text-xs font-black rounded-xl transition cursor-pointer ${
+                    isLoginTab
+                      ? 'bg-emerald-800 text-white shadow-md'
+                      : 'text-gray-600 hover:text-emerald-950 font-bold'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchTab(false)}
+                  className={`flex-1 py-2.5 text-xs font-black rounded-xl transition cursor-pointer ${
+                    !isLoginTab
+                      ? 'bg-emerald-800 text-white shadow-md'
+                      : 'text-gray-600 hover:text-emerald-950 font-bold'
+                  }`}
+                >
+                  Register
+                </button>
               </div>
-            )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Full Name field (Register mode only) */}
-              {!isLoginTab && (
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-700 block mb-1.5 flex items-center">
-                    <User className="w-3.5 h-3.5 mr-1 text-emerald-700" />
-                    <span>Full Name</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Lord Sterling"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-3 bg-cream-soft border border-gray-300 rounded-xl text-sm font-semibold focus:outline-hidden focus:border-emerald-700"
-                  />
+              {/* Express Error Notification */}
+              {authError && (
+                <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold flex items-center space-x-2.5">
+                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  <span>{authError}</span>
                 </div>
               )}
 
-              {/* Email Address field */}
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-700 block mb-1.5 flex items-center">
-                  <Mail className="w-3.5 h-3.5 mr-1 text-emerald-700" />
-                  <span>Email Address</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="your.email@royalchairs.co.uk"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-cream-soft border border-gray-300 rounded-xl text-sm font-semibold focus:outline-hidden focus:border-emerald-700"
-                />
-              </div>
-
-              {/* Password field */}
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-700 block mb-1.5 flex items-center">
-                  <Lock className="w-3.5 h-3.5 mr-1 text-emerald-700" />
-                  <span>Password</span>
-                </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••••••"
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-cream-soft border border-gray-300 rounded-xl text-sm font-semibold focus:outline-hidden focus:border-emerald-700"
-                />
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-60 text-white font-extrabold rounded-xl shadow-lg transition text-sm flex items-center justify-center space-x-2"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Connecting to Server...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>{isLoginTab ? 'Sign In to Account' : 'Register Account'}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Full Name field (Register mode only) */}
+                {!isLoginTab && (
+                  <div>
+                    <label className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-950 block mb-1.5 flex items-center">
+                      <User className="w-3.5 h-3.5 mr-1.5 text-emerald-700" />
+                      <span>Full Name</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Lord Sterling"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 hover:bg-white focus:bg-white border border-gray-200 focus:border-emerald-600 rounded-xl text-sm font-semibold text-gray-900 placeholder-gray-400 focus:outline-hidden focus:ring-3 focus:ring-emerald-600/10 transition"
+                    />
+                  </div>
                 )}
-              </button>
-            </form>
 
-            {/* Divider */}
-            <div className="relative my-4 flex items-center justify-center">
-              <div className="border-t border-gray-200 w-full"></div>
-              <span className="bg-white px-3 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider absolute">
-                OR
-              </span>
-            </div>
+                {/* Email Address field */}
+                <div>
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-950 block mb-1.5 flex items-center">
+                    <Mail className="w-3.5 h-3.5 mr-1.5 text-emerald-700" />
+                    <span>Email Address</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="your.email@royalchairs.co.uk"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 hover:bg-white focus:bg-white border border-gray-200 focus:border-emerald-600 rounded-xl text-sm font-semibold text-gray-900 placeholder-gray-400 focus:outline-hidden focus:ring-3 focus:ring-emerald-600/10 transition"
+                  />
+                </div>
 
-            {/* Google Sign-In Button */}
-            <div className="flex justify-center w-full min-h-[44px]">
-              <GoogleLogin
-                onSuccess={async (credentialResponse) => {
-                  if (credentialResponse.credential) {
-                    const res = await googleLogin(credentialResponse.credential);
-                    if (res?.success) {
-                      onClose();
+                {/* Password field */}
+                <div>
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-950 block mb-1.5 flex items-center">
+                    <Lock className="w-3.5 h-3.5 mr-1.5 text-emerald-700" />
+                    <span>Password</span>
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••••••"
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 hover:bg-white focus:bg-white border border-gray-200 focus:border-emerald-600 rounded-xl text-sm font-semibold text-gray-900 placeholder-gray-400 focus:outline-hidden focus:ring-3 focus:ring-emerald-600/10 transition"
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3.5 bg-gradient-to-r from-emerald-800 to-emerald-700 hover:from-emerald-700 hover:to-emerald-600 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition transform active:scale-98 disabled:opacity-60 flex items-center justify-center space-x-2 cursor-pointer mt-2"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Authenticating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{isLoginTab ? 'Sign In to Account' : 'Register Account'}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Divider */}
+              <div className="relative my-5 flex items-center justify-center">
+                <div className="border-t border-gray-200/80 w-full"></div>
+                <span className="bg-white px-3 text-[10px] font-black text-gray-400 uppercase tracking-widest absolute">
+                  OR CONTINUE WITH
+                </span>
+              </div>
+
+              {/* Google Sign-In Button */}
+              <div className="flex justify-center w-full min-h-[44px]">
+                <GoogleLogin
+                  onSuccess={async (credentialResponse) => {
+                    if (credentialResponse.credential) {
+                      const res = await googleLogin(credentialResponse.credential);
+                      if (res?.success) {
+                        onClose();
+                      }
                     }
-                  }
-                }}
-                onError={() => {
-                  setAuthError('Google sign-in was cancelled or failed.');
-                }}
-                shape="pill"
-                theme="outline"
-                size="large"
-                width="100%"
-                text={isLoginTab ? "signin_with" : "signup_with"}
-              />
-            </div>
+                  }}
+                  onError={() => {
+                    setAuthError('Google sign-in was cancelled or failed.');
+                  }}
+                  shape="pill"
+                  theme="outline"
+                  size="large"
+                  width="100%"
+                  text={isLoginTab ? "signin_with" : "signup_with"}
+                />
+              </div>
 
-            <div className="mt-4 pt-3 border-t border-gray-100 text-center">
-              <button
-                type="button"
-                onClick={() => handleSwitchTab(!isLoginTab)}
-                className="text-xs font-bold text-emerald-800 hover:underline"
-              >
-                {isLoginTab ? "Don't have an account? Register Here" : 'Already a member? Sign In'}
-              </button>
+              <div className="mt-5 pt-3 border-t border-gray-100 text-center">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchTab(!isLoginTab)}
+                  className="text-xs font-extrabold text-emerald-800 hover:text-emerald-950 hover:underline transition cursor-pointer"
+                >
+                  {isLoginTab ? "Don't have an account? Create Account Here" : 'Already a member? Sign In'}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-
+          )}
+        </div>
       </div>
     </div>
   );

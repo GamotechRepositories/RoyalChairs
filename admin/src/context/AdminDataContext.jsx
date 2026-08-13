@@ -378,6 +378,37 @@ export function AdminDataProvider({ children }) {
     return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
   });
 
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get('/admin/users');
+      if (response.data && response.data.success && Array.isArray(response.data.data)) {
+        const fetchedUsers = response.data.data.map((u) => ({
+          id: u._id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          tier: u.role === 'admin' ? 'Admin / Executive' : 'Registered Member',
+          ordersCount: 0,
+          totalSpent: 0,
+          joinedDate: new Date(u.createdAt).toLocaleDateString('en-US', {
+            month: 'short',
+            year: 'numeric',
+          }),
+          avatar:
+            u.avatar ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=2E6B4D&color=fff`,
+        }));
+        setCustomers(fetchedUsers);
+      }
+    } catch (err) {
+      console.log('Error fetching admin users from backend:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
   const [coupons, setCoupons] = useState(() => {
     const saved = localStorage.getItem('royal_admin_coupons');
     return saved ? JSON.parse(saved) : INITIAL_COUPONS;
@@ -540,6 +571,7 @@ export function AdminDataProvider({ children }) {
         moderateReview,
         deleteReview,
         updateSettings,
+        refetchUsers: fetchUsers,
       }}
     >
       {children}

@@ -83,12 +83,12 @@ export default function AccountModal({ isOpen, onClose }) {
 
           {isAuthenticated && user ? (
             <div className="flex items-center space-x-4">
-              <div className="w-14 h-14 rounded-2xl bg-amber-400 text-emerald-950 flex items-center justify-center shadow-lg border-2 border-amber-300 flex-shrink-0">
-                <Crown className="w-7 h-7" />
+              <div className="w-13 h-13 rounded-2xl bg-emerald-800 text-amber-300 flex items-center justify-center shadow-lg border border-emerald-700 flex-shrink-0">
+                <User className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-300">
-                  Royal Member Dashboard
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-300">
+                  User Dashboard
                 </span>
                 <h3 className="text-xl font-black font-serif text-white leading-tight">
                   Welcome, {user.name}!
@@ -97,12 +97,12 @@ export default function AccountModal({ isOpen, onClose }) {
             </div>
           ) : (
             <div className="flex items-center space-x-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-amber-400/90 text-emerald-950 flex items-center justify-center shadow-md flex-shrink-0">
-                <Crown className="w-6 h-6 stroke-[2.4]" />
+              <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-amber-300 flex items-center justify-center shadow-md flex-shrink-0">
+                <User className="w-6 h-6 stroke-[2.4]" />
               </div>
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-300">
-                  Handcrafted Seating Portal
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-300">
+                  User Account Portal
                 </span>
                 <h3 className="text-xl font-black font-serif text-white">
                   {isLoginTab ? 'Member Sign In' : 'Create Member Account'}
@@ -117,24 +117,21 @@ export default function AccountModal({ isOpen, onClose }) {
           {isAuthenticated && user ? (
             /* LOGGED IN USER PROFILE VIEW */
             <div className="space-y-5">
-              <div className="bg-cream-soft p-5 rounded-2xl text-xs space-y-3 border border-emerald-100 shadow-2xs">
-                <div className="flex justify-between items-center border-b border-gray-200/80 pb-2.5">
-                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Account Holder</span>
-                  <span className="font-extrabold text-emerald-950">{user.name}</span>
+              <div className="bg-slate-50 p-5 rounded-2xl text-xs space-y-3.5 border border-slate-200 shadow-2xs">
+                <div className="flex justify-between items-center border-b border-slate-200/80 pb-3">
+                  <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Account Holder</span>
+                  <span className="font-extrabold text-slate-900 text-sm">{user.name}</span>
                 </div>
-                <div className="flex justify-between items-center border-b border-gray-200/80 pb-2.5">
-                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Email Address</span>
-                  <span className="font-bold text-gray-800">{user.email}</span>
-                </div>
-                <div className="flex justify-between items-center border-b border-gray-200/80 pb-2.5">
-                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Membership Tier</span>
-                  <span className="font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                    VIP ROYAL MEMBER
-                  </span>
+                <div className="flex justify-between items-center border-b border-slate-200/80 pb-3">
+                  <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Email Address</span>
+                  <span className="font-bold text-slate-800">{user.email}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">White-Glove Service</span>
-                  <span className="font-bold text-emerald-700">Included Free</span>
+                  <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Account Status</span>
+                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 flex items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
+                    Active Member
+                  </span>
                 </div>
               </div>
 

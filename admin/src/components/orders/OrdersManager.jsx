@@ -64,16 +64,16 @@ export default function OrdersManager() {
 
       {/* Filter Tabs & Search */}
       <div className="p-4 sm:p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Status Tabs */}
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {/* Status Tabs — scrollable on mobile */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
             {STATUS_TABS.map((tab) => {
               const count = tab === 'All' ? orders.length : orders.filter((o) => o.fulfillmentStatus.toLowerCase() === tab.toLowerCase()).length;
               return (
                 <button
                   key={tab}
                   onClick={() => setActiveFilter(tab)}
-                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                  className={`flex-shrink-0 px-3.5 py-2 rounded-2xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
                     activeFilter === tab
                       ? 'bg-emerald-800 text-white shadow-sm font-extrabold'
                       : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'
@@ -109,7 +109,7 @@ export default function OrdersManager() {
             <thead className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-600 font-extrabold">
               <tr>
                 <th className="py-4 px-4">Order ID</th>
-                <th className="py-4 px-4">VIP Client</th>
+                <th className="py-4 px-4">Client</th>
                 <th className="py-4 px-4">Item Breakdown</th>
                 <th className="py-4 px-4">Total Amount</th>
                 <th className="py-4 px-4">Fulfillment Status</th>

@@ -65,7 +65,7 @@ export default function AccountModal({ isOpen, onClose }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-emerald-900/15 relative cursor-default transition-all duration-300"
+        className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-emerald-900/15 relative cursor-default transition-all duration-300 max-h-[90vh] overflow-y-auto"
       >
         {/* Luxury Banner Header */}
         <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 text-white p-6 sm:p-7 relative overflow-hidden">
@@ -122,9 +122,15 @@ export default function AccountModal({ isOpen, onClose }) {
                   <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Account Holder</span>
                   <span className="font-extrabold text-slate-900 text-sm">{user.name}</span>
                 </div>
-                <div className="flex justify-between items-center border-b border-slate-200/80 pb-3">
-                  <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Email Address</span>
-                  <span className="font-bold text-slate-800">{user.email}</span>
+                <div className="flex justify-between items-center border-b border-gray-200/80 pb-2.5">
+                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Email Address</span>
+                  <span className="font-bold text-gray-800">{user.email}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-gray-200/80 pb-2.5">
+                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Membership Tier</span>
+                  <span className="font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    VIP ROYAL MEMBER
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Account Status</span>
@@ -154,22 +160,20 @@ export default function AccountModal({ isOpen, onClose }) {
                 <button
                   type="button"
                   onClick={() => handleSwitchTab(true)}
-                  className={`flex-1 py-2.5 text-xs font-black rounded-xl transition cursor-pointer ${
-                    isLoginTab
+                  className={`flex-1 py-2.5 text-xs font-black rounded-xl transition cursor-pointer ${isLoginTab
                       ? 'bg-emerald-800 text-white shadow-md'
                       : 'text-gray-600 hover:text-emerald-950 font-bold'
-                  }`}
+                    }`}
                 >
                   Sign In
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSwitchTab(false)}
-                  className={`flex-1 py-2.5 text-xs font-black rounded-xl transition cursor-pointer ${
-                    !isLoginTab
+                  className={`flex-1 py-2.5 text-xs font-black rounded-xl transition cursor-pointer ${!isLoginTab
                       ? 'bg-emerald-800 text-white shadow-md'
                       : 'text-gray-600 hover:text-emerald-950 font-bold'
-                  }`}
+                    }`}
                 >
                   Register
                 </button>

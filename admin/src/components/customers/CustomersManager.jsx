@@ -37,7 +37,7 @@ export default function CustomersManager() {
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center space-x-2">
-            <h2 className="text-2xl font-bold text-slate-900 font-serif">VIP Client Directory (CRM)</h2>
+            <h2 className="text-2xl font-bold text-slate-900 font-serif">Client Directory</h2>
             <span className="bg-emerald-50 text-emerald-800 text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
               {customers?.length || 0} Live Members
             </span>

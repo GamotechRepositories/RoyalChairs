@@ -224,8 +224,9 @@ export default function QuickViewModal({ product, onClose }) {
                   onClick={handleAdd}
                   className="flex-1 py-3.5 bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold rounded-xl shadow-lg flex items-center justify-center space-x-2 transition text-sm cursor-pointer"
                 >
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>Add to Shopping Bag • ₹{(product.price * quantity).toLocaleString()}</span>
+                  <ShoppingBag className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">Add to Shopping Bag • ₹{(product.price * quantity).toLocaleString()}</span>
+                  <span className="sm:hidden">Add • ₹{(product.price * quantity).toLocaleString()}</span>
                 </button>
 
                 <button

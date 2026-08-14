@@ -69,7 +69,7 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
   return (
     <div className="min-h-screen bg-cream-soft py-6 px-3 sm:px-6 lg:px-8">
       <div className="w-full max-w-[1600px] mx-auto">
-        
+
         {/* Top Breadcrumb Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-white p-4 rounded-2xl border border-emerald-100 shadow-xs">
           <div className="flex items-center space-x-3">
@@ -91,12 +91,12 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
           </div>
         </div>
 
-        {/* Main Two-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          
-          {/* LEFT SIDEBAR: Categories List with Real Chair Photo Thumbnails */}
+        {/* Main Layout: stacked on mobile, two-column on lg+ */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
+
+          {/* LEFT SIDEBAR: Categories List */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-3xl p-5 border border-emerald-100 shadow-sm sticky top-24">
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border border-emerald-100 shadow-sm lg:sticky lg:top-24">
               <div className="flex items-center space-x-2 pb-4 mb-4 border-b border-gray-100 text-emerald-900 font-extrabold text-base font-serif">
                 <SlidersHorizontal className="w-5 h-5 text-emerald-700" />
                 <span>Categories</span>
@@ -112,11 +112,10 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
                     <button
                       key={cat.id}
                       onClick={() => handleCategorySwitch(cat.id)}
-                      className={`w-full flex items-center justify-between p-3 rounded-2xl transition text-left text-xs font-bold ${
-                        isSelected
+                      className={`w-full flex items-center justify-between p-3 rounded-2xl transition text-left text-xs font-bold ${isSelected
                           ? 'bg-emerald-700 text-white shadow-md font-extrabold scale-102'
                           : 'bg-cream-soft hover:bg-emerald-50 text-gray-800 hover:text-emerald-900 border border-gray-100'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center space-x-3">
                         <img
@@ -127,9 +126,8 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
                         <span className="text-sm font-bold">{cat.name}</span>
                       </div>
                       <span
-                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                          isSelected ? 'bg-amber-300 text-emerald-950' : 'bg-gray-200 text-gray-600'
-                        }`}
+                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isSelected ? 'bg-amber-300 text-emerald-950' : 'bg-gray-200 text-gray-600'
+                          }`}
                       >
                         {catCount}
                       </span>
@@ -142,7 +140,7 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
 
           {/* RIGHT MAIN AREA: Products Grid & Subcategories Filter */}
           <div className="lg:col-span-3 space-y-6">
-            
+
             {/* Category Header Banner */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex items-center space-x-4">
@@ -164,25 +162,24 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
 
             {/* Subcategory Filter & Sort Toolbar */}
             <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-emerald-100 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-              
+
               {/* Filter by Subcategory Pills */}
               <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar py-1 min-w-0 flex-1 pr-2">
                 <span className="text-xs font-extrabold text-emerald-950 flex items-center space-x-1.5 mr-1 flex-shrink-0 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-100/80">
                   <Tag className="w-3.5 h-3.5 text-emerald-700" />
                   <span>Subcategory:</span>
                 </span>
-                
+
                 {subcategoryPills.map((sub) => {
                   const isSubActive = activeSubcategory === sub;
                   return (
                     <button
                       key={sub}
                       onClick={() => setActiveSubcategory(sub)}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex-shrink-0 cursor-pointer ${
-                        isSubActive
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex-shrink-0 cursor-pointer ${isSubActive
                           ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-700/30'
                           : 'bg-cream-soft text-gray-700 hover:bg-emerald-100/60 hover:text-emerald-900 border border-gray-200/80'
-                      }`}
+                        }`}
                     >
                       {sub}
                     </button>

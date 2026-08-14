@@ -1039,7 +1039,7 @@ export const REVIEWS = [
 
 export const ADMIN_OFFER_BANNER = {
   badge: 'SPECIAL PROMOTIONAL OFFER',
-  title: 'Handcrafted Luxury Armchairs & VIP Season Savings',
+  title: 'Handcrafted Luxury Armchairs & Season Savings',
   description: 'Co-developed with spine orthopedists. Hand-stitched Italian Nappa leathers, plush English velvets, and 100% FSC-certified solid oak frames offered with up to 50% discount.',
   highlights: [
     { title: 'Top-Grain Nappa & Velvet', desc: 'Hand-selected, breathable, and treated to resist spills while aging gracefully.' },

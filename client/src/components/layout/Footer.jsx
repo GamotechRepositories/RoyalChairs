@@ -5,7 +5,7 @@ export default function Footer() {
     <footer className="bg-emerald-900 text-emerald-100 pt-16 pb-8 border-t border-emerald-800">
       <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
         {/* Main Footer Links */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-12 border-b border-emerald-800/80">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 pb-12 border-b border-emerald-800/80">
           
           {/* Brand Info */}
           <div className="space-y-4">

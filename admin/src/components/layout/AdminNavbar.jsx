@@ -29,7 +29,7 @@ export default function AdminNavbar({ onToggleSidebar, activeTab }) {
   return (
     <header className="h-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
       {/* Left: Mobile Toggle & Breadcrumb */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-3">
         <button
           onClick={onToggleSidebar}
           className="lg:hidden p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition cursor-pointer"
@@ -41,10 +41,17 @@ export default function AdminNavbar({ onToggleSidebar, activeTab }) {
         <div className="hidden sm:flex items-center space-x-2 text-xs font-semibold">
           <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-            <span>HQ Command Portal</span>
+            <span className="hidden md:inline">HQ Command Portal</span>
           </div>
           <span className="text-slate-400">/</span>
           <span className="text-emerald-900 capitalize tracking-wide font-mono font-black">
+            {activeTab.replace('-', ' ')}
+          </span>
+        </div>
+
+        {/* Mobile: show active tab only */}
+        <div className="sm:hidden">
+          <span className="text-sm font-black text-emerald-900 capitalize font-mono">
             {activeTab.replace('-', ' ')}
           </span>
         </div>
@@ -54,16 +61,16 @@ export default function AdminNavbar({ onToggleSidebar, activeTab }) {
       <div className="flex items-center space-x-3 sm:space-x-4">
 
 
-        {/* View Storefront Button */}
+        {/* View Storefront Button — text hidden on mobile */}
         <a
           href="http://localhost:5173"
           target="_blank"
           rel="noreferrer"
-          className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition text-xs font-extrabold shadow-xs"
+          className="flex items-center space-x-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition text-xs font-extrabold shadow-xs"
           title="Open Customer Storefront in New Tab"
         >
-          <span>Live Store</span>
           <ExternalLink className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Live Store</span>
         </a>
 
         {/* Notifications Popover */}

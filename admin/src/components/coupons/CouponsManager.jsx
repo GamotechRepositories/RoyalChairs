@@ -45,7 +45,7 @@ export default function CouponsManager() {
             </span>
           </div>
           <p className="text-xs text-slate-500">
-            Create promotional discount codes for flash sales, VIP events, and seasonal collections
+            Create promotional discount codes for flash sales, events, and seasonal collections
           </p>
         </div>
 

@@ -66,7 +66,7 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
             RoyalChairs Executive Dashboard
           </h2>
           <p className="text-xs sm:text-sm text-emerald-100/90 max-w-xl">
-            Real-time monitoring of benchcrafted luxury seating sales, white-glove courier logistics, and VIP client orders.
+            Real-time monitoring of benchcrafted luxury seating sales, white-glove courier logistics, and client orders.
           </p>
         </div>
 
@@ -225,8 +225,9 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
             </div>
           </div>
 
-          {/* SVG Bar / Trend Chart */}
-          <div className="h-64 flex items-end justify-between space-x-3 sm:space-x-4 pt-6 border-b border-slate-100 pb-4">
+          {/* SVG Bar / Trend Chart — scrollable on mobile */}
+          <div className="overflow-x-auto">
+            <div className="h-64 flex items-end justify-between space-x-3 sm:space-x-4 pt-6 border-b border-slate-100 pb-4 min-w-[420px]">
             {monthlyData.map((d, index) => {
               const heightPercent = Math.round((d.revenue / maxRevenue) * 100);
               const isCurrent = index === monthlyData.length - 1;
@@ -248,12 +249,13 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
                     />
                   </div>
 
-                  <span className="text-[11px] font-bold text-slate-500 mt-2 truncate">
+                  <span className="text-[10px] font-bold text-slate-500 mt-2 truncate">
                     {d.label}
                   </span>
                 </div>
               );
             })}
+            </div>
           </div>
 
           <div className="flex items-center justify-between text-xs text-slate-500">

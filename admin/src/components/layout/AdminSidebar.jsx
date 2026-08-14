@@ -13,6 +13,8 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
+import LogoImg from '../../assets/logo.svg';
+
 
 export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose }) {
   const { products, orders, reviews } = useAdminData();
@@ -86,7 +88,7 @@ export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose 
     },
     {
       id: 'customers',
-      label: 'VIP Client CRM',
+      label: 'Client Directory',
       icon: Users,
       badge: null,
     },
@@ -118,8 +120,8 @@ export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose 
         <div>
           <div className="h-20 flex items-center px-6 border-b border-slate-200 bg-[#F8FAF9]">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-700 to-emerald-900 border border-amber-300/60 flex items-center justify-center shadow-md shadow-emerald-950/20">
-                <Crown className="w-5 h-5 text-amber-300" />
+              <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
+                <img src={LogoImg} alt="Royal Chairs" className="w-8 h-8 object-contain" />
               </div>
               <div>
                 <h1 className="font-serif font-black text-lg tracking-wider text-slate-900 flex items-center space-x-1.5">

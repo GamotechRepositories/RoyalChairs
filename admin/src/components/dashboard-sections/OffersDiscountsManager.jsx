@@ -12,7 +12,7 @@ export default function OffersDiscountsManager() {
       ? JSON.parse(saved)
       : {
           badge: 'SPECIAL PROMOTIONAL OFFER',
-          title: 'Handcrafted Luxury Armchairs & VIP Season Savings',
+          title: 'Handcrafted Luxury Armchairs & Season Savings',
           description:
             'Co-developed with spine orthopedists. Hand-stitched Italian Nappa leathers, plush English velvets, and 100% FSC-certified solid oak frames offered with up to 50% discount.',
           image: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=1000&q=80',

@@ -24,7 +24,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
     setPromoSuccess('');
     if (promoCode.trim().toUpperCase() === 'ROYAL50' || promoCode.trim().toUpperCase() === 'ROYAL10') {
       
-      setAppliedDiscount(4000); setPromoSuccess('ROYAL50 Applied: ₹4,000 VIP Discount Unlocked!');
+      setAppliedDiscount(4000); setPromoSuccess('ROYAL50 Applied: ₹4,000 Discount Unlocked!');
     } else if (promoCode.trim().length > 0) {
       setPromoError('Invalid Coupon Code. Try "ROYAL50"');
     }
@@ -213,7 +213,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
 
                 {appliedDiscount > 0 && (
                   <div className="flex justify-between text-emerald-800 font-bold bg-emerald-50 p-2 rounded-lg">
-                    <span>VIP Voucher Discount:</span>
+                    <span>Voucher Discount:</span>
                     <span>-₹{appliedDiscount}</span>
                   </div>
                 )}

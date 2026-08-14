@@ -14,6 +14,7 @@ import {
   Printer,
   ShieldCheck,
   Crown,
+  User,
 } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
 
@@ -88,9 +89,9 @@ export default function OrderDetailModal({ isOpen, onClose, order }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           {/* Customer Card */}
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-            <div className="flex items-center space-x-2 text-amber-700 font-bold uppercase tracking-wider text-[10px]">
-              <Crown className="w-3.5 h-3.5" />
-              <span>VIP Client Information</span>
+            <div className="flex items-center space-x-2 text-emerald-800 font-bold uppercase tracking-wider text-[10px]">
+              <User className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Client Information</span>
             </div>
             <p className="text-sm font-bold text-slate-900">{order.customer.name}</p>
             <div className="space-y-1 text-slate-600">

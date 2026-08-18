@@ -58,15 +58,12 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
       {/* Top Banner: Executive Greeting & Quick Actions */}
       <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-emerald-900 via-emerald-800 to-emerald-950 border border-emerald-800 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2 relative z-10">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-amber-300/40 text-amber-300 text-xs font-bold shadow-xs">
-            <Crown className="w-3.5 h-3.5" />
-            <span>Store Operations Live • Gloucestershire Hub</span>
-          </div>
+
           <h2 className="text-2xl sm:text-3xl font-black text-white font-serif tracking-tight">
             RoyalChairs Executive Dashboard
           </h2>
           <p className="text-xs sm:text-sm text-emerald-100/90 max-w-xl">
-            Real-time monitoring of benchcrafted luxury seating sales, white-glove courier logistics, and client orders.
+            Real-time monitoring of benchcrafted luxury seating sales, express courier logistics, and client orders.
           </p>
         </div>
 
@@ -198,27 +195,25 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
               <h3 className="text-lg font-bold text-slate-900 font-serif">
                 Revenue & Sales Performance (2026)
               </h3>
-              <p className="text-xs text-slate-500">Monthly gross sales from white-glove orders</p>
+              <p className="text-xs text-slate-500">Monthly gross sales from customer orders</p>
             </div>
 
             <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
               <button
                 onClick={() => setTimeRange('monthly')}
-                className={`px-3 py-1 rounded-lg font-bold transition cursor-pointer ${
-                  timeRange === 'monthly'
-                    ? 'bg-white text-emerald-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-3 py-1 rounded-lg font-bold transition cursor-pointer ${timeRange === 'monthly'
+                  ? 'bg-white text-emerald-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 Monthly
               </button>
               <button
                 onClick={() => setTimeRange('weekly')}
-                className={`px-3 py-1 rounded-lg font-bold transition cursor-pointer ${
-                  timeRange === 'weekly'
-                    ? 'bg-white text-emerald-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-3 py-1 rounded-lg font-bold transition cursor-pointer ${timeRange === 'weekly'
+                  ? 'bg-white text-emerald-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 Weekly
               </button>
@@ -228,33 +223,32 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
           {/* SVG Bar / Trend Chart — scrollable on mobile */}
           <div className="overflow-x-auto">
             <div className="h-64 flex items-end justify-between space-x-3 sm:space-x-4 pt-6 border-b border-slate-100 pb-4 min-w-[420px]">
-            {monthlyData.map((d, index) => {
-              const heightPercent = Math.round((d.revenue / maxRevenue) * 100);
-              const isCurrent = index === monthlyData.length - 1;
-              return (
-                <div key={d.label} className="flex-1 flex flex-col items-center h-full justify-end group relative">
-                  {/* Tooltip */}
-                  <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-lg pointer-events-none shadow-xl whitespace-nowrap z-20">
-                    ₹{d.revenue.toLocaleString()} ({d.orders} orders)
-                  </div>
+              {monthlyData.map((d, index) => {
+                const heightPercent = Math.round((d.revenue / maxRevenue) * 100);
+                const isCurrent = index === monthlyData.length - 1;
+                return (
+                  <div key={d.label} className="flex-1 flex flex-col items-center h-full justify-end group relative">
+                    {/* Tooltip */}
+                    <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-lg pointer-events-none shadow-xl whitespace-nowrap z-20">
+                      ₹{d.revenue.toLocaleString()} ({d.orders} orders)
+                    </div>
 
-                  <div className="w-full max-w-[42px] bg-slate-100 rounded-t-xl overflow-hidden flex flex-col justify-end h-full">
-                    <div
-                      style={{ height: `${heightPercent}%` }}
-                      className={`w-full rounded-t-xl transition-all duration-500 ${
-                        isCurrent
+                    <div className="w-full max-w-[42px] bg-slate-100 rounded-t-xl overflow-hidden flex flex-col justify-end h-full">
+                      <div
+                        style={{ height: `${heightPercent}%` }}
+                        className={`w-full rounded-t-xl transition-all duration-500 ${isCurrent
                           ? 'bg-gradient-to-t from-emerald-800 via-emerald-600 to-amber-400 shadow-md shadow-emerald-700/30'
                           : 'bg-gradient-to-t from-emerald-700 to-emerald-500 group-hover:from-emerald-600 group-hover:to-emerald-400'
-                      }`}
-                    />
-                  </div>
+                          }`}
+                      />
+                    </div>
 
-                  <span className="text-[10px] font-bold text-slate-500 mt-2 truncate">
-                    {d.label}
-                  </span>
-                </div>
-              );
-            })}
+                    <span className="text-[10px] font-bold text-slate-500 mt-2 truncate">
+                      {d.label}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -365,15 +359,14 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
                     </td>
                     <td className="py-3.5 px-3">
                       <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold ${
-                          order.fulfillmentStatus === 'Delivered'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : order.fulfillmentStatus === 'Dispatched'
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold ${order.fulfillmentStatus === 'Delivered'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : order.fulfillmentStatus === 'Dispatched'
                             ? 'bg-blue-100 text-blue-800'
                             : order.fulfillmentStatus === 'In Production'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-purple-100 text-purple-800'
-                        }`}
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-purple-100 text-purple-800'
+                          }`}
                       >
                         {order.fulfillmentStatus}
                       </span>
@@ -428,11 +421,10 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
                   <p className="text-[10px] text-slate-500 capitalize">{prod.category} Chair</p>
                 </div>
                 <span
-                  className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${
-                    prod.stock === 0
-                      ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                      : 'bg-amber-100 text-amber-800 border border-amber-200'
-                  }`}
+                  className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${prod.stock === 0
+                    ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                    : 'bg-amber-100 text-amber-800 border border-amber-200'
+                    }`}
                 >
                   {prod.stock === 0 ? 'Out of Stock' : `${prod.stock} Left`}
                 </span>

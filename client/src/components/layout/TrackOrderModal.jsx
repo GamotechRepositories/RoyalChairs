@@ -34,14 +34,14 @@ export default function TrackOrderModal({ isOpen, onClose }) {
     if (orderId.trim()) {
       setTrackedOrder({
         id: orderId.toUpperCase(),
-        status: 'In Transit - White Glove Courier',
+        status: 'In Transit - Express Courier',
         carrier: 'Royal Logistics UK',
         estimatedDelivery: 'Tomorrow by 2:00 PM',
         steps: [
           { title: 'Order Confirmed & Benchcrafted', date: 'Aug 10, 09:30 AM', completed: true },
           { title: 'Quality & Ergonomic Inspection', date: 'Aug 10, 02:15 PM', completed: true },
           { title: 'Dispatched from Gloucestershire Workshop', date: 'Aug 11, 08:00 AM', completed: true },
-          { title: 'Out for White-Glove Room Delivery', date: 'Estimated Tomorrow', completed: false },
+          { title: 'Out for Doorstep Delivery', date: 'Estimated Tomorrow', completed: false },
         ],
       });
     }
@@ -70,7 +70,7 @@ export default function TrackOrderModal({ isOpen, onClose }) {
           </div>
           <div>
             <h3 className="text-xl font-black text-emerald-950 font-serif">Track Your Royal Delivery</h3>
-            <p className="text-xs text-gray-500">Live white-glove courier dispatch updates</p>
+            <p className="text-xs text-gray-500">Live courier dispatch updates</p>
           </div>
         </div>
 

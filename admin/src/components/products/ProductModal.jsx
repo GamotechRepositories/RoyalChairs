@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Armchair, Plus, Trash2, Sparkles, Check, Image, Tag, DollarSign } from 'lucide-react';
+import { X, Armchair, Plus, Trash2, Sparkles, Check, Image, Tag, DollarSign, Percent } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
 
 export default function ProductModal({ isOpen, onClose, productToEdit }) {
@@ -9,9 +9,9 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
   const [formData, setFormData] = useState({
     name: '',
     category: 'ergonomic',
-    price: 450,
-    originalPrice: 800,
-    discountPercent: 40,
+    price: 499,
+    originalPrice: 499,
+    discountPercent: 0,
     stock: 20,
     mainImage: '',
     hoverImage: '',
@@ -20,6 +20,7 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
     colors: ['#2E6B4D', '#2B2D42', '#E6C365'],
     isBestSeller: false,
     isNew: true,
+    isOffer: false,
   });
 
   const [featureInput, setFeatureInput] = useState('');
@@ -27,12 +28,16 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
 
   useEffect(() => {
     if (productToEdit) {
+      const isOfferActive = productToEdit.isOffer !== undefined
+        ? !!productToEdit.isOffer
+        : (productToEdit.discountPercent > 0 && productToEdit.originalPrice > productToEdit.price);
+
       setFormData({
         name: productToEdit.name || '',
         category: productToEdit.category || 'ergonomic',
         price: productToEdit.price || 450,
-        originalPrice: productToEdit.originalPrice || 800,
-        discountPercent: productToEdit.discountPercent || 0,
+        originalPrice: productToEdit.originalPrice || productToEdit.price || 450,
+        discountPercent: isOfferActive ? (productToEdit.discountPercent || 25) : 0,
         stock: productToEdit.stock !== undefined ? productToEdit.stock : 15,
         mainImage: productToEdit.mainImage || '',
         hoverImage: productToEdit.hoverImage || '',
@@ -41,14 +46,15 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
         colors: productToEdit.colors || ['#2E6B4D', '#2B2D42'],
         isBestSeller: !!productToEdit.isBestSeller,
         isNew: !!productToEdit.isNew,
+        isOffer: isOfferActive,
       });
     } else {
       setFormData({
         name: '',
         category: 'ergonomic',
         price: 499,
-        originalPrice: 899,
-        discountPercent: 45,
+        originalPrice: 499,
+        discountPercent: 0,
         stock: 25,
         mainImage: 'https://images.unsplash.com/photo-1580481072645-022f9a6d8310?auto=format&fit=crop&w=800&q=80',
         hoverImage: 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?auto=format&fit=crop&w=800&q=80',
@@ -57,6 +63,7 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
         colors: ['#2E6B4D', '#2B2D42', '#E6C365'],
         isBestSeller: false,
         isNew: true,
+        isOffer: false,
       });
     }
   }, [productToEdit, isOpen]);
@@ -67,12 +74,67 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
+    // Normalize prices if offer is disabled
+    const submissionData = {
+      ...formData,
+      discountPercent: formData.isOffer ? Number(formData.discountPercent) : 0,
+      originalPrice: formData.isOffer && formData.discountPercent > 0
+        ? Number(formData.originalPrice)
+        : Number(formData.price),
+    };
+
     if (productToEdit) {
-      updateProduct(productToEdit.id, formData);
+      updateProduct(productToEdit.id, submissionData);
     } else {
-      addProduct(formData);
+      addProduct(submissionData);
     }
     onClose();
+  };
+
+  const handlePriceChange = (newPrice) => {
+    const p = Math.max(1, Number(newPrice));
+    setFormData((prev) => {
+      if (prev.isOffer && prev.discountPercent > 0) {
+        const orig = Math.round(p / (1 - prev.discountPercent / 100));
+        return { ...prev, price: p, originalPrice: orig };
+      }
+      return { ...prev, price: p, originalPrice: p };
+    });
+  };
+
+  const handleToggleOffer = () => {
+    setFormData((prev) => {
+      const nextOffer = !prev.isOffer;
+      if (nextOffer) {
+        const defaultDiscount = prev.discountPercent > 0 ? prev.discountPercent : 30;
+        const orig = Math.round(prev.price / (1 - defaultDiscount / 100));
+        return {
+          ...prev,
+          isOffer: true,
+          discountPercent: defaultDiscount,
+          originalPrice: orig,
+        };
+      } else {
+        return {
+          ...prev,
+          isOffer: false,
+          discountPercent: 0,
+          originalPrice: prev.price,
+        };
+      }
+    });
+  };
+
+  const handleDiscountPercentChange = (percent) => {
+    const disc = Math.min(95, Math.max(1, Number(percent)));
+    setFormData((prev) => {
+      const orig = Math.round(prev.price / (1 - disc / 100));
+      return {
+        ...prev,
+        discountPercent: disc,
+        originalPrice: orig,
+      };
+    });
   };
 
   const handleAddFeature = () => {
@@ -115,7 +177,7 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white border border-slate-200 w-full max-w-2xl rounded-3xl shadow-2xl max-h-[80vh] md:max-h-[85vh] flex flex-col relative p-5 sm:p-6 cursor-default text-slate-800"
+        className="bg-white border border-slate-200 w-full max-w-2xl rounded-3xl shadow-2xl max-h-[85vh] flex flex-col relative p-5 sm:p-6 cursor-default text-slate-800"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-shrink-0">
@@ -133,7 +195,7 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition border border-slate-200"
+            className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition border border-slate-200 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -191,58 +253,20 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
               </div>
             </div>
 
-            {/* Price, Original Price, Discount */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
-                  Selling Price (₹) *
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  value={formData.price}
-                  onChange={(e) => {
-                    const p = Number(e.target.value);
-                    const orig = formData.originalPrice || p;
-                    const disc = orig > p ? Math.round(((orig - p) / orig) * 100) : 0;
-                    setFormData({ ...formData, price: p, discountPercent: disc });
-                  }}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-emerald-800 font-black font-mono focus:bg-white focus:border-emerald-600 focus:outline-hidden text-xs sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
-                  MSRP / Original (₹)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={formData.originalPrice}
-                  onChange={(e) => {
-                    const orig = Number(e.target.value);
-                    const p = formData.price || orig;
-                    const disc = orig > p ? Math.round(((orig - p) / orig) * 100) : 0;
-                    setFormData({ ...formData, originalPrice: orig, discountPercent: disc });
-                  }}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 font-bold font-mono focus:bg-white focus:border-emerald-600 focus:outline-hidden"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
-                  Discount %
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formData.discountPercent}
-                  onChange={(e) => setFormData({ ...formData, discountPercent: Number(e.target.value) })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-emerald-700 font-bold font-mono focus:bg-white focus:border-emerald-600 focus:outline-hidden"
-                />
-              </div>
+            {/* Only Selling Price (Clean & Focused) */}
+            <div>
+              <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
+                Selling Price (₹) *
+              </label>
+              <input
+                type="number"
+                min="1"
+                required
+                value={formData.price}
+                onChange={(e) => handlePriceChange(e.target.value)}
+                placeholder="499"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-emerald-800 font-black font-mono focus:bg-white focus:border-emerald-600 focus:outline-hidden text-sm"
+              />
             </div>
 
             {/* Image URLs Row */}
@@ -323,7 +347,7 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
                       <button
                         type="button"
                         onClick={() => handleRemoveColor(hex)}
-                        className="text-slate-400 hover:text-rose-600 font-bold text-[11px] leading-none"
+                        className="text-slate-400 hover:text-rose-600 font-bold text-[11px] leading-none cursor-pointer"
                       >
                         ×
                       </button>
@@ -349,7 +373,7 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
                 <button
                   type="button"
                   onClick={handleAddFeature}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold border border-slate-200 text-[10px]"
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold border border-slate-200 text-[10px] cursor-pointer"
                 >
                   Add
                 </button>
@@ -365,7 +389,7 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
                     <button
                       type="button"
                       onClick={() => handleRemoveFeature(idx)}
-                      className="text-slate-400 hover:text-rose-600 font-bold"
+                      className="text-slate-400 hover:text-rose-600 font-bold cursor-pointer"
                     >
                       ×
                     </button>
@@ -374,27 +398,153 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
               </div>
             </div>
 
-            {/* Toggle Switches */}
-            <div className="flex items-center space-x-6 pt-2 border-t border-slate-100">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.isBestSeller}
-                  onChange={(e) => setFormData({ ...formData, isBestSeller: e.target.checked })}
-                  className="rounded-md border-slate-300 text-emerald-700 focus:ring-0 w-3.5 h-3.5"
-                />
-                <span className="font-bold text-slate-700 text-[11px]">Feature as Best Seller</span>
+            {/* Homepage Promotion Placements & Badges */}
+            <div className="pt-3 border-t border-slate-100 space-y-3">
+              <label className="block font-extrabold text-slate-800 uppercase tracking-wider text-[10px]">
+                Homepage Placement & Promotion Badges
               </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* 1. Best Seller */}
+                <div
+                  onClick={() => setFormData({ ...formData, isBestSeller: !formData.isBestSeller })}
+                  className={`p-3 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${
+                    formData.isBestSeller
+                      ? 'bg-amber-50/90 border-amber-300 shadow-xs'
+                      : 'bg-slate-50 border-slate-200 opacity-60 hover:opacity-90'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-sm">👑</span>
+                      <span className="font-extrabold text-xs text-slate-900">Best Seller</span>
+                    </div>
+                    <span
+                      className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                        formData.isBestSeller
+                          ? 'bg-amber-400 text-slate-950'
+                          : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {formData.isBestSeller ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-tight">
+                    Display in Best Sellers section
+                  </p>
+                </div>
 
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.isNew}
-                  onChange={(e) => setFormData({ ...formData, isNew: e.target.checked })}
-                  className="rounded-md border-slate-300 text-emerald-700 focus:ring-0 w-3.5 h-3.5"
-                />
-                <span className="font-bold text-slate-700 text-[11px]">Mark as New Collection</span>
-              </label>
+                {/* 2. New Collection */}
+                <div
+                  onClick={() => setFormData({ ...formData, isNew: !formData.isNew })}
+                  className={`p-3 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${
+                    formData.isNew
+                      ? 'bg-emerald-50/90 border-emerald-300 shadow-xs'
+                      : 'bg-slate-50 border-slate-200 opacity-60 hover:opacity-90'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-sm">✨</span>
+                      <span className="font-extrabold text-xs text-slate-900">New 2026</span>
+                    </div>
+                    <span
+                      className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                        formData.isNew
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {formData.isNew ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-tight">
+                    Feature in New Collection lineup
+                  </p>
+                </div>
+
+                {/* 3. Special Offer & Discount Toggle */}
+                <div
+                  onClick={handleToggleOffer}
+                  className={`p-3 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${
+                    formData.isOffer
+                      ? 'bg-rose-50/90 border-rose-300 shadow-xs ring-1 ring-rose-400/40'
+                      : 'bg-slate-50 border-slate-200 opacity-60 hover:opacity-90'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-sm">🔥</span>
+                      <span className="font-extrabold text-xs text-slate-900">Flash Offer</span>
+                    </div>
+                    <span
+                      className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                        formData.isOffer
+                          ? 'bg-rose-500 text-white font-black'
+                          : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {formData.isOffer ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-tight">
+                    {formData.isOffer ? `${formData.discountPercent}% discount active` : 'Enable promotional discount'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Dynamic Discount Configuration - ONLY SHOWN WHEN OFFERS BTN IS ON */}
+              {formData.isOffer && (
+                <div className="p-3.5 bg-rose-50/60 border border-rose-200 rounded-2xl animate-fadeIn space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1.5 text-rose-900 font-extrabold text-xs">
+                      <Percent className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Set Promotional Discount %</span>
+                    </div>
+                    <span className="text-[10px] text-rose-700 font-bold bg-rose-100 px-2 py-0.5 rounded-md">
+                      MSRP will display as ₹{formData.originalPrice.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <div className="w-32 relative">
+                      <input
+                        type="number"
+                        min="1"
+                        max="90"
+                        value={formData.discountPercent || ''}
+                        onChange={(e) => handleDiscountPercentChange(e.target.value)}
+                        placeholder="e.g. 40"
+                        className="w-full px-3 py-2 bg-white border border-rose-300 rounded-xl text-xs font-black text-rose-800 text-center font-mono focus:outline-hidden focus:ring-2 focus:ring-rose-400"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-600 font-bold text-xs pointer-events-none">
+                        %
+                      </span>
+                    </div>
+
+                    {/* Quick Select Preset Pills */}
+                    <div className="flex flex-wrap gap-1.5 flex-1">
+                      {[15, 25, 35, 40, 50].map((pct) => (
+                        <button
+                          key={pct}
+                          type="button"
+                          onClick={() => handleDiscountPercentChange(pct)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold transition cursor-pointer border ${
+                            formData.discountPercent === pct
+                              ? 'bg-rose-600 text-white border-rose-700 shadow-xs'
+                              : 'bg-white text-rose-900 border-rose-200 hover:bg-rose-100'
+                          }`}
+                        >
+                          {pct}% OFF
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-rose-700">
+                    Buyers see: <strong className="font-mono">₹{formData.price}</strong> <span className="line-through text-slate-400 ml-1">₹{formData.originalPrice}</span> <span className="font-bold text-rose-600 ml-1">({formData.discountPercent}% OFF)</span>
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

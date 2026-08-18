@@ -34,11 +34,10 @@ export default function ProductCard({ product, onQuickView }) {
     <div
       onMouseEnter={() => setIsCardHovered(true)}
       onMouseLeave={() => setIsCardHovered(false)}
-      className={`bg-white rounded-2xl overflow-hidden transition-all duration-300 flex flex-col justify-between relative h-full border ${
-        isCardHovered
+      className={`bg-white rounded-2xl overflow-hidden transition-all duration-300 flex flex-col justify-between relative h-full border ${isCardHovered
           ? 'border-emerald-500 shadow-lg ring-1 ring-emerald-500/20'
           : 'border-emerald-100 shadow-xs'
-      }`}
+        }`}
     >
       {/* Full-Bleed Image Container (Covers top, left, and right card borders) */}
       <div
@@ -52,9 +51,8 @@ export default function ProductCard({ product, onQuickView }) {
           onError={(e) => {
             e.target.src = defaultFallbackImage;
           }}
-          className={`w-full h-full object-cover transform transition-all duration-500 ease-out ${
-            isCardHovered ? 'scale-105' : 'scale-100'
-          } ${product.hoverImage && isCardHovered ? 'opacity-0' : 'opacity-100'}`}
+          className={`w-full h-full object-cover transform transition-all duration-500 ease-out ${isCardHovered ? 'scale-105' : 'scale-100'
+            } ${product.hoverImage && isCardHovered ? 'opacity-0' : 'opacity-100'}`}
           loading="lazy"
         />
 
@@ -66,9 +64,8 @@ export default function ProductCard({ product, onQuickView }) {
             onError={(e) => {
               e.target.src = defaultFallbackImage;
             }}
-            className={`absolute inset-0 w-full h-full object-cover transform transition-all duration-500 ease-out pointer-events-none ${
-              isCardHovered ? 'opacity-100 scale-105' : 'opacity-0 scale-100'
-            }`}
+            className={`absolute inset-0 w-full h-full object-cover transform transition-all duration-500 ease-out pointer-events-none ${isCardHovered ? 'opacity-100 scale-105' : 'opacity-0 scale-100'
+              }`}
             loading="lazy"
           />
         )}
@@ -79,11 +76,10 @@ export default function ProductCard({ product, onQuickView }) {
             e.stopPropagation();
             toggleWishlist(product);
           }}
-          className={`absolute top-3 right-3 p-2 rounded-full shadow-md backdrop-blur-xs transition z-20 ${
-            inWishlist
+          className={`absolute top-3 right-3 p-2 rounded-full shadow-md backdrop-blur-xs transition z-20 ${inWishlist
               ? 'bg-rose-500 text-white'
               : 'bg-white/80 text-gray-700 hover:bg-white hover:text-rose-600'
-          }`}
+            }`}
           title={inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
         >
           <Heart className={`w-4 h-4 ${inWishlist ? 'fill-current' : ''}`} />
@@ -100,9 +96,8 @@ export default function ProductCard({ product, onQuickView }) {
 
           <h3
             onClick={handleQuickViewClick}
-            className={`text-base font-extrabold text-gray-900 transition line-clamp-1 cursor-pointer font-serif ${
-              isCardHovered ? 'text-emerald-700' : ''
-            }`}
+            className={`text-base font-extrabold text-gray-900 transition line-clamp-1 cursor-pointer font-serif ${isCardHovered ? 'text-emerald-700' : ''
+              }`}
           >
             {product.name}
           </h3>
@@ -129,9 +124,8 @@ export default function ProductCard({ product, onQuickView }) {
                     e.stopPropagation();
                     setSelectedColor(color);
                   }}
-                  className={`w-4 h-4 rounded-full border border-gray-300 transition ${
-                    selectedColor === color ? 'ring-2 ring-emerald-600 scale-110' : 'hover:scale-110'
-                  }`}
+                  className={`w-4 h-4 rounded-full border border-gray-300 transition ${selectedColor === color ? 'ring-2 ring-emerald-600 scale-110' : 'hover:scale-110'
+                    }`}
                   style={{ backgroundColor: color }}
                   title={`Color finish: ${color}`}
                 />
@@ -188,11 +182,10 @@ export default function ProductCard({ product, onQuickView }) {
           ) : (
             <button
               onClick={handleAddToCart}
-              className={`w-32 h-10 rounded-full font-bold text-xs flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer ${
-                addedAnim
+              className={`w-32 h-10 rounded-full font-bold text-xs flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer ${addedAnim
                   ? 'bg-amber-400 text-emerald-950'
                   : 'bg-emerald-700 hover:bg-emerald-600 text-white'
-              }`}
+                }`}
             >
               {addedAnim ? (
                 <>

@@ -1,16 +1,40 @@
-import { useRef } from 'react';
-import { ChevronLeft, ChevronRight, Grid } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { CATEGORIES } from '../../data/chairProductsData';
 
 export default function ShopByCategory({ onSelectCategory }) {
   const scrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
 
-  const defaultFallbackImage = 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=600&q=80';
+  const defaultFallbackImage =
+    'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=600&q=80';
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 10);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 10);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const el = scrollRef.current;
+    if (el) {
+      el.addEventListener('scroll', checkScroll);
+      window.addEventListener('resize', checkScroll);
+      return () => {
+        el.removeEventListener('scroll', checkScroll);
+        window.removeEventListener('resize', checkScroll);
+      };
+    }
+  }, []);
 
   const scroll = (direction) => {
     if (scrollRef.current) {
       const { scrollLeft, clientWidth } = scrollRef.current;
-      const scrollAmount = clientWidth * 0.75;
+      const scrollAmount = clientWidth * 0.65;
       scrollRef.current.scrollTo({
         left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
         behavior: 'smooth',
@@ -19,69 +43,65 @@ export default function ShopByCategory({ onSelectCategory }) {
   };
 
   return (
-    <section id="shop-by-category" className="py-12 bg-white border-b border-gray-100">
-      <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="mb-6">
-          <div className="inline-flex items-center space-x-2 text-xs font-bold uppercase tracking-widest text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full mb-2">
-            <Grid className="w-3.5 h-3.5" />
-            <span>Curated Collections</span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-emerald-950 font-serif">
+    <section id="shop-by-category" className="py-8 sm:py-12 bg-white">
+      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Section Heading */}
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
             Shop By Category
           </h2>
-          <p className="text-gray-500 text-sm mt-1 max-w-xl">
-            Explore our complete range of handcrafted chairs designed for every space.
-          </p>
         </div>
 
-        {/* Carousel Wrapper with Left & Right Overlay Arrows */}
+        {/* Category Carousel Container */}
         <div className="relative group">
-          {/* Left Edge Overlay Button */}
-          <button
-            onClick={() => scroll('left')}
-            className="absolute left-0 sm:-left-4 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-white/95 text-emerald-900 hover:bg-emerald-700 hover:text-white shadow-xl backdrop-blur-xs transition-all border border-gray-200 opacity-90 group-hover:opacity-100 hover:scale-110"
-            aria-label="Scroll left"
-          >
-            <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
-          </button>
+          {/* Left Arrow Button */}
+          {canScrollLeft && (
+            <button
+              onClick={() => scroll('left')}
+              className="absolute -left-3 sm:-left-5 top-[60px] sm:top-[75px] -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-md hover:shadow-lg border border-slate-200 flex items-center justify-center text-slate-700 hover:text-slate-950 transition-all hover:scale-105 cursor-pointer"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          )}
 
-          {/* Right Edge Overlay Button */}
-          <button
-            onClick={() => scroll('right')}
-            className="absolute right-0 sm:-right-4 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-white/95 text-emerald-900 hover:bg-emerald-700 hover:text-white shadow-xl backdrop-blur-xs transition-all border border-gray-200 opacity-90 group-hover:opacity-100 hover:scale-110"
-            aria-label="Scroll right"
-          >
-            <ChevronRight className="w-6 h-6 stroke-[2.5]" />
-          </button>
+          {/* Right Arrow Button */}
+          {canScrollRight && (
+            <button
+              onClick={() => scroll('right')}
+              className="absolute -right-3 sm:-right-5 top-[60px] sm:top-[75px] -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-md hover:shadow-lg border border-slate-200 flex items-center justify-center text-slate-700 hover:text-slate-950 transition-all hover:scale-105 cursor-pointer"
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          )}
 
-          {/* Circular Category Photo Bubbles */}
+          {/* Horizontal Circular Category List */}
           <div
             ref={scrollRef}
-            className="flex space-x-6 sm:space-x-10 overflow-x-auto no-scrollbar py-4 px-2 snap-x snap-mandatory items-start"
-            style={{ scrollBehavior: 'smooth' }}
+            className="flex items-start space-x-6 sm:space-x-10 overflow-x-auto no-scrollbar py-2 px-1 scroll-smooth"
           >
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => onSelectCategory && onSelectCategory(cat.id)}
-                className="flex-none snap-start flex flex-col items-center text-center cursor-pointer w-32 sm:w-40"
+                className="flex-none flex flex-col items-center text-center cursor-pointer w-28 sm:w-36 focus:outline-hidden"
               >
-                {/* Circular Photo Bubble Container */}
-                <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-cream-soft p-2.5 mb-3.5 shadow-sm border border-emerald-100/80 flex items-center justify-center overflow-hidden">
+                {/* Circular Backdrop Container */}
+                <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-[#f1f3f6] flex items-center justify-center mb-3 overflow-hidden">
                   <img
                     src={cat.image}
                     alt={cat.name}
                     onError={(e) => {
                       e.target.src = defaultFallbackImage;
                     }}
-                    className="w-full h-full object-cover rounded-full"
+                    className="w-full h-full object-cover"
                     loading="lazy"
                   />
                 </div>
 
-                {/* Category Title Label */}
-                <span className="text-sm sm:text-base font-black text-emerald-950 font-serif leading-tight">
+                {/* Category Name */}
+                <span className="text-xs sm:text-sm font-semibold text-slate-800 leading-snug">
                   {cat.name}
                 </span>
               </button>

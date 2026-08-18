@@ -23,7 +23,7 @@ export default function SettingsManager() {
             <h2 className="text-2xl font-bold text-slate-900 font-serif">Store Configuration & Logistics</h2>
           </div>
           <p className="text-xs text-slate-500">
-            Control brand details, currency, taxes, white-glove courier rules, and support concierge
+            Control brand details, currency, taxes, courier rules, and support concierge
           </p>
         </div>
 
@@ -97,7 +97,7 @@ export default function SettingsManager() {
             </div>
 
             <div>
-              <label className="block text-slate-700 font-bold mb-1">Free White-Glove Threshold (₹)</label>
+              <label className="block text-slate-700 font-bold mb-1">Free Delivery Threshold (₹)</label>
               <input
                 type="number"
                 value={formData.freeShippingThreshold}

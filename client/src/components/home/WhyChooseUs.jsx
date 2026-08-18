@@ -1,53 +1,75 @@
-import { useState, useEffect } from 'react';
-import { ShieldCheck, Sparkles, Award, Truck, Star, Quote, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  ShieldCheck,
+  Sparkles,
+  Award,
+  Truck,
+  Star,
+  CheckCircle2,
+} from 'lucide-react';
 import { REVIEWS, WHY_CHOOSE_US_ITEMS } from '../../data/chairProductsData';
 
 export default function WhyChooseUs() {
-  const [activeReviewIdx, setActiveReviewIdx] = useState(0);
+  const [storageTick, setStorageTick] = useState(0);
 
-  // Auto-play slideshow timer for reviews - rotates continuously every 3.5 seconds
+  // Sync with Admin live updates
   useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveReviewIdx((prev) => (prev + 1) % REVIEWS.length);
-    }, 3500);
-    return () => clearInterval(timer);
+    const handleStorage = () => setStorageTick((t) => t + 1);
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('royal_storage_update', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('royal_storage_update', handleStorage);
+    };
   }, []);
+
+  // Load reviews from localStorage or fallback to REVIEWS dataset
+  const reviewsList = useMemo(() => {
+    try {
+      const saved = localStorage.getItem('royal_admin_reviews');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((r, i) => ({
+            id: r.id || i + 1,
+            name: r.name || r.customer || 'Royal Client',
+            role: r.role || 'Verified Customer',
+            rating: r.rating || 5,
+            comment: r.comment || '',
+            productName: r.productName || r.product || 'Royal Luxury Chair',
+            avatar:
+              r.avatar ||
+              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+            location: r.location || 'United Kingdom',
+          }));
+        }
+      }
+    } catch {
+      // Fallback
+    }
+    return REVIEWS;
+  }, [storageTick]);
 
   const iconMap = {
     ShieldCheck: <ShieldCheck className="w-8 h-8 text-emerald-700" />,
-    Sparkles: <Sparkles className="w-8 h-8 text-amber-500" />,
+    Sparkles: <Sparkles className="w-8 h-8 text-emerald-700" />,
     Award: <Award className="w-8 h-8 text-emerald-700" />,
-    Truck: <Truck className="w-8 h-8 text-amber-500" />,
-  };
-
-  const handleNextReview = () => {
-    setActiveReviewIdx((prev) => (prev + 1) % REVIEWS.length);
-  };
-
-  const handlePrevReview = () => {
-    setActiveReviewIdx((prev) => (prev - 1 + REVIEWS.length) % REVIEWS.length);
+    Truck: <Truck className="w-8 h-8 text-emerald-700" />,
   };
 
   return (
     <section id="why-choose-us" className="py-20 bg-white border-t border-gray-100">
       <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
-        {/* Section Header */}
+        {/* 1. Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center space-x-2 text-xs font-bold uppercase tracking-widest text-emerald-900 bg-emerald-50 border border-emerald-200 px-3.5 py-1 rounded-full mb-3">
-            <Award className="w-4 h-4 text-emerald-700" />
-            <span>UNCOMPROMISING HERITAGE</span>
-          </div>
-
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-emerald-950 font-serif">
             Why Visionaries Choose RoyalChairs
           </h2>
 
-          <p className="text-gray-600 text-sm sm:text-base mt-3 leading-relaxed">
-            Every chair is handcrafted using eco-conscious English timbers, orthopedic medical biomechanics, and stain-resistant luxury upholstery designed to endure generations.
-          </p>
+
         </div>
 
-        {/* 4 Pillars */}
+        {/* 2. 4 Pillars */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-20">
           {WHY_CHOOSE_US_ITEMS.map((item) => (
             <div
@@ -76,13 +98,9 @@ export default function WhyChooseUs() {
           ))}
         </div>
 
-        {/* Craftsmanship & Material Story */}
+        {/* 3. Craftsmanship & Material Story */}
         <div className="bg-emerald-900 text-white rounded-3xl p-8 sm:p-12 mb-20 relative overflow-hidden grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
           <div>
-            <div className="inline-block bg-amber-400 text-emerald-950 text-xs font-black px-3 py-1 rounded-full mb-4">
-              THE MATERIALS & CRAFT
-            </div>
-
             <h3 className="text-2xl sm:text-3xl font-black font-serif leading-tight text-white mb-4">
               From FSC English Oak Forests to Hand-Stitched Italian Nappa Leather
             </h3>
@@ -120,95 +138,94 @@ export default function WhyChooseUs() {
           </div>
         </div>
 
-        {/* Customer Reviews Slideshow */}
-        <div
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
-          className="bg-cream-soft rounded-3xl p-8 sm:p-12 border border-emerald-900/10 shadow-lg relative"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
+        {/* 4. Customer Reviews Card Boxes Section */}
+        <div className="bg-cream-soft rounded-3xl p-6 sm:p-10 lg:p-12 border border-emerald-900/10 shadow-lg">
+          {/* Section Header */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
             <div>
               <div className="flex items-center space-x-1 text-amber-500 mb-2">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="w-5 h-5 fill-current" />
                 ))}
-                <span className="text-emerald-950 font-black text-sm ml-2">4.96 / 5.0 Star Overall Rating</span>
+                <span className="text-emerald-950 font-black text-sm ml-2">
+                  4.96 / 5.0 Star Overall Rating
+                </span>
+                <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200 ml-2">
+                  {reviewsList.length} Verified Reviews
+                </span>
               </div>
-              <h3 className="text-2xl sm:text-3xl font-black text-emerald-950 font-serif">
+
+              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-emerald-950 font-serif">
                 Verified Owner Reviews
               </h3>
-            </div>
 
-            <div className="flex items-center space-x-3 mt-4 sm:mt-0">
-              <span className="text-xs font-extrabold text-emerald-900 bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-200 mr-2">
-                Review {activeReviewIdx + 1} of {REVIEWS.length}
-              </span>
-              <button
-                onClick={handlePrevReview}
-                className="p-3 rounded-full bg-white border border-gray-200 text-emerald-950 hover:bg-emerald-800 hover:text-white transition shadow-xs cursor-pointer"
-                title="Previous Review"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleNextReview}
-                className="p-3 rounded-full bg-white border border-gray-200 text-emerald-950 hover:bg-emerald-800 hover:text-white transition shadow-xs cursor-pointer"
-                title="Next Review"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
             </div>
           </div>
 
-          {/* Active Review Slide */}
-          <div
-            key={activeReviewIdx}
-            className="bg-white rounded-2xl p-6 sm:p-10 border border-emerald-900/10 shadow-sm relative min-h-[220px] flex flex-col justify-between transition-all duration-500 animate-fadeIn"
-          >
-            <Quote className="w-12 h-12 text-amber-300/40 absolute top-6 right-6 pointer-events-none" />
-
-            <p className="text-gray-800 text-base sm:text-lg italic leading-relaxed mb-6 font-serif">
-              "{REVIEWS[activeReviewIdx].comment}"
-            </p>
-
-            <div className="flex items-center justify-between border-t border-gray-100 pt-4">
-              <div className="flex items-center space-x-4">
-                <img
-                  src={REVIEWS[activeReviewIdx].avatar}
-                  alt={REVIEWS[activeReviewIdx].name}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-emerald-800/20 shadow-xs"
-                />
+          {/* Review Card Boxes Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {reviewsList.map((review) => (
+              <div
+                key={review.id}
+                className="bg-white rounded-2xl p-6 border border-emerald-900/10 hover:border-emerald-700/40 hover:shadow-xl transition-all duration-300 flex flex-col justify-between group relative overflow-hidden"
+              >
                 <div>
-                  <h4 className="text-sm font-extrabold text-emerald-950 font-serif">
-                    {REVIEWS[activeReviewIdx].name}
-                  </h4>
-                  <p className="text-xs text-gray-500 font-medium">{REVIEWS[activeReviewIdx].role} • {REVIEWS[activeReviewIdx].location}</p>
+                  {/* Top Bar: Stars + Verified Badge */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-1 text-amber-500">
+                      {[...Array(review.rating || 5)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-current" />
+                      ))}
+                    </div>
+
+                    <span className="inline-flex items-center text-[10px] font-extrabold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/70">
+                      <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
+                      Verified Owner
+                    </span>
+                  </div>
+
+                  {/* Review Text */}
+                  <p className="text-gray-700 text-xs sm:text-sm leading-relaxed font-sans mb-6 line-clamp-4">
+                    {review.comment}
+                  </p>
+                </div>
+
+                {/* Author Info & Purchased Chair */}
+                <div className="border-t border-gray-100 pt-4 mt-auto space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <img
+                      src={review.avatar}
+                      alt={review.name}
+                      onError={(e) => {
+                        e.target.src =
+                          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
+                      }}
+                      className="w-10 h-10 rounded-full object-cover border-2 border-emerald-800/20 shadow-2xs shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs sm:text-sm font-extrabold text-emerald-950 font-serif truncate">
+                        {review.name}
+                      </h4>
+                      <p className="text-[11px] text-gray-500 truncate">
+                        {review.role} • {review.location}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Product Tag */}
+                  {review.productName && (
+                    <div className="bg-emerald-50/70 rounded-xl p-2 border border-emerald-100 flex items-center justify-between text-[11px]">
+                      <span className="text-gray-500 font-medium truncate">Purchased:</span>
+                      <span className="font-extrabold text-emerald-900 truncate ml-1">
+                        {review.productName}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              <div className="text-right hidden sm:block">
-                <span className="text-xs text-gray-400 block font-medium">Purchased Chair</span>
-                <span className="text-xs font-extrabold text-emerald-800">{REVIEWS[activeReviewIdx].productName}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Review Indicator Dots */}
-          <div className="flex justify-center items-center space-x-2 mt-6">
-            {REVIEWS.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveReviewIdx(idx)}
-                className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-                  activeReviewIdx === idx ? 'w-8 bg-emerald-800' : 'w-2.5 bg-gray-300 hover:bg-gray-400'
-                }`}
-                title={`Go to review ${idx + 1}`}
-              />
             ))}
           </div>
-
         </div>
-
       </div>
     </section>
   );

@@ -15,22 +15,27 @@ export default function CustomerDetailModal({ customer, isOpen, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
       <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="p-6 sm:p-8 bg-linear-to-r from-slate-900 via-slate-800 to-emerald-950 text-white flex items-start justify-between relative overflow-hidden">
+        <div className="p-6 sm:p-8 bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white flex items-start justify-between relative overflow-hidden">
           <div className="flex items-center space-x-4 z-10">
-            <img
-              src={customer.avatar}
-              alt={customer.name}
-              className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500/40 shadow-lg"
-            />
+            <div className="w-14 h-14 rounded-2xl bg-emerald-800 text-amber-300 flex items-center justify-center font-serif font-black text-xl border-2 border-emerald-500/40 shadow-lg shrink-0">
+              {customer.name
+                ? customer.name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2)
+                : 'U'}
+            </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h3 className="text-xl sm:text-2xl font-bold font-serif">{customer.name}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold font-serif text-white">{customer.name}</h3>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  {customer.role === 'admin' ? 'Admin' : 'Customer'}
+                  {customer.role === 'admin' ? 'Administrator' : 'Customer'}
                 </span>
               </div>
               <p className="text-xs text-slate-300 flex items-center mt-1">
-                <Mail className="w-3.5 h-3.5 mr-1.5 text-emerald-400" />
+                <Mail className="w-3.5 h-3.5 mr-1.5 text-emerald-400 shrink-0" />
                 {customer.email}
               </p>
             </div>
@@ -38,7 +43,8 @@ export default function CustomerDetailModal({ customer, isOpen, onClose }) {
 
           <button
             onClick={onClose}
-            className="z-10 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition"
+            className="z-10 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition cursor-pointer"
+            title="Close"
           >
             <X className="w-5 h-5" />
           </button>
@@ -53,7 +59,7 @@ export default function CustomerDetailModal({ customer, isOpen, onClose }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
               <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-                <span>Lifetime Orders</span>
+                <span className="font-semibold uppercase tracking-wider text-[10px]">Lifetime Orders</span>
                 <ShoppingBag className="w-4 h-4 text-emerald-600" />
               </div>
               <p className="text-xl font-bold text-slate-900 font-mono">
@@ -63,7 +69,7 @@ export default function CustomerDetailModal({ customer, isOpen, onClose }) {
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
               <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-                <span>Total Expenditure</span>
+                <span className="font-semibold uppercase tracking-wider text-[10px]">Total Expenditure</span>
                 <DollarSign className="w-4 h-4 text-emerald-600" />
               </div>
               <p className="text-xl font-bold text-emerald-700 font-mono">
@@ -73,7 +79,7 @@ export default function CustomerDetailModal({ customer, isOpen, onClose }) {
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
               <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-                <span>Account Status</span>
+                <span className="font-semibold uppercase tracking-wider text-[10px]">Account Status</span>
                 <CheckCircle className="w-4 h-4 text-emerald-600" />
               </div>
               <p className="text-sm font-bold text-emerald-800 flex items-center mt-1">
@@ -83,40 +89,33 @@ export default function CustomerDetailModal({ customer, isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Detailed Profile Info Card */}
+          {/* Detailed Profile Info Card (Without Database MongoDB ID) */}
           <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
             <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center">
               <Shield className="w-4 h-4 mr-1.5 text-slate-500" />
               User Account Overview
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               <div>
-                <span className="text-slate-400 block mb-0.5">Database MongoDB ID</span>
-                <span className="font-mono text-slate-700 select-all font-semibold bg-slate-100 px-2 py-1 rounded-md inline-block">
-                  {customer.id}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-slate-400 block mb-0.5">Member Since</span>
+                <span className="text-slate-400 block mb-1 uppercase text-[10px] font-bold tracking-wider">Member Since</span>
                 <span className="font-medium text-slate-800 flex items-center">
-                  <Calendar className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                  <Calendar className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
                   {customer.joinedDate || 'Recent'}
                 </span>
               </div>
 
               <div>
-                <span className="text-slate-400 block mb-0.5">Account Role Privilege</span>
-                <span className="font-medium text-slate-800 capitalize">
-                  {customer.role || 'user'}
+                <span className="text-slate-400 block mb-1 uppercase text-[10px] font-bold tracking-wider">Account Role Privilege</span>
+                <span className="font-bold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 inline-block capitalize">
+                  {customer.role === 'admin' ? 'Administrator' : 'Standard User'}
                 </span>
               </div>
 
               <div>
-                <span className="text-slate-400 block mb-0.5">Authentication Provider</span>
+                <span className="text-slate-400 block mb-1 uppercase text-[10px] font-bold tracking-wider">Authentication Provider</span>
                 <span className="font-medium text-slate-800 flex items-center">
-                  <Key className="w-3.5 h-3.5 mr-1 text-amber-500" />
+                  <Key className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
                   {customer.googleId ? 'Google OAuth 2.0' : 'Email & Password'}
                 </span>
               </div>

@@ -1,42 +1,25 @@
 import { useState } from 'react';
-import { Star, ShieldCheck, Plus, Trash2, Edit3, Award, Sparkles, Check } from 'lucide-react';
+import { Star, ShieldCheck, Plus, Trash2, Edit3, Sparkles, Check } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
 
 export default function WhyChooseUsManager() {
   const { reviews, setReviews, deleteReview, moderateReview } = useAdminData();
-
-  const [pillars, setPillars] = useState(() => {
-    const saved = localStorage.getItem('royal_admin_pillars');
-    return saved
-      ? JSON.parse(saved)
-      : [
-          { id: 'ergonomics', title: 'Spinal Orthopedic Design', desc: 'Co-developed with UK spine biomechanists to ensure healthy posture.' },
-          { id: 'materials', title: 'English Grain & Velvet', desc: 'Ethically sourced top-grain leathers & sustainable FSC-certified oak.' },
-          { id: 'warranty', title: '10-Year Master Warranty', desc: 'Full frame, gas lift, and mechanical component coverage guaranteed.' },
-          { id: 'delivery', title: 'White-Glove Delivery', desc: 'Pre-assembled room delivery with packaging removal included free.' },
-        ];
-  });
 
   const [craftBanner, setCraftBanner] = useState(() => {
     const saved = localStorage.getItem('royal_admin_craft_banner');
     return saved
       ? JSON.parse(saved)
       : {
-          badge: 'THE MATERIALS & CRAFT',
-          title: 'From FSC English Oak Forests to Hand-Stitched Italian Nappa Leather',
-          description: 'Unlike mass-market plastic chairs that break easily, every RoyalChairs model features an internal heavy-duty steel backbone encased in high-density molded memory foam.',
-          image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1000&q=80',
-          caption: 'Master Craftsman Workshop • Gloucestershire, UK',
-        };
+        badge: 'THE MATERIALS & CRAFT',
+        title: 'From FSC English Oak Forests to Hand-Stitched Italian Nappa Leather',
+        description: 'Unlike mass-market plastic chairs that break easily, every RoyalChairs model features an internal heavy-duty steel backbone encased in high-density molded memory foam.',
+        image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1000&q=80',
+        caption: 'Master Craftsman Workshop • Gloucestershire, UK',
+      };
   });
 
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [editingReview, setEditingReview] = useState(null);
-
-  const savePillars = () => {
-    localStorage.setItem('royal_admin_pillars', JSON.stringify(pillars));
-    alert('4 Pillars partition updated successfully!');
-  };
 
   const saveCraftBanner = () => {
     localStorage.setItem('royal_admin_craft_banner', JSON.stringify(craftBanner));
@@ -76,57 +59,6 @@ export default function WhyChooseUsManager() {
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      {/* 4 Pillars Partition CRUD */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center space-x-2 bg-emerald-50 text-emerald-800 text-xs font-black px-3.5 py-1 rounded-full mb-2 border border-emerald-200">
-              <Award className="w-3.5 h-3.5 text-emerald-700" />
-              <span>4 PILLARS &amp; CRAFT CONTROLLER</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
-              Why Choose Us Partition CRUD
-            </h1>
-          </div>
-
-          <button
-            onClick={savePillars}
-            className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer self-start sm:self-auto"
-          >
-            Save 4 Pillars Settings
-          </button>
-        </div>
-
-        {/* 4 Pillars Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {pillars.map((item, idx) => (
-            <div key={item.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-              <span className="text-[10px] font-black uppercase text-amber-700">Pillar #{idx + 1}</span>
-              <input
-                type="text"
-                value={item.title}
-                onChange={(e) => {
-                  const updated = [...pillars];
-                  updated[idx].title = e.target.value;
-                  setPillars(updated);
-                }}
-                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-extrabold text-slate-900 focus:outline-hidden focus:border-emerald-700"
-              />
-              <textarea
-                rows={2}
-                value={item.desc}
-                onChange={(e) => {
-                  const updated = [...pillars];
-                  updated[idx].desc = e.target.value;
-                  setPillars(updated);
-                }}
-                className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-hidden focus:border-emerald-700"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Craftsmanship Banner CRUD */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
         <h2 className="text-xl font-black text-slate-900 font-serif border-b border-slate-100 pb-3">

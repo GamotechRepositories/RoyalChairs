@@ -38,18 +38,13 @@ export default function BestSellers({ onQuickView }) {
       <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mb-6">
-          <div className="inline-flex items-center space-x-2 text-xs font-bold uppercase tracking-widest text-emerald-800 bg-amber-100 border border-amber-300/60 px-3.5 py-1 rounded-full mb-3 shadow-xs">
-            <Award className="w-4 h-4 text-amber-600" />
-            <span>Customer Favorites</span>
-          </div>
+
 
           <h2 className="text-3xl sm:text-4xl font-black text-emerald-950 font-serif">
             Best Seller Chairs
           </h2>
 
-          <p className="text-gray-600 text-sm mt-1 max-w-xl">
-            Reviewed and loved by many homeowners, executives, and interior architects.
-          </p>
+
 
           {/* Category Filter Tabs */}
           <div className="flex flex-wrap gap-2 mt-5">
@@ -57,11 +52,10 @@ export default function BestSellers({ onQuickView }) {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs ${
-                  activeTab === tab.id
-                    ? 'bg-emerald-700 text-white shadow-md'
-                    : 'bg-white text-gray-700 hover:bg-emerald-50 hover:text-emerald-900 border border-gray-200'
-                }`}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs ${activeTab === tab.id
+                  ? 'bg-emerald-700 text-white shadow-md'
+                  : 'bg-white text-gray-700 hover:bg-emerald-50 hover:text-emerald-900 border border-gray-200'
+                  }`}
               >
                 {tab.label}
               </button>

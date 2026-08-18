@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CartProvider, useCart } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 import Navbar from './components/layout/Navbar';
 import BannerSlideshow from './components/home/BannerSlideshow';
@@ -12,9 +12,11 @@ import HighDiscountOffers from './components/home/HighDiscountOffers';
 import WhyChooseUs from './components/home/WhyChooseUs';
 import Footer from './components/layout/Footer';
 
+import ProductDetailPage from './components/shop/ProductDetailPage';
 import CategoryShopPage from './components/shop/CategoryShopPage';
 import CartPage from './components/shop/CartPage';
 import WishlistPage from './components/shop/WishlistPage';
+import AccountPage from './components/shop/AccountPage';
 import SearchModal from './components/layout/SearchModal';
 import TrackOrderModal from './components/layout/TrackOrderModal';
 import AccountModal from './components/layout/AccountModal';
@@ -24,8 +26,10 @@ import QuickViewModal from './components/home/QuickViewModal';
 import { Sparkles } from 'lucide-react';
 
 function DashboardContent() {
-  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard', 'category-page', 'cart-page', 'wishlist-page'
+  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard', 'category-page', 'cart-page', 'wishlist-page', 'account-page', 'product-page'
+  const [previousView, setPreviousView] = useState('dashboard');
   const [selectedCategoryId, setSelectedCategoryId] = useState('gaming');
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [trackOrderOpen, setTrackOrderOpen] = useState(false);
@@ -34,6 +38,7 @@ function DashboardContent() {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
   const { toastMessage } = useCart();
+  const { isAuthenticated } = useAuth();
 
   const handleOpenCategory = (catId) => {
     setSelectedCategoryId(catId || 'gaming');
@@ -43,6 +48,14 @@ function DashboardContent() {
 
   const handleNavigateView = (viewName) => {
     setActiveView(viewName);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenProduct = (product) => {
+    if (!product) return;
+    setPreviousView(activeView);
+    setSelectedProduct(product);
+    setActiveView('product-page');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -60,7 +73,13 @@ function DashboardContent() {
       <Navbar
         onOpenSearch={() => setSearchOpen(true)}
         onOpenTrackOrder={() => setTrackOrderOpen(true)}
-        onOpenAccount={() => setAccountOpen(true)}
+        onOpenAccount={() => {
+          if (isAuthenticated) {
+            handleNavigateView('account-page');
+          } else {
+            setAccountOpen(true);
+          }
+        }}
         onOpenWishlist={() => handleNavigateView('wishlist-page')}
         onOpenCart={() => handleNavigateView('cart-page')}
         onNavigateHome={() => handleNavigateView('dashboard')}
@@ -68,24 +87,42 @@ function DashboardContent() {
       />
 
       <main>
-        {activeView === 'category-page' ? (
+        {activeView === 'product-page' && selectedProduct ? (
+          /* DEDICATED PRODUCT DETAIL PAGE VIEW */
+          <ProductDetailPage
+            product={selectedProduct}
+            onBack={() => handleNavigateView(previousView || 'dashboard')}
+            onNavigateHome={() => handleNavigateView('dashboard')}
+            onNavigateCategory={(catId) => handleOpenCategory(catId)}
+            onOpenProduct={(prod) => handleOpenProduct(prod)}
+          />
+        ) : activeView === 'category-page' ? (
           /* DEDICATED CATEGORY SHOP PAGE VIEW */
           <CategoryShopPage
             initialCategory={selectedCategoryId}
             onBackToHome={() => handleNavigateView('dashboard')}
-            onQuickView={(prod) => setQuickViewProduct(prod)}
+            onQuickView={(prod) => handleOpenProduct(prod)}
           />
         ) : activeView === 'cart-page' ? (
           /* DEDICATED SHOPPING CART PAGE VIEW */
           <CartPage
             onBackToHome={() => handleNavigateView('dashboard')}
-            onQuickView={(prod) => setQuickViewProduct(prod)}
+            onQuickView={(prod) => handleOpenProduct(prod)}
           />
         ) : activeView === 'wishlist-page' ? (
           /* DEDICATED MY WISHLIST PAGE VIEW */
           <WishlistPage
             onBackToHome={() => handleNavigateView('dashboard')}
-            onQuickView={(prod) => setQuickViewProduct(prod)}
+            onQuickView={(prod) => handleOpenProduct(prod)}
+          />
+        ) : activeView === 'account-page' ? (
+          /* DEDICATED MEMBER ACCOUNT FULL PAGE VIEW */
+          <AccountPage
+            onBackToHome={() => handleNavigateView('dashboard')}
+            onNavigateCart={() => handleNavigateView('cart-page')}
+            onNavigateWishlist={() => handleNavigateView('wishlist-page')}
+            onNavigateShop={() => handleOpenCategory('wooden')}
+            onOpenTrackOrder={() => setTrackOrderOpen(true)}
           />
         ) : (
           /* MAIN HOMEPAGE DASHBOARD */
@@ -100,14 +137,14 @@ function DashboardContent() {
 
             {/* 4. Best Seller */}
             <BestSellers
-              onQuickView={(prod) => setQuickViewProduct(prod)}
+              onQuickView={(prod) => handleOpenProduct(prod)}
             />
 
             {/* 5. New Collection */}
-            <NewCollection onQuickView={(prod) => setQuickViewProduct(prod)} />
+            <NewCollection onQuickView={(prod) => handleOpenProduct(prod)} />
 
             {/* 6. Offers */}
-            <HighDiscountOffers onQuickView={(prod) => setQuickViewProduct(prod)} />
+            <HighDiscountOffers onQuickView={(prod) => handleOpenProduct(prod)} />
 
             {/* 7. Why Choose Us */}
             <WhyChooseUs />
@@ -122,7 +159,7 @@ function DashboardContent() {
       <SearchModal
         isOpen={searchOpen}
         onClose={() => setSearchOpen(false)}
-        onQuickView={(prod) => setQuickViewProduct(prod)}
+        onQuickView={(prod) => handleOpenProduct(prod)}
       />
 
       <TrackOrderModal
@@ -133,12 +170,13 @@ function DashboardContent() {
       <AccountModal
         isOpen={accountOpen}
         onClose={() => setAccountOpen(false)}
+        onLoginSuccess={() => handleNavigateView('account-page')}
       />
 
       <WishlistModal
         isOpen={wishlistOpen}
         onClose={() => setWishlistOpen(false)}
-        onQuickView={(prod) => setQuickViewProduct(prod)}
+        onQuickView={(prod) => handleOpenProduct(prod)}
       />
 
       <CartDrawer />

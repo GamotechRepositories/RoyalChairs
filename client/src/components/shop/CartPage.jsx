@@ -13,8 +13,8 @@ export default function CartPage({ onBackToHome, onQuickView }) {
   const subtotalAmount = typeof cartTotal === 'number' && !isNaN(cartTotal)
     ? cartTotal
     : typeof cartSubtotal === 'number' && !isNaN(cartSubtotal)
-    ? cartSubtotal
-    : cartItems.reduce((acc, item) => acc + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+      ? cartSubtotal
+      : cartItems.reduce((acc, item) => acc + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
 
   const finalTotal = Math.max(0, subtotalAmount - appliedDiscount);
 
@@ -23,7 +23,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
     setPromoError('');
     setPromoSuccess('');
     if (promoCode.trim().toUpperCase() === 'ROYAL50' || promoCode.trim().toUpperCase() === 'ROYAL10') {
-      
+
       setAppliedDiscount(4000); setPromoSuccess('ROYAL50 Applied: ₹4,000 Discount Unlocked!');
     } else if (promoCode.trim().length > 0) {
       setPromoError('Invalid Coupon Code. Try "ROYAL50"');
@@ -33,7 +33,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
   return (
     <div className="min-h-screen bg-cream-soft pt-6 pb-20">
       <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
-        
+
         {/* Breadcrumb Navigation */}
         <div className="flex items-center space-x-2 text-xs font-bold text-gray-500 mb-6">
           <button onClick={onBackToHome} className="hover:text-emerald-900 transition flex items-center cursor-pointer">
@@ -97,7 +97,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
         ) : (
           /* CART ITEMS & CHECKOUT GRID */
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            
+
             {/* Left 2 Columns: Items List */}
             <div className="lg:col-span-2 space-y-4">
               {cartItems.map((item) => {
@@ -207,7 +207,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
                 </div>
 
                 <div className="flex justify-between text-gray-600">
-                  <span>White-Glove Room Delivery:</span>
+                  <span>Express Home Delivery:</span>
                   <span className="font-bold text-emerald-700">FREE</span>
                 </div>
 
@@ -262,7 +262,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
               <div className="pt-2 text-[11px] text-gray-500 space-y-1.5 border-t border-gray-100">
                 <div className="flex items-center space-x-2">
                   <Truck className="w-4 h-4 text-emerald-700" />
-                  <span>Free White-Glove Shipping on all orders</span>
+                  <span>Free Express Delivery on all orders</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Sparkles className="w-4 h-4 text-amber-500" />

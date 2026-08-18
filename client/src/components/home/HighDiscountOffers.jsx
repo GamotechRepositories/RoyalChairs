@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Percent, Tag, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { Tag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PRODUCTS, ADMIN_OFFER_BANNER } from '../../data/chairProductsData';
 import ProductCard from '../ui/ProductCard';
 
@@ -29,11 +29,6 @@ export default function HighDiscountOffers({ onQuickView }) {
         {/* Flash Sale Banner Header */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-amber-300/60 shadow-lg mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center space-x-2 bg-amber-100 text-emerald-950 text-xs font-black px-3.5 py-1 rounded-full mb-3 border border-amber-300">
-              <Percent className="w-4 h-4 text-amber-600" />
-              <span>LIMITED TIME FLASH SALE</span>
-            </div>
-
             <h2 className="text-3xl sm:text-4xl font-black text-emerald-900 font-serif">
               Royal Offers
             </h2>
@@ -48,11 +43,6 @@ export default function HighDiscountOffers({ onQuickView }) {
         {ADMIN_OFFER_BANNER && (
           <div className="bg-emerald-900 text-white rounded-3xl p-6 sm:p-10 lg:p-12 mb-10 relative overflow-hidden grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center shadow-xl border border-emerald-800">
             <div>
-              <div className="inline-flex items-center space-x-1.5 bg-amber-400 text-emerald-950 text-xs font-black px-3.5 py-1 rounded-full mb-4 shadow-sm tracking-wider uppercase">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{ADMIN_OFFER_BANNER.badge || 'SPECIAL PROMOTIONAL OFFER'}</span>
-              </div>
-
               <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black font-serif leading-tight text-white mb-4">
                 {ADMIN_OFFER_BANNER.title}
               </h3>
@@ -104,8 +94,8 @@ export default function HighDiscountOffers({ onQuickView }) {
           <button
             onClick={() => setFilterThreshold(0)}
             className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition ${filterThreshold === 0
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'bg-white text-gray-700 hover:bg-emerald-50 border border-gray-200'
+              ? 'bg-emerald-600 text-white shadow-md'
+              : 'bg-white text-gray-700 hover:bg-emerald-50 border border-gray-200'
               }`}
           >
             All Offers (High → Low)
@@ -114,8 +104,8 @@ export default function HighDiscountOffers({ onQuickView }) {
           <button
             onClick={() => setFilterThreshold(40)}
             className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition ${filterThreshold === 40
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'bg-white text-gray-700 hover:bg-emerald-50 border border-gray-200'
+              ? 'bg-emerald-600 text-white shadow-md'
+              : 'bg-white text-gray-700 hover:bg-emerald-50 border border-gray-200'
               }`}
           >
             🔥 40%+ OFF Only

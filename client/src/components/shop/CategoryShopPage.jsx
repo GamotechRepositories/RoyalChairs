@@ -113,8 +113,8 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
                       key={cat.id}
                       onClick={() => handleCategorySwitch(cat.id)}
                       className={`w-full flex items-center justify-between p-3 rounded-2xl transition text-left text-xs font-bold ${isSelected
-                          ? 'bg-emerald-700 text-white shadow-md font-extrabold scale-102'
-                          : 'bg-cream-soft hover:bg-emerald-50 text-gray-800 hover:text-emerald-900 border border-gray-100'
+                        ? 'bg-emerald-700 text-white shadow-md font-extrabold scale-102'
+                        : 'bg-cream-soft hover:bg-emerald-50 text-gray-800 hover:text-emerald-900 border border-gray-100'
                         }`}
                     >
                       <div className="flex items-center space-x-3">
@@ -177,8 +177,8 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
                       key={sub}
                       onClick={() => setActiveSubcategory(sub)}
                       className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex-shrink-0 cursor-pointer ${isSubActive
-                          ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-700/30'
-                          : 'bg-cream-soft text-gray-700 hover:bg-emerald-100/60 hover:text-emerald-900 border border-gray-200/80'
+                        ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-700/30'
+                        : 'bg-cream-soft text-gray-700 hover:bg-emerald-100/60 hover:text-emerald-900 border border-gray-200/80'
                         }`}
                     >
                       {sub}

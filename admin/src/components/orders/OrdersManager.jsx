@@ -48,7 +48,7 @@ export default function OrdersManager() {
             </span>
           </div>
           <p className="text-xs text-slate-500">
-            Track benchcrafted seating orders, customer requests, and white-glove courier deliveries
+            Track benchcrafted seating orders, customer requests, and courier deliveries
           </p>
         </div>
 

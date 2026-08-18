@@ -84,11 +84,10 @@ export default function QuickViewModal({ product, onClose }) {
             <div className="flex space-x-3">
               <button
                 onClick={() => setActiveImage(product.mainImage || defaultFallbackImage)}
-                className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition cursor-pointer ${
-                  activeImage === (product.mainImage || defaultFallbackImage)
+                className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition cursor-pointer ${activeImage === (product.mainImage || defaultFallbackImage)
                     ? 'border-emerald-900 ring-2 ring-emerald-900/20'
                     : 'border-gray-200 hover:border-gray-300'
-                }`}
+                  }`}
               >
                 <img
                   src={product.mainImage || defaultFallbackImage}
@@ -102,11 +101,10 @@ export default function QuickViewModal({ product, onClose }) {
               {product.hoverImage && (
                 <button
                   onClick={() => setActiveImage(product.hoverImage)}
-                  className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition cursor-pointer ${
-                    activeImage === product.hoverImage
+                  className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition cursor-pointer ${activeImage === product.hoverImage
                       ? 'border-emerald-900 ring-2 ring-emerald-900/20'
                       : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   <img
                     src={product.hoverImage}
@@ -187,9 +185,8 @@ export default function QuickViewModal({ product, onClose }) {
                       <button
                         key={col}
                         onClick={() => setSelectedColor(col)}
-                        className={`w-8 h-8 rounded-full border-2 transition cursor-pointer ${
-                          selectedColor === col ? 'ring-3 ring-emerald-900 scale-110 border-white' : 'border-gray-300'
-                        }`}
+                        className={`w-8 h-8 rounded-full border-2 transition cursor-pointer ${selectedColor === col ? 'ring-3 ring-emerald-900 scale-110 border-white' : 'border-gray-300'
+                          }`}
                         style={{ backgroundColor: col }}
                         title={`Color finish: ${col}`}
                       />
@@ -231,9 +228,8 @@ export default function QuickViewModal({ product, onClose }) {
 
                 <button
                   onClick={() => toggleWishlist(product)}
-                  className={`p-3.5 rounded-xl border transition cursor-pointer ${
-                    inWishlist ? 'bg-rose-50 border-rose-200 text-rose-600' : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`p-3.5 rounded-xl border transition cursor-pointer ${inWishlist ? 'bg-rose-50 border-rose-200 text-rose-600' : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                    }`}
                   title={inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
                 >
                   <Heart className={`w-5 h-5 ${inWishlist ? 'fill-current' : ''}`} />
@@ -244,7 +240,7 @@ export default function QuickViewModal({ product, onClose }) {
               <div className="grid grid-cols-2 gap-3 text-[11px] text-gray-500 bg-cream-soft p-3 rounded-xl">
                 <div className="flex items-center space-x-1.5">
                   <Truck className="w-4 h-4 text-emerald-800" />
-                  <span>Free White-Glove Room Delivery</span>
+                  <span>Free Express Delivery</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <Shield className="w-4 h-4 text-emerald-800" />

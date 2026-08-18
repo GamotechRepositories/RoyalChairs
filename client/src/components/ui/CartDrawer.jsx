@@ -125,7 +125,7 @@ export default function CartDrawer() {
                   <span className="font-bold text-gray-900">₹{cartSubtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>White-Glove Shipping</span>
+                  <span>Express Delivery</span>
                   <span className="font-bold text-emerald-700">FREE</span>
                 </div>
                 <div className="flex justify-between text-base font-extrabold text-emerald-950 pt-2 border-t border-gray-200">

@@ -193,11 +193,10 @@ export default function WishlistModal({ isOpen, onClose, onQuickView }) {
                   ) : (
                     <button
                       onClick={() => handleAddToCart(product)}
-                      className={`w-32 h-10 rounded-full font-extrabold text-xs flex items-center justify-center space-x-1.5 transition shadow-xs cursor-pointer ${
-                        addedItems[product.id]
+                      className={`w-32 h-10 rounded-full font-extrabold text-xs flex items-center justify-center space-x-1.5 transition shadow-xs cursor-pointer ${addedItems[product.id]
                           ? 'bg-amber-400 text-emerald-950'
                           : 'bg-emerald-700 hover:bg-emerald-600 text-white'
-                      }`}
+                        }`}
                     >
                       <ShoppingBag className="w-4 h-4" />
                       <span>{addedItems[product.id] ? 'Added!' : 'Add to Bag'}</span>

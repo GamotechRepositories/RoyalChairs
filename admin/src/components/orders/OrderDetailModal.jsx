@@ -110,7 +110,7 @@ export default function OrderDetailModal({ isOpen, onClose, order }) {
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
             <div className="flex items-center space-x-2 text-emerald-800 font-bold uppercase tracking-wider text-[10px]">
               <MapPin className="w-3.5 h-3.5" />
-              <span>White-Glove Delivery Destination</span>
+              <span>Delivery Destination</span>
             </div>
             <p className="text-slate-700 leading-relaxed font-medium">{order.customer.address}</p>
             <div className="flex items-center space-x-2 text-slate-500 pt-1 font-medium">
@@ -170,7 +170,7 @@ export default function OrderDetailModal({ isOpen, onClose, order }) {
             </div>
           )}
           <div className="flex justify-between text-slate-600 font-medium">
-            <span>White-Glove Courier & Packaging</span>
+            <span>Courier & Packaging</span>
             <span className="text-emerald-700 font-bold">Complimentary</span>
           </div>
           <div className="pt-2 border-t border-slate-200 flex justify-between text-sm font-black text-slate-900">
@@ -198,7 +198,7 @@ export default function OrderDetailModal({ isOpen, onClose, order }) {
               >
                 <option value="Pending">Pending Assignment</option>
                 <option value="In Production">In Production (Benchcrafting)</option>
-                <option value="Dispatched">Dispatched (White-Glove Courier)</option>
+                <option value="Dispatched">Dispatched (Express Courier)</option>
                 <option value="Delivered">Delivered & Assembled</option>
                 <option value="Cancelled">Cancelled</option>
               </select>

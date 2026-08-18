@@ -208,7 +208,7 @@ const INITIAL_ORDERS = [
     paymentMethod: 'American Express •••• 4092',
     paymentStatus: 'Paid',
     fulfillmentStatus: 'Dispatched',
-    carrier: 'Royal Logistics White-Glove Courier',
+    carrier: 'Royal Logistics Express Courier',
     trackingNumber: 'RL-UK-892401',
     estimatedDelivery: 'Aug 14, 2026',
     date: '2026-08-12T10:30:00Z',
@@ -239,7 +239,7 @@ const INITIAL_ORDERS = [
     paymentMethod: 'Google Pay',
     paymentStatus: 'Paid',
     fulfillmentStatus: 'In Production',
-    carrier: 'White-Glove Benchcrafted Fleet',
+    carrier: 'Royal Express Delivery Fleet',
     trackingNumber: 'RL-UK-892305',
     estimatedDelivery: 'Aug 16, 2026',
     date: '2026-08-12T08:15:00Z',
@@ -337,7 +337,7 @@ const INITIAL_COUPONS = [
 
 const INITIAL_REVIEWS = [
   { id: 'REV-1', customer: 'Lord Alistair Sterling', product: 'The Sovereign Ergonomic Task Pro', rating: 5, comment: 'The Sovereign Ergonomic Task Pro saved my back after 10-hour design sessions. Exceptional velvet quality.', date: '2026-08-10', status: 'Approved', featured: true },
-  { id: 'REV-2', customer: 'Eleanor Vance', product: 'Monarch High-Back Executive Leather Chair', rating: 5, comment: 'Ordered 12 chairs for our C-suite boardroom. White-glove delivery arrived on time, completely pre-assembled.', date: '2026-08-08', status: 'Approved', featured: true },
+  { id: 'REV-2', customer: 'Eleanor Vance', product: 'Monarch High-Back Executive Leather Chair', rating: 5, comment: 'Ordered 12 chairs for our C-suite boardroom. Express delivery arrived on time, completely pre-assembled.', date: '2026-08-08', status: 'Approved', featured: true },
   { id: 'REV-3', customer: 'Dr. Marcus Thorne', product: 'Apex Pro Ergonomic Gaming Throne', rating: 5, comment: 'As a spinal health specialist, I endorse RoyalChairs dynamic lumbar mechanism. It actively adjusts to pelvic tilt.', date: '2026-08-05', status: 'Approved', featured: true },
   { id: 'REV-4', customer: 'Sophia Montgomery', product: 'Belgrave Bouclé Accent Swivel Lounger', rating: 4, comment: 'Soft bouclé texture and smooth swivel. Looks gorgeous in our Gloucestershire sunroom.', date: '2026-08-11', status: 'Pending', featured: false },
 ];
@@ -354,7 +354,7 @@ const INITIAL_SETTINGS = {
   supportPhone: '+44 20 7946 0990',
   headquarters: 'Gloucestershire & Mayfair, London, United Kingdom',
   maintenanceMode: false,
-  whiteGloveDelivery: true,
+  freeDelivery: true,
 };
 
 export function AdminDataProvider({ children }) {
@@ -484,6 +484,18 @@ export function AdminDataProvider({ children }) {
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
 
+  const toggleProductFlag = (id, flagName) => {
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === id) {
+          const updated = { ...p, [flagName]: !p[flagName] };
+          return updated;
+        }
+        return p;
+      })
+    );
+  };
+
   const updateStock = (id, newStock) => {
     updateProduct(id, { stock: Math.max(0, newStock) });
   };
@@ -563,6 +575,7 @@ export function AdminDataProvider({ children }) {
         addProduct,
         updateProduct,
         deleteProduct,
+        toggleProductFlag,
         updateStock,
         updateOrderStatus,
         addCoupon,

@@ -11,7 +11,7 @@ export const CATEGORIES = [
   },
   {
     id: 'ergonomic',
-    name: 'Ergonomic Task',
+    name: 'Office Chairs',
     icon: 'Activity',
     emoji: '🪑',
     image: 'https://images.unsplash.com/photo-1580481072645-022f9a6d8310?auto=format&fit=crop&w=600&q=80',
@@ -19,7 +19,7 @@ export const CATEGORIES = [
   },
   {
     id: 'plastic',
-    name: 'Plastic & Molded',
+    name: 'Plastic Chairs',
     icon: 'Layers',
     emoji: '🪴',
     image: 'https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=600&q=80',
@@ -27,7 +27,7 @@ export const CATEGORIES = [
   },
   {
     id: 'gaming',
-    name: 'Gaming Thrones',
+    name: 'Gaming Recliners',
     icon: 'Gamepad2',
     emoji: '🎮',
     image: 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=600&q=80',
@@ -35,7 +35,7 @@ export const CATEGORIES = [
   },
   {
     id: 'velvet',
-    name: 'Velvet Loungers',
+    name: 'Velvet Chairs',
     icon: 'Sparkles',
     emoji: '🛋️',
     image: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=600&q=80',
@@ -51,7 +51,7 @@ export const CATEGORIES = [
   },
   {
     id: 'dining',
-    name: 'Dining Armchairs',
+    name: 'Dining Chairs',
     icon: 'Utensils',
     emoji: '🍽️',
     image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80',
@@ -59,7 +59,7 @@ export const CATEGORIES = [
   },
   {
     id: 'outdoor',
-    name: 'Outdoor & Teak',
+    name: 'Outdoor Chairs',
     icon: 'Sun',
     emoji: '☀️',
     image: 'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=600&q=80',
@@ -70,39 +70,58 @@ export const CATEGORIES = [
 export const HERO_SLIDES = [
   {
     id: 1,
-    title: 'The Royal Ergonomic Heritage',
-    subtitle: 'English Craftsmanship Meets Modern Spinal Perfection',
-    description: 'Engineered with top-grain Italian leather, solid English oak frames, and 4D adaptive lumbar alignment.',
-    badge: 'NEW 2026 EDITION',
-    image: 'https://images.unsplash.com/photo-1580481072645-022f9a6d8310?auto=format&fit=crop&w=1600&q=85',
-    ctaText: 'Explore Collection',
-    ctaLink: '#new-collection',
-    secondaryCta: 'View 50% Off Deals',
-    tag: 'Save up to ₹35,000 Today',
+    title: 'Royal Heritage Collection Banner',
+    image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=2000&q=85',
+    link: '#shop-by-category',
   },
   {
     id: 2,
-    title: 'Supreme Velvet Lounge Armchairs',
-    subtitle: 'Rich English Sage & Soft Buttercup Accent Collection',
-    description: 'Sink into cloud-like double-layer cushioning upholstered in stain-resistant plush English velvet.',
-    badge: 'LUXURY SEATING',
-    image: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=1600&q=85',
-    ctaText: 'Shop Velvet Range',
-    ctaLink: '#shop-by-category',
-    secondaryCta: 'Best Sellers',
-    tag: 'Limited Production Run',
+    title: 'Orthopedic & Ergonomic Series Banner',
+    image: 'https://images.unsplash.com/photo-1580481072645-022f9a6d8310?auto=format&fit=crop&w=2000&q=85',
+    link: '#shop-by-category',
   },
   {
     id: 3,
-    title: 'Monarch Executive High-Back Throne',
-    subtitle: 'Designed for Visionaries & High Performers',
-    description: 'Features genuine gold-accented aluminum base, synchronized knee-tilt mechanism, and memory foam padding.',
-    badge: 'BEST SELLER',
-    image: 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?auto=format&fit=crop&w=1600&q=85',
-    ctaText: 'Claim Your Throne',
-    ctaLink: '#best-sellers',
-    secondaryCta: 'Why RoyalChairs',
-    tag: '10-Year Warranty Included',
+    title: 'Monarch Executive Suite Banner',
+    image: 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?auto=format&fit=crop&w=2000&q=85',
+    link: '#special-offers',
+  },
+  {
+    id: 4,
+    title: 'Supreme Velvet Lounge Armchairs Banner',
+    image: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=2000&q=85',
+    link: '#shop-by-category',
+  },
+];
+
+export const NEW_COLLECTION_SLIDES = [
+  {
+    id: 'newcoll-1',
+    title: 'The 2026 Sovereign Bouclé Series',
+    image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=2000&q=85',
+    link: '#new-collection',
+    active: true,
+  },
+  {
+    id: 'newcoll-2',
+    title: 'Modern Ergonomic Spine Alignment Thrones',
+    image: 'https://images.unsplash.com/photo-1580481072645-022f9a6d8310?auto=format&fit=crop&w=2000&q=85',
+    link: '#new-collection',
+    active: true,
+  },
+  {
+    id: 'newcoll-3',
+    title: 'Hand-Buffed English Oak Accent Chairs',
+    image: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=2000&q=85',
+    link: '#new-collection',
+    active: true,
+  },
+  {
+    id: 'newcoll-4',
+    title: 'Plush Velvet Monarch Recliners',
+    image: 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?auto=format&fit=crop&w=2000&q=85',
+    link: '#new-collection',
+    active: true,
   },
 ];
 
@@ -1000,7 +1019,7 @@ export const REVIEWS = [
     name: 'Eleanor Vance',
     role: 'Executive Director, Apex Global',
     rating: 5,
-    comment: 'Ordered 12 Monarch Executive Leather chairs for our C-suite boardroom. White-glove delivery arrived on time, completely pre-assembled. Impressive finish and lumbar support!',
+    comment: 'Ordered 12 Monarch Executive Leather chairs for our C-suite boardroom. Express doorstep delivery arrived on time, completely pre-assembled. Impressive finish and lumbar support!',
     productName: 'Monarch High-Back Executive Leather Chair',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
     location: 'Oxford, UK',
@@ -1043,7 +1062,7 @@ export const ADMIN_OFFER_BANNER = {
   description: 'Co-developed with spine orthopedists. Hand-stitched Italian Nappa leathers, plush English velvets, and 100% FSC-certified solid oak frames offered with up to 50% discount.',
   highlights: [
     { title: 'Top-Grain Nappa & Velvet', desc: 'Hand-selected, breathable, and treated to resist spills while aging gracefully.' },
-    { title: 'Free White-Glove Shipping', desc: 'Pre-assembled white-glove room delivery on all promotional orders.' },
+    { title: 'Free Express Shipping', desc: 'Pre-assembled doorstep delivery on all promotional orders.' },
   ],
   image: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=1000&q=80',
   imageCaption: 'Master Craftsman Workshop • Exclusive 2026 Collection',
@@ -1071,7 +1090,7 @@ export const WHY_CHOOSE_US_ITEMS = [
   {
     id: 'delivery',
     iconName: 'Truck',
-    title: 'White-Glove Free Shipping',
-    desc: 'Delivered directly to your room of choice with zero-hassle unpacking and packaging removal.',
+    title: 'Free Express Delivery',
+    desc: 'Delivered directly to your doorstep with zero-hassle safe packaging and fast transit.',
   },
 ];

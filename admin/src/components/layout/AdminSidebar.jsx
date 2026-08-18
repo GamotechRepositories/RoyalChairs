@@ -4,20 +4,19 @@ import {
   ShoppingBag,
   Layers,
   Users,
-  Tag,
   Star,
-  Settings,
-  Crown,
-  Sparkles,
   ChevronRight,
   ShieldAlert,
+  LogOut,
+  ExternalLink,
 } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
+import { useAdminAuth } from '../../context/AdminAuthContext';
 import LogoImg from '../../assets/logo.svg';
-
 
 export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose }) {
   const { products, orders, reviews } = useAdminData();
+  const { adminUser, logout } = useAdminAuth();
 
   const pendingOrders = orders.filter((o) => o.fulfillmentStatus === 'Pending' || o.fulfillmentStatus === 'In Production').length;
   const lowStock = products.filter((p) => p.stock < 10).length;
@@ -26,76 +25,40 @@ export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose 
   const NAV_ITEMS = [
     {
       id: 'overview',
-      label: 'Dashboard Overview',
+      label: 'Dashboard',
       icon: LayoutDashboard,
       badge: null,
-    },
-    {
-      id: 'banner-slideshow',
-      label: 'Banner Slideshow',
-      icon: Sparkles,
-      badge: 'Hero',
-      badgeColor: 'bg-amber-100 text-amber-800 font-bold',
     },
     {
       id: 'category-handling',
       label: 'Category Handling',
       icon: Layers,
-      badge: 'Categories',
-      badgeColor: 'bg-emerald-100 text-emerald-800 font-bold',
-    },
-    {
-      id: 'best-seller',
-      label: 'Best Sellers Manager',
-      icon: Crown,
-      badge: 'Top Seats',
-      badgeColor: 'bg-amber-100 text-amber-800 font-bold',
-    },
-    {
-      id: 'new-collection',
-      label: 'Royal New Collection',
-      icon: Sparkles,
-      badge: '2026',
-      badgeColor: 'bg-emerald-100 text-emerald-800 font-bold',
-    },
-    {
-      id: 'offers-discounts',
-      label: 'Offers & Discounts',
-      icon: Tag,
-      badge: '% Sale',
-      badgeColor: 'bg-rose-100 text-rose-800 font-bold',
-    },
-    {
-      id: 'why-choose-us',
-      label: 'Why Choose Us & Reviews',
-      icon: Star,
-      badge: 'Reviews',
-      badgeColor: 'bg-purple-100 text-purple-800 font-bold',
+      badge: null,
     },
     {
       id: 'products',
-      label: 'Luxury Catalog',
+      label: 'Catalogue',
       icon: Armchair,
       badge: lowStock > 0 ? `${lowStock} Low` : `${products.length}`,
       badgeColor: lowStock > 0 ? 'bg-amber-100 text-amber-800 font-bold' : 'bg-slate-100 text-slate-700 font-bold',
     },
     {
+      id: 'why-choose-us',
+      label: 'Why Choose Us',
+      icon: Star,
+      badge: null,
+    },
+    {
       id: 'orders',
-      label: 'Orders & Logistics',
+      label: 'Order History',
       icon: ShoppingBag,
       badge: pendingOrders > 0 ? `${pendingOrders} New` : null,
       badgeColor: 'bg-emerald-100 text-emerald-800 font-black',
     },
     {
       id: 'customers',
-      label: 'Client Directory',
+      label: 'Users',
       icon: Users,
-      badge: null,
-    },
-    {
-      id: 'settings',
-      label: 'Store Configuration',
-      icon: Settings,
       badge: null,
     },
   ];
@@ -184,20 +147,30 @@ export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose 
           </nav>
         </div>
 
-        {/* Bottom Status Card */}
+        {/* Admin Profile & Quick Logout Footer */}
         <div className="p-4 border-t border-slate-200 bg-[#F8FAF9]">
-          <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center space-x-3 shadow-xs">
-            <div className="w-8 h-8 rounded-xl bg-emerald-700 text-amber-300 flex items-center justify-center shrink-0 shadow-xs">
-              <Sparkles className="w-4 h-4" />
+          <div className="flex items-center justify-between p-2.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+            <div className="flex items-center space-x-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-emerald-900 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-700">
+                {adminUser?.name ? adminUser.name.charAt(0).toUpperCase() : 'A'}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-black text-slate-900 leading-tight truncate">
+                  {adminUser?.name || 'Administrator'}
+                </p>
+                <p className="text-[10px] text-emerald-700 font-bold truncate">
+                  {adminUser?.role || 'Super Admin'}
+                </p>
+              </div>
             </div>
-            <div className="overflow-hidden">
-              <p className="text-[11px] font-bold text-slate-900 leading-tight truncate">
-                White-Glove Fleet
-              </p>
-              <p className="text-[10px] text-emerald-700 font-bold truncate">
-                All UK Couriers Active
-              </p>
-            </div>
+
+            <button
+              onClick={logout}
+              className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer shrink-0"
+              title="Sign Out of Admin"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>

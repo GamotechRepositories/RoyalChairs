@@ -34,10 +34,10 @@ export default function SearchModal({ isOpen, onClose, onQuickView }) {
   const filteredProducts = query.trim() === ''
     ? PRODUCTS.slice(0, 3)
     : PRODUCTS.filter((p) =>
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        p.category.toLowerCase().includes(query.toLowerCase()) ||
-        p.description.toLowerCase().includes(query.toLowerCase())
-      );
+      p.name.toLowerCase().includes(query.toLowerCase()) ||
+      p.category.toLowerCase().includes(query.toLowerCase()) ||
+      p.description.toLowerCase().includes(query.toLowerCase())
+    );
 
   return (
     <div

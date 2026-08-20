@@ -63,7 +63,7 @@ export default function AdminNavbar({ onToggleSidebar, activeTab }) {
 
         {/* View Storefront Button — text hidden on mobile */}
         <a
-          href="http://localhost:5173"
+          href={import.meta.env.VITE_CLIENT_URL || 'http://localhost:5173'}
           target="_blank"
           rel="noreferrer"
           className="flex items-center space-x-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition text-xs font-extrabold shadow-xs"

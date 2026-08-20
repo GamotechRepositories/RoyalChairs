@@ -5,6 +5,13 @@ const CartContext = createContext();
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState(() => {
     try {
+      // Check if we need to purge old mock data
+      const isCleaned = localStorage.getItem('royal_cart_cleaned_v3');
+      if (!isCleaned) {
+        localStorage.removeItem('royalchairs_cart');
+        localStorage.setItem('royal_cart_cleaned_v3', 'true');
+        return [];
+      }
       const saved = localStorage.getItem('royalchairs_cart');
       return saved ? JSON.parse(saved) : [];
     } catch {
@@ -31,11 +38,12 @@ export const CartProvider = ({ children }) => {
   };
 
   const addToCart = (product, colorSelected = null, quantity = 1) => {
+    const pId = product._id || product.id;
     const selectedColor = colorSelected || (product.colors && product.colors[0]) || '#1E3E2B';
 
     setCartItems((prev) => {
       const existingIndex = prev.findIndex(
-        (item) => item.id === product.id && item.color === selectedColor
+        (item) => (item._id === pId || item.id === pId) && item.color === selectedColor
       );
 
       if (existingIndex > -1) {
@@ -47,6 +55,8 @@ export const CartProvider = ({ children }) => {
           ...prev,
           {
             ...product,
+            id: pId,
+            _id: pId,
             color: selectedColor,
             quantity: quantity,
           },
@@ -58,7 +68,9 @@ export const CartProvider = ({ children }) => {
   };
 
   const removeFromCart = (productId, color) => {
-    setCartItems((prev) => prev.filter((item) => !(item.id === productId && item.color === color)));
+    setCartItems((prev) =>
+      prev.filter((item) => !((item.id === productId || item._id === productId) && item.color === color))
+    );
     showNotification('Item removed from bag');
   };
 
@@ -66,18 +78,18 @@ export const CartProvider = ({ children }) => {
     setCartItems((prev) =>
       prev
         .map((item) => {
-          if (item.id === productId && item.color === color) {
+          if ((item.id === productId || item._id === productId) && item.color === color) {
             const newQty = item.quantity + delta;
             return newQty > 0 ? { ...item, quantity: newQty } : null;
           }
           return item;
         })
         .filter(Boolean)
-    );
+      );
   };
 
   const getItemQuantity = (productId, colorSelected = null) => {
-    const matching = cartItems.filter((item) => item.id === productId);
+    const matching = cartItems.filter((item) => item.id === productId || item._id === productId);
     if (matching.length === 0) return 0;
     if (colorSelected) {
       const exact = matching.find((item) => item.color === colorSelected);
@@ -101,6 +113,7 @@ export const CartProvider = ({ children }) => {
     <CartContext.Provider
       value={{
         cartItems,
+        setCartItems,
         isCartOpen,
         setIsCartOpen,
         addToCart,

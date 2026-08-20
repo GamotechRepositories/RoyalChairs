@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { StoreProvider } from './context/StoreContext';
 import { CartProvider, useCart } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -191,12 +192,14 @@ function DashboardContent() {
 
 export default function App() {
   return (
-    <CartProvider>
-      <WishlistProvider>
-        <AuthProvider>
-          <DashboardContent />
-        </AuthProvider>
-      </WishlistProvider>
-    </CartProvider>
+    <StoreProvider>
+      <CartProvider>
+        <WishlistProvider>
+          <AuthProvider>
+            <DashboardContent />
+          </AuthProvider>
+        </WishlistProvider>
+      </CartProvider>
+    </StoreProvider>
   );
 }

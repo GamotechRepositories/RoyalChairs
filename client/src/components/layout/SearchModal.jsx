@@ -1,9 +1,10 @@
 import { useState, useEffect, useId } from 'react';
 import { Search, X, ShoppingBag, Star, ArrowRight, Plus, Minus } from 'lucide-react';
-import { PRODUCTS } from '../../data/chairProductsData';
+import { useStore } from '../../context/StoreContext';
 import { useCart } from '../../context/CartContext';
 
 export default function SearchModal({ isOpen, onClose, onQuickView }) {
+  const { products } = useStore();
   const [query, setQuery] = useState('');
   const searchInputId = useId();
   const { addToCart, updateQuantity, getItemQuantity } = useCart();
@@ -32,12 +33,19 @@ export default function SearchModal({ isOpen, onClose, onQuickView }) {
   if (!isOpen) return null;
 
   const filteredProducts = query.trim() === ''
-    ? PRODUCTS.slice(0, 3)
-    : PRODUCTS.filter((p) =>
-      p.name.toLowerCase().includes(query.toLowerCase()) ||
-      p.category.toLowerCase().includes(query.toLowerCase()) ||
-      p.description.toLowerCase().includes(query.toLowerCase())
-    );
+    ? (products || []).slice(0, 4)
+    : (products || []).filter((p) => {
+        const cat = p.categorySlug || p.category || '';
+        const sub = p.subCategory || '';
+        const q = query.toLowerCase();
+        return (
+          p.name?.toLowerCase().includes(q) ||
+          cat.toLowerCase().includes(q) ||
+          sub.toLowerCase().includes(q) ||
+          (p.description && p.description.toLowerCase().includes(q)) ||
+          (p.sku && p.sku.toLowerCase().includes(q))
+        );
+      });
 
   return (
     <div

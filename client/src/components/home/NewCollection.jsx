@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, ShieldCheck, Zap } from 'lucide-react';
-import { PRODUCTS, NEW_COLLECTION_SLIDES } from '../../data/chairProductsData';
+import { useStore } from '../../context/StoreContext';
+import { NEW_COLLECTION_SLIDES } from '../../data/chairProductsData';
 import ProductCard from '../ui/ProductCard';
 
 export default function NewCollection({ onQuickView }) {
+  const { products } = useStore();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [storageTick, setStorageTick] = useState(0);
@@ -52,24 +54,31 @@ export default function NewCollection({ onQuickView }) {
     } catch {
       // Fallback
     }
-    return NEW_COLLECTION_SLIDES;
+    return NEW_COLLECTION_SLIDES || [];
   }, [storageTick]);
 
   // Slideshow auto-rotation timer
   useEffect(() => {
-    if (isPaused || activeSlides.length <= 1) return;
+    const list = activeSlides || [];
+    if (isPaused || list.length <= 1) return;
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % activeSlides.length);
+      setCurrentSlide((prev) => (prev + 1) % list.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [isPaused, activeSlides.length]);
+  }, [isPaused, activeSlides]);
 
   const handleNextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % activeSlides.length);
+    const list = activeSlides || [];
+    if (list.length > 0) {
+      setCurrentSlide((prev) => (prev + 1) % list.length);
+    }
   };
 
   const handlePrevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + activeSlides.length) % activeSlides.length);
+    const list = activeSlides || [];
+    if (list.length > 0) {
+      setCurrentSlide((prev) => (prev - 1 + list.length) % list.length);
+    }
   };
 
   const scroll = (direction) => {
@@ -83,7 +92,11 @@ export default function NewCollection({ onQuickView }) {
     }
   };
 
-  const newProducts = PRODUCTS.filter((p) => p.isNew);
+  const newProducts = (products || []).filter((p) => p.isNew);
+
+  if (newProducts.length === 0) {
+    return null; // Only show when New Arrival chairs are added in Database
+  }
 
   return (
     <section id="new-collection" className="py-16 bg-white border-t border-emerald-100">

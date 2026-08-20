@@ -5,21 +5,22 @@ import {
   Plus,
   Trash2,
   Edit2,
-  Image as ImageIcon,
   Search,
   CheckCircle2,
   Armchair,
   Upload,
   X,
   Sparkles,
+  Tag,
 } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
 
 export default function CategoryHandlingManager() {
-  const { categories, setCategories, products } = useAdminData();
+  const { categories, products, addCategory, updateCategory, deleteCategory } = useAdminData();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('default');
   const [editingCategory, setEditingCategory] = useState(null);
+  const [subcategoryInput, setSubcategoryInput] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saveToast, setSaveToast] = useState('');
   const fileInputRef = useRef(null);
@@ -48,19 +49,20 @@ export default function CategoryHandlingManager() {
   }, [isModalOpen]);
 
   // Filter and sort categories
-  const filteredCategories = categories
+  const filteredCategories = (categories || [])
     .filter((c) => {
       const q = searchQuery.toLowerCase();
       return (
-        c.name.toLowerCase().includes(q) ||
-        (c.id && c.id.toLowerCase().includes(q)) ||
+        c.name?.toLowerCase().includes(q) ||
+        (c.id && String(c.id).toLowerCase().includes(q)) ||
+        (c.slug && c.slug.toLowerCase().includes(q)) ||
         (c.desc && c.desc.toLowerCase().includes(q)) ||
         (c.description && c.description.toLowerCase().includes(q))
       );
     })
     .sort((a, b) => {
-      const countA = products.filter((p) => p.category === a.id).length;
-      const countB = products.filter((p) => p.category === b.id).length;
+      const countA = (products || []).filter((p) => p.category === a.id || p.categorySlug === a.slug).length;
+      const countB = (products || []).filter((p) => p.category === b.id || p.categorySlug === b.slug).length;
       if (sortBy === 'name-asc') return a.name.localeCompare(b.name);
       if (sortBy === 'name-desc') return b.name.localeCompare(a.name);
       if (sortBy === 'count-high') return countB - countA;
@@ -75,14 +77,15 @@ export default function CategoryHandlingManager() {
 
   const handleOpenAddModal = () => {
     setEditingCategory({
-      id: `cat-${Date.now().toString().slice(-4)}`,
       name: '',
+      slug: '',
       emoji: '🪑',
       image:
         'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80',
       description: '',
-      desc: '',
+      subcategories: [],
     });
+    setSubcategoryInput('');
     setIsModalOpen(true);
   };
 
@@ -90,15 +93,15 @@ export default function CategoryHandlingManager() {
     setEditingCategory({
       ...category,
       desc: category.desc || category.description || '',
+      subcategories: category.subcategories || [],
     });
+    setSubcategoryInput('');
     setIsModalOpen(true);
   };
 
-  const handleDeleteCategory = (id, name) => {
+  const handleDelete = async (idOrSlug, name) => {
     if (confirm(`Are you sure you want to remove the "${name}" category from the catalog?`)) {
-      const updated = categories.filter((c) => c.id !== id);
-      setCategories(updated);
-      localStorage.setItem('royal_admin_categories', JSON.stringify(updated));
+      await deleteCategory(idOrSlug);
       showNotification(`Category "${name}" removed successfully.`);
     }
   };
@@ -119,7 +122,30 @@ export default function CategoryHandlingManager() {
     }
   };
 
-  const handleSaveModal = (e) => {
+  const handleAddSubcategory = () => {
+    if (!subcategoryInput.trim()) return;
+    const subName = subcategoryInput.trim();
+    setEditingCategory((prev) => {
+      const currentSubs = prev.subcategories || [];
+      if (currentSubs.some((s) => (typeof s === 'string' ? s : s.name) === subName)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        subcategories: [...currentSubs, { name: subName, slug: subName.toLowerCase().replace(/\s+/g, '-') }],
+      };
+    });
+    setSubcategoryInput('');
+  };
+
+  const handleRemoveSubcategory = (indexToRemove) => {
+    setEditingCategory((prev) => ({
+      ...prev,
+      subcategories: (prev.subcategories || []).filter((_, idx) => idx !== indexToRemove),
+    }));
+  };
+
+  const handleSaveModal = async (e) => {
     e.preventDefault();
     if (!editingCategory.name.trim()) {
       alert('Please enter a category name.');
@@ -128,21 +154,20 @@ export default function CategoryHandlingManager() {
 
     const payload = {
       ...editingCategory,
+      slug: editingCategory.slug || editingCategory.name.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-'),
       desc: editingCategory.desc || editingCategory.description || '',
       description: editingCategory.desc || editingCategory.description || '',
     };
 
-    const existingIdx = categories.findIndex((c) => c.id === editingCategory.id);
-    let updated;
-    if (existingIdx > -1) {
-      updated = [...categories];
-      updated[existingIdx] = payload;
+    const isEditing = Boolean(editingCategory._id || categories.some((c) => c.id === editingCategory.id || c.slug === editingCategory.slug));
+
+    if (isEditing) {
+      const targetId = editingCategory._id || editingCategory.id || editingCategory.slug;
+      await updateCategory(targetId, payload);
     } else {
-      updated = [...categories, payload];
+      await addCategory(payload);
     }
 
-    setCategories(updated);
-    localStorage.setItem('royal_admin_categories', JSON.stringify(updated));
     setIsModalOpen(false);
     setEditingCategory(null);
     showNotification(`Category "${payload.name}" saved successfully!`);
@@ -165,7 +190,7 @@ export default function CategoryHandlingManager() {
             Chair Category Catalog
           </h2>
           <span className="bg-emerald-50 text-emerald-800 text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-            {categories.length} Collections
+            {(categories || []).length} Collections
           </span>
         </div>
 
@@ -216,6 +241,7 @@ export default function CategoryHandlingManager() {
             <thead className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-600 font-extrabold">
               <tr>
                 <th className="py-3.5 px-4">Category Collection</th>
+                <th className="py-3.5 px-4">Subcategories</th>
                 <th className="py-3.5 px-4">Description &amp; Story</th>
                 <th className="py-3.5 px-4 text-center">Catalog Products</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
@@ -224,16 +250,30 @@ export default function CategoryHandlingManager() {
             <tbody className="divide-y divide-slate-100">
               {filteredCategories.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="py-12 text-center text-slate-400">
+                  <td colSpan="5" className="py-12 text-center text-slate-400">
                     <p className="font-bold text-sm">No categories found matching "{searchQuery}"</p>
+                    <button
+                      onClick={handleOpenAddModal}
+                      className="mt-3 px-4 py-2 bg-emerald-800 text-white rounded-xl text-xs font-bold cursor-pointer inline-flex items-center space-x-1.5"
+                    >
+                      <Plus className="w-4 h-4 text-amber-300" />
+                      <span>Add your first category</span>
+                    </button>
                   </td>
                 </tr>
               ) : (
                 filteredCategories.map((cat) => {
-                  const productCount = products.filter((p) => p.category === cat.id).length;
+                  const productCount = (products || []).filter(
+                    (p) => p.category === cat.id || p.category === cat._id || p.categorySlug === cat.slug
+                  ).length;
+
+                  const subList = Array.isArray(cat.subcategories)
+                    ? cat.subcategories.map((s) => (typeof s === 'string' ? s : s.name))
+                    : [];
+
                   return (
                     <tr
-                      key={cat.id}
+                      key={cat._id || cat.id || cat.slug}
                       className="hover:bg-slate-50/70 transition-colors group"
                     >
                       {/* Column 1: Image, Title, ID */}
@@ -258,20 +298,38 @@ export default function CategoryHandlingManager() {
                               </h3>
                             </div>
                             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block mt-0.5">
-                              ID: {cat.id}
+                              ID: {cat.slug || cat.id}
                             </span>
                           </div>
                         </div>
                       </td>
 
-                      {/* Column 2: Description */}
+                      {/* Column 2: Subcategories */}
+                      <td className="py-4 px-4 max-w-xs">
+                        <div className="flex flex-wrap gap-1">
+                          {subList.length > 0 ? (
+                            subList.map((sub, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="text-[10px] bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded-md border border-slate-200"
+                              >
+                                {sub}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[11px] text-slate-400 italic">No subcategories</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Column 3: Description */}
                       <td className="py-4 px-4 max-w-xs">
                         <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-normal">
                           {cat.desc || cat.description || 'Handcrafted seating category.'}
                         </p>
                       </td>
 
-                      {/* Column 3: Products Count */}
+                      {/* Column 4: Products Count */}
                       <td className="py-4 px-4 text-center">
                         <span className="inline-flex items-center space-x-1.5 bg-emerald-50 text-emerald-900 border border-emerald-200/80 px-3 py-1 rounded-full text-xs font-bold font-mono">
                           <Armchair className="w-3.5 h-3.5 text-emerald-700" />
@@ -279,7 +337,7 @@ export default function CategoryHandlingManager() {
                         </span>
                       </td>
 
-                      {/* Column 4: Action Buttons */}
+                      {/* Column 5: Action Buttons */}
                       <td className="py-4 px-4 text-right">
                         <div className="flex items-center justify-end space-x-2">
                           <button
@@ -290,7 +348,7 @@ export default function CategoryHandlingManager() {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                            onClick={() => handleDelete(cat._id || cat.slug || cat.id, cat.name)}
                             className="p-2 text-slate-400 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 rounded-xl transition cursor-pointer"
                             title="Delete Category"
                           >
@@ -327,12 +385,12 @@ export default function CategoryHandlingManager() {
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-slate-900 font-serif">
-                      {categories.some((c) => c.id === editingCategory.id)
+                      {editingCategory._id || categories.some((c) => c.slug === editingCategory.slug)
                         ? 'Edit Category Details'
                         : 'Add New Category'}
                     </h2>
                     <p className="text-xs text-slate-500 font-medium">
-                      Configure cover photograph, name, identifier slug, and store description
+                      Configure cover photograph, name, identifier slug, subcategories, and store description
                     </p>
                   </div>
                 </div>
@@ -405,7 +463,7 @@ export default function CategoryHandlingManager() {
                     </div>
                   </div>
 
-                  {/* Right Column: Name, Slug & Description (7 cols) */}
+                  {/* Right Column: Name, Slug, Subcategories & Description (7 cols) */}
                   <div className="md:col-span-7 space-y-4">
                     {/* Category Name */}
                     <div>
@@ -418,7 +476,17 @@ export default function CategoryHandlingManager() {
                         placeholder="e.g. Solid Oak Wooden Chairs"
                         value={editingCategory.name}
                         onChange={(e) =>
-                          setEditingCategory((prev) => ({ ...prev, name: e.target.value }))
+                          setEditingCategory((prev) => ({
+                            ...prev,
+                            name: e.target.value,
+                            slug:
+                              prev.slug ||
+                              e.target.value
+                                .toLowerCase()
+                                .trim()
+                                .replace(/[^\w\s-]/g, '')
+                                .replace(/[\s_-]+/g, '-'),
+                          }))
                         }
                         className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:outline-hidden focus:border-emerald-700 transition"
                       />
@@ -433,11 +501,11 @@ export default function CategoryHandlingManager() {
                         type="text"
                         required
                         placeholder="e.g. wooden, ergonomic, velvet"
-                        value={editingCategory.id}
+                        value={editingCategory.slug || ''}
                         onChange={(e) =>
                           setEditingCategory((prev) => ({
                             ...prev,
-                            id: e.target.value.toLowerCase().replace(/\s+/g, '-'),
+                            slug: e.target.value.toLowerCase().replace(/\s+/g, '-'),
                           }))
                         }
                         className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-hidden focus:border-emerald-700 transition"
@@ -447,13 +515,70 @@ export default function CategoryHandlingManager() {
                       </span>
                     </div>
 
+                    {/* Subcategories Manager */}
+                    <div>
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block mb-1">
+                        Subcategories / Styles
+                      </label>
+
+                      <div className="flex items-center space-x-2 mb-2">
+                        <input
+                          type="text"
+                          placeholder="e.g. Solid Oak Vintage, Wingback..."
+                          value={subcategoryInput}
+                          onChange={(e) => setSubcategoryInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddSubcategory();
+                            }
+                          }}
+                          className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:outline-hidden focus:border-emerald-700 transition"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddSubcategory}
+                          className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                        >
+                          + Add
+                        </button>
+                      </div>
+
+                      {/* Subcategory Pills */}
+                      <div className="flex flex-wrap gap-1.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200 min-h-[42px]">
+                        {(editingCategory.subcategories || []).length === 0 ? (
+                          <span className="text-[11px] text-slate-400">Type above and press "+ Add" to add subcategories</span>
+                        ) : (
+                          editingCategory.subcategories.map((sub, sIdx) => {
+                            const label = typeof sub === 'string' ? sub : sub.name;
+                            return (
+                              <span
+                                key={sIdx}
+                                className="inline-flex items-center space-x-1 text-xs bg-white text-emerald-950 font-bold px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs"
+                              >
+                                <Tag className="w-3 h-3 text-emerald-700" />
+                                <span>{label}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSubcategory(sIdx)}
+                                  className="text-slate-400 hover:text-rose-600 p-0.5 cursor-pointer"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
                     {/* Collection Description */}
                     <div>
                       <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block mb-1">
                         Collection Description
                       </label>
                       <textarea
-                        rows={4}
+                        rows={3}
                         placeholder="Describe the craftsmanship, timber species, leather grade, or posture benefits..."
                         value={editingCategory.desc || editingCategory.description || ''}
                         onChange={(e) =>
@@ -483,7 +608,7 @@ export default function CategoryHandlingManager() {
                     className="px-6 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-black shadow-md flex items-center space-x-1.5 transition cursor-pointer"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Save Category</span>
+                    <span>Save Category to Database</span>
                   </button>
                 </div>
               </form>

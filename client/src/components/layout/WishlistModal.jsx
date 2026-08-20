@@ -128,7 +128,7 @@ export default function WishlistModal({ isOpen, onClose, onQuickView }) {
 
                   <div>
                     <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700">
-                      {product.category}
+                      {typeof product.category === 'object' ? (product.category?.name || product.categorySlug) : (product.categorySlug || product.category)}
                     </span>
                     <h4
                       onClick={() => {

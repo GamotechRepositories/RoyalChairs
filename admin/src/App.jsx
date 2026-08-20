@@ -27,7 +27,6 @@ function AdminShell() {
   const { isAuthenticated } = useAdminAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [productModalOpen, setProductModalOpen] = useState(false);
 
   if (!isAuthenticated) {
     return <AdminLogin />;
@@ -39,7 +38,7 @@ function AdminShell() {
         return (
           <DashboardOverview
             onNavigateTab={(tab) => setActiveTab(tab)}
-            onOpenNewProductModal={() => setProductModalOpen(true)}
+            onOpenNewProductModal={() => setActiveTab('products')}
           />
         );
       case 'banner-slideshow':
@@ -72,7 +71,7 @@ function AdminShell() {
         return (
           <DashboardOverview
             onNavigateTab={(tab) => setActiveTab(tab)}
-            onOpenNewProductModal={() => setProductModalOpen(true)}
+            onOpenNewProductModal={() => setActiveTab('products')}
           />
         );
     }
@@ -101,13 +100,6 @@ function AdminShell() {
           {renderContent()}
         </main>
       </div>
-
-      {/* Global Add Product Modal */}
-      <ProductModal
-        isOpen={productModalOpen}
-        onClose={() => setProductModalOpen(false)}
-        productToEdit={null}
-      />
     </div>
   );
 }

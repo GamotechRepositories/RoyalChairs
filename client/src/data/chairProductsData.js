@@ -1094,3 +1094,4 @@ export const WHY_CHOOSE_US_ITEMS = [
     desc: 'Delivered directly to your doorstep with zero-hassle safe packaging and fast transit.',
   },
 ];
+

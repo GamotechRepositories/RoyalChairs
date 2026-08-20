@@ -62,9 +62,7 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
           <h2 className="text-2xl sm:text-3xl font-black text-white font-serif tracking-tight">
             RoyalChairs Executive Dashboard
           </h2>
-          <p className="text-xs sm:text-sm text-emerald-100/90 max-w-xl">
-            Real-time monitoring of benchcrafted luxury seating sales, express courier logistics, and client orders.
-          </p>
+
         </div>
 
         <div className="flex flex-wrap items-center gap-3 relative z-10">

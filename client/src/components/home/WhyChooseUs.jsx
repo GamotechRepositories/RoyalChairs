@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   Sparkles,
@@ -7,48 +7,12 @@ import {
   Star,
   CheckCircle2,
 } from 'lucide-react';
-import { REVIEWS, WHY_CHOOSE_US_ITEMS } from '../../data/chairProductsData';
+import { useStore } from '../../context/StoreContext';
+import { WHY_CHOOSE_US_ITEMS } from '../../data/chairProductsData';
 
 export default function WhyChooseUs() {
-  const [storageTick, setStorageTick] = useState(0);
-
-  // Sync with Admin live updates
-  useEffect(() => {
-    const handleStorage = () => setStorageTick((t) => t + 1);
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener('royal_storage_update', handleStorage);
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('royal_storage_update', handleStorage);
-    };
-  }, []);
-
-  // Load reviews from localStorage or fallback to REVIEWS dataset
-  const reviewsList = useMemo(() => {
-    try {
-      const saved = localStorage.getItem('royal_admin_reviews');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((r, i) => ({
-            id: r.id || i + 1,
-            name: r.name || r.customer || 'Royal Client',
-            role: r.role || 'Verified Customer',
-            rating: r.rating || 5,
-            comment: r.comment || '',
-            productName: r.productName || r.product || 'Royal Luxury Chair',
-            avatar:
-              r.avatar ||
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-            location: r.location || 'United Kingdom',
-          }));
-        }
-      }
-    } catch {
-      // Fallback
-    }
-    return REVIEWS;
-  }, [storageTick]);
+  const { reviews } = useStore();
+  const reviewsList = reviews || [];
 
   const iconMap = {
     ShieldCheck: <ShieldCheck className="w-8 h-8 text-emerald-700" />,

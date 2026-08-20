@@ -107,7 +107,7 @@ export default function AdminLogin() {
 
         <div className="pt-2 text-center">
           <a
-            href="http://localhost:5173"
+            href={import.meta.env.VITE_CLIENT_URL || 'http://localhost:5173'}
             className="text-xs text-slate-500 hover:text-emerald-800 font-bold transition"
           >
             ← Return to Customer Storefront

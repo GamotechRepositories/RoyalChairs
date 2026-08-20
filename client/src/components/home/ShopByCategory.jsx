@@ -1,8 +1,9 @@
 import { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { CATEGORIES } from '../../data/chairProductsData';
+import { useStore } from '../../context/StoreContext';
 
 export default function ShopByCategory({ onSelectCategory }) {
+  const { categories } = useStore();
   const scrollRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -29,7 +30,7 @@ export default function ShopByCategory({ onSelectCategory }) {
         window.removeEventListener('resize', checkScroll);
       };
     }
-  }, []);
+  }, [categories]);
 
   const scroll = (direction) => {
     if (scrollRef.current) {
@@ -42,8 +43,12 @@ export default function ShopByCategory({ onSelectCategory }) {
     }
   };
 
+  if (!categories || categories.length === 0) {
+    return null; // Don't show until categories are added from Admin
+  }
+
   return (
-    <section id="shop-by-category" className="py-8 sm:py-12 bg-white">
+    <section id="shop-by-category" className="py-8 sm:py-12 bg-white animate-fadeIn">
       <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Heading */}
         <div className="mb-6 sm:mb-8">
@@ -81,10 +86,10 @@ export default function ShopByCategory({ onSelectCategory }) {
             ref={scrollRef}
             className="flex items-start space-x-6 sm:space-x-10 overflow-x-auto no-scrollbar py-2 px-1 scroll-smooth"
           >
-            {CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <button
-                key={cat.id}
-                onClick={() => onSelectCategory && onSelectCategory(cat.id)}
+                key={cat._id || cat.slug || cat.id}
+                onClick={() => onSelectCategory && onSelectCategory(cat.slug || cat.id)}
                 className="flex-none flex flex-col items-center text-center cursor-pointer w-28 sm:w-36 focus:outline-hidden"
               >
                 {/* Circular Backdrop Container */}

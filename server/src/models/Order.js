@@ -1,0 +1,105 @@
+import mongoose from 'mongoose';
+
+const orderItemSchema = new mongoose.Schema(
+  {
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product',
+    },
+    name: {
+      type: String,
+      required: true,
+    },
+    price: {
+      type: Number,
+      required: true,
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      default: 1,
+      min: 1,
+    },
+    color: {
+      type: String,
+      default: '#2E6B4D',
+    },
+    colorName: {
+      type: String,
+      default: 'Artisan Selected Finish',
+    },
+    image: {
+      type: String,
+      default: '',
+    },
+  },
+  { _id: false }
+);
+
+const orderSchema = new mongoose.Schema(
+  {
+    orderNumber: {
+      type: String,
+      required: true,
+      unique: true,
+      default: function () {
+        return `RC-${Date.now().toString().slice(-6)}`;
+      },
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    customer: {
+      name: { type: String, required: true },
+      email: { type: String, required: true },
+      phone: { type: String, required: true },
+      address: { type: String, required: true },
+      city: { type: String, required: true },
+      state: { type: String, default: '' },
+      pincode: { type: String, required: true },
+    },
+    items: [orderItemSchema],
+    totalAmount: {
+      type: Number,
+      required: true,
+    },
+    paymentMethod: {
+      type: String,
+      enum: ['cod', 'card', 'upi'],
+      default: 'cod',
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'paid', 'failed'],
+      default: 'pending',
+    },
+    orderStatus: {
+      type: String,
+      enum: ['placed', 'confirmed', 'shipped', 'delivered', 'cancelled'],
+      default: 'placed',
+    },
+    trackingNumber: {
+      type: String,
+      default: function () {
+        return `TRK-${Date.now().toString().slice(-8)}`;
+      },
+    },
+    estimatedDelivery: {
+      type: Date,
+      default: function () {
+        const d = new Date();
+        d.setDate(d.getDate() + 5);
+        return d;
+      },
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+const Order = mongoose.model('Order', orderSchema);
+
+export default Order;

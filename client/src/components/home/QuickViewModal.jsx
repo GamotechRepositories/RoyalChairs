@@ -123,7 +123,7 @@ export default function QuickViewModal({ product, onClose }) {
           <div className="flex flex-col justify-between space-y-6">
             <div>
               <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md">
-                {product.category || 'Luxury Chair'}
+                {typeof product.category === 'object' ? (product.category?.name || product.categorySlug) : (product.categorySlug || product.category || 'Luxury Chair')}
               </span>
 
               <h2 className="text-2xl md:text-3xl font-black text-emerald-950 font-serif mt-2">
@@ -181,16 +181,26 @@ export default function QuickViewModal({ product, onClose }) {
                     Select Finish
                   </label>
                   <div className="flex space-x-3">
-                    {product.colors.map((col) => (
-                      <button
-                        key={col}
-                        onClick={() => setSelectedColor(col)}
-                        className={`w-8 h-8 rounded-full border-2 transition cursor-pointer ${selectedColor === col ? 'ring-3 ring-emerald-900 scale-110 border-white' : 'border-gray-300'
+                    {product.colors.map((c, idx) => {
+                      const colorHex = typeof c === 'string' ? c : c.hex;
+                      const colorName = typeof c === 'string' ? c : (c.name || c.hex);
+                      const colorImg = typeof c === 'object' ? c.image : '';
+
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setSelectedColor(colorHex);
+                            if (colorImg) setSelectedImage(colorImg);
+                          }}
+                          className={`w-8 h-8 rounded-full border-2 transition cursor-pointer ${
+                            selectedColor === colorHex ? 'ring-3 ring-emerald-900 scale-110 border-white' : 'border-gray-300'
                           }`}
-                        style={{ backgroundColor: col }}
-                        title={`Color finish: ${col}`}
-                      />
-                    ))}
+                          style={{ backgroundColor: colorHex }}
+                          title={`Color finish: ${colorName}`}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               )}

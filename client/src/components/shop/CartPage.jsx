@@ -34,41 +34,28 @@ export default function CartPage({ onBackToHome, onQuickView }) {
     <div className="min-h-screen bg-cream-soft pt-6 pb-20">
       <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
 
-        {/* Breadcrumb Navigation */}
-        <div className="flex items-center space-x-2 text-xs font-bold text-gray-500 mb-6">
-          <button onClick={onBackToHome} className="hover:text-emerald-900 transition flex items-center cursor-pointer">
-            <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-            <span>Home</span>
-          </button>
-          <span>/</span>
-          <span className="text-emerald-950 font-extrabold">Shopping Cart</span>
-        </div>
-
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 pb-4 border-b border-emerald-900/10 gap-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-amber-300 flex items-center justify-center shadow-md">
-              <ShoppingCart className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-4xl font-black text-emerald-950 font-serif">
-                Your Shopping Cart
-              </h1>
-              <p className="text-gray-600 text-xs sm:text-sm mt-0.5">
-                {cartCount} {cartCount === 1 ? 'luxury chair' : 'luxury chairs'} in your bag
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center justify-between mb-8 pb-4 border-b border-emerald-900/10 gap-4">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
+            Your Shopping Cart
+          </h1>
 
-          {cartItems.length > 0 && (
-            <button
-              onClick={clearCart}
-              className="text-xs font-extrabold text-rose-700 hover:text-rose-900 flex items-center space-x-1.5 bg-rose-50 px-4 py-2 rounded-xl border border-rose-200 transition cursor-pointer self-start sm:self-auto"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Empty Entire Cart</span>
-            </button>
-          )}
+          <div className="flex items-center space-x-2.5">
+            <span className="text-xs font-extrabold text-slate-700 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs">
+              {cartCount} {cartCount === 1 ? 'Item' : 'Items'}
+            </span>
+
+            {cartItems.length > 0 && (
+              <button
+                onClick={clearCart}
+                className="text-xs font-extrabold text-rose-700 hover:text-rose-900 flex items-center space-x-1.5 bg-rose-50 hover:bg-rose-100 px-3.5 py-2 rounded-xl border border-rose-200 transition cursor-pointer"
+                title="Empty Entire Cart"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Empty Cart</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {cartItems.length === 0 ? (

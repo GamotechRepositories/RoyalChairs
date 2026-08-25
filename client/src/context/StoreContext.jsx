@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 
 const StoreContext = createContext();
@@ -9,23 +9,7 @@ export const StoreProvider = ({ children }) => {
   const [reviews, setReviews] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Clear any legacy mock localStorage data so only database data is shown
-  useEffect(() => {
-    try {
-      const isCleaned = localStorage.getItem('royal_static_cleaned_v2');
-      if (!isCleaned) {
-        localStorage.removeItem('royal_admin_products');
-        localStorage.removeItem('royal_admin_categories');
-        localStorage.removeItem('royal_admin_orders');
-        localStorage.removeItem('royal_admin_reviews');
-        localStorage.setItem('royal_static_cleaned_v2', 'true');
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
-
-  const fetchStoreData = async () => {
+  const fetchStoreData = useCallback(async () => {
     setIsLoading(true);
     try {
       // 1. Fetch Categories from Database
@@ -47,23 +31,50 @@ export const StoreProvider = ({ children }) => {
       // 3. Fetch Reviews from Database
       const revRes = await api.get('/reviews?status=approved');
       if (revRes.data?.success && Array.isArray(revRes.data.data)) {
-        setReviews(revRes.data.data);
+        const formatted = revRes.data.data.map((r) => ({
+          id: r.id || r._id,
+          name: r.userName || r.name || r.customer || '',
+          customer: r.userName || r.name || r.customer || '',
+          role: r.userRole || r.role || 'Verified Buyer',
+          location: r.location || 'London, UK',
+          rating: r.rating || 5,
+          comment: r.comment || '',
+          productName: r.productName || r.product || 'Royal Handcrafted Seating',
+          product: r.productName || r.product || 'Royal Handcrafted Seating',
+          avatar:
+            r.avatar ||
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        }));
+        setReviews(formatted);
       } else {
         setReviews([]);
       }
     } catch (err) {
-      console.log('Database fetch response:', err.message);
+      console.log('Database fetch note:', err.message);
       setCategories([]);
       setProducts([]);
       setReviews([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchStoreData();
-  }, []);
+  }, [fetchStoreData]);
+
+  // Synchronize with storage & live events from Admin
+  useEffect(() => {
+    const handleStorage = () => {
+      fetchStoreData();
+    };
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('royal_storage_update', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('royal_storage_update', handleStorage);
+    };
+  }, [fetchStoreData]);
 
   return (
     <StoreContext.Provider

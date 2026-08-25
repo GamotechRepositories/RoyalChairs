@@ -51,8 +51,8 @@ export default function ShopByCategory({ onSelectCategory }) {
     <section id="shop-by-category" className="py-8 sm:py-12 bg-white animate-fadeIn">
       <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Heading */}
-        <div className="mb-6 sm:mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+        <div className="text-left sm:text-center mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
             Shop By Category
           </h2>
         </div>

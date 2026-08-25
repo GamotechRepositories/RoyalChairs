@@ -1,5 +1,20 @@
-import { useState, useRef } from 'react';
-import { Sparkles, Plus, Trash2, Edit3, Image, Check, Upload, ArrowUp, ArrowDown, Eye, Link2, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  Sparkles,
+  Plus,
+  Trash2,
+  Edit3,
+  Image,
+  Check,
+  Upload,
+  ArrowUp,
+  ArrowDown,
+  Link2,
+  X,
+  CheckCircle2,
+} from 'lucide-react';
+import api from '../../services/api';
 
 const DEFAULT_BANNER_IMAGES = [
   {
@@ -14,18 +29,6 @@ const DEFAULT_BANNER_IMAGES = [
     link: '#shop-by-category',
     active: true,
   },
-  {
-    id: 'banner-3',
-    image: 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?auto=format&fit=crop&w=2000&q=85',
-    link: '#special-offers',
-    active: true,
-  },
-  {
-    id: 'banner-4',
-    image: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=2000&q=85',
-    link: '#shop-by-category',
-    active: true,
-  },
 ];
 
 export default function BannerSlideshowManager() {
@@ -35,9 +38,8 @@ export default function BannerSlideshowManager() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Normalize to pure image banner structure
           return parsed.map((s, idx) => ({
-            id: s.id || `banner-${idx + 1}`,
+            id: s.id || s._id || `banner-${idx + 1}`,
             image: s.image || '',
             link: s.link || '',
             active: s.active !== false,
@@ -52,9 +54,38 @@ export default function BannerSlideshowManager() {
 
   const [editingSlide, setEditingSlide] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   const fileInputRef = useRef(null);
+  const cardFileInputRefs = useRef({});
 
-  const saveSlides = (newSlides) => {
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
+
+  // Fetch banners from API on mount
+  useEffect(() => {
+    const loadBannersFromAPI = async () => {
+      try {
+        const res = await api.get('/banners?status=all');
+        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          const formatted = res.data.data.map((b, idx) => ({
+            id: b.id || b._id || `banner-${idx + 1}`,
+            image: b.image,
+            link: b.link || '#shop-by-category',
+            active: b.active !== false,
+          }));
+          setSlides(formatted);
+          localStorage.setItem('royal_admin_slides', JSON.stringify(formatted));
+        }
+      } catch (err) {
+        console.log('Using local banner slides cache:', err.message);
+      }
+    };
+    loadBannersFromAPI();
+  }, []);
+
+  const saveSlides = async (newSlides, toastText = 'Banner photos updated and synced to store!') => {
     setSlides(newSlides);
     localStorage.setItem('royal_admin_slides', JSON.stringify(newSlides));
     try {
@@ -62,11 +93,19 @@ export default function BannerSlideshowManager() {
     } catch {
       // ignore
     }
+
+    try {
+      await api.post('/banners', { banners: newSlides });
+    } catch (err) {
+      console.log('API banner save note (saved locally):', err.message);
+    }
+
+    showToast(toastText);
   };
 
   const handleToggleActive = (id) => {
     const updated = slides.map((s) => (s.id === id ? { ...s, active: !s.active } : s));
-    saveSlides(updated);
+    saveSlides(updated, 'Banner visibility updated!');
   };
 
   const handleDeleteSlide = (id) => {
@@ -75,7 +114,7 @@ export default function BannerSlideshowManager() {
       return;
     }
     const updated = slides.filter((s) => s.id !== id);
-    saveSlides(updated);
+    saveSlides(updated, 'Banner photo removed!');
   };
 
   const handleMove = (index, direction) => {
@@ -85,7 +124,7 @@ export default function BannerSlideshowManager() {
     const temp = updated[index];
     updated[index] = updated[newIdx];
     updated[newIdx] = temp;
-    saveSlides(updated);
+    saveSlides(updated, 'Banner order updated!');
   };
 
   const handleOpenAddModal = () => {
@@ -114,9 +153,25 @@ export default function BannerSlideshowManager() {
     }
   };
 
+  const handleDirectCardUpload = (slideId, e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        if (uploadEvent.target?.result) {
+          const updated = slides.map((s) =>
+            s.id === slideId ? { ...s, image: uploadEvent.target.result } : s
+          );
+          saveSlides(updated, 'Photo replaced successfully!');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSaveModal = (e) => {
     e.preventDefault();
-    if (!editingSlide.image.trim()) {
+    if (!editingSlide?.image?.trim()) {
       alert('Please select or paste a banner image.');
       return;
     }
@@ -129,13 +184,21 @@ export default function BannerSlideshowManager() {
     } else {
       updated = [...slides, editingSlide];
     }
-    saveSlides(updated);
+    saveSlides(updated, 'Banner photo saved and synced to store!');
     setIsModalOpen(false);
     setEditingSlide(null);
   };
 
   return (
     <div className="space-y-8 animate-fadeIn pb-12">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-6 right-6 z-[9999] bg-emerald-800 text-white px-5 py-3 rounded-2xl shadow-xl border border-amber-300/40 flex items-center space-x-3 animate-bounce">
+          <CheckCircle2 className="w-5 h-5 text-amber-300" />
+          <span className="text-xs font-black">{toastMessage}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -144,10 +207,10 @@ export default function BannerSlideshowManager() {
             <span>HOMEPAGE HERO SLIDESHOW</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
-            Banner Photos
+            Banner Photos ({slides.length})
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm mt-1">
-            Upload and arrange full-width photo banners displayed on the store homepage.
+            Upload, change, or rearrange full-width photo banners (1920x600) displayed on the live store.
           </p>
         </div>
 
@@ -167,8 +230,8 @@ export default function BannerSlideshowManager() {
             key={slide.id}
             className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-600/40 transition-all flex flex-col group"
           >
-            {/* Full Banner Photo Preview */}
-            <div className="relative w-full aspect-[21/9] bg-slate-950 overflow-hidden">
+            {/* Full Banner Photo Preview (1920x600) */}
+            <div className="relative w-full aspect-[1920/600] bg-slate-950 overflow-hidden">
               <img
                 src={slide.image}
                 alt={`Banner Photo #${index + 1}`}
@@ -224,6 +287,15 @@ export default function BannerSlideshowManager() {
 
               {/* Action Buttons */}
               <div className="flex items-center space-x-2">
+                {/* Hidden Quick Upload Input */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={(el) => (cardFileInputRefs.current[slide.id] = el)}
+                  onChange={(e) => handleDirectCardUpload(slide.id, e)}
+                  className="hidden"
+                />
+
                 <button
                   onClick={() => {
                     setEditingSlide(slide);
@@ -249,8 +321,8 @@ export default function BannerSlideshowManager() {
       </div>
 
       {/* Add / Edit Slide Modal */}
-      {isModalOpen && editingSlide && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs animate-fadeIn">
+      {isModalOpen && editingSlide && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs animate-fadeIn">
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 sm:p-8 border border-slate-200 relative max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 mb-5 border-b border-slate-100">
               <div className="flex items-center space-x-2">
@@ -267,7 +339,7 @@ export default function BannerSlideshowManager() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveModal} className="space-y-5">
+            <form onSubmit={handleSaveModal} className="space-y-4">
               {/* File Upload Button & URL input */}
               <div>
                 <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block mb-2">
@@ -287,11 +359,11 @@ export default function BannerSlideshowManager() {
                 >
                   <Upload className="w-6 h-6 text-emerald-700" />
                   <span>Click to choose photo from computer</span>
-                  <span className="text-[10px] text-slate-400 font-normal">PNG, JPG, WEBP recommended (1920x800)</span>
+                  <span className="text-[10px] text-slate-400 font-normal">PNG, JPG, WEBP recommended (1920x600)</span>
                 </button>
               </div>
 
-              <div className="relative flex items-center justify-center">
+              <div className="relative flex items-center justify-center my-2">
                 <div className="border-t border-slate-200 w-full" />
                 <span className="bg-white px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest absolute">
                   OR PASTE IMAGE URL
@@ -299,23 +371,24 @@ export default function BannerSlideshowManager() {
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
-                  Photo Image URL
+                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block mb-1">
+                  Banner Photo URL *
                 </label>
                 <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/photo-..."
+                  type="text"
+                  required
+                  placeholder="https://images.unsplash.com/... or upload above"
                   value={editingSlide.image}
                   onChange={(e) => setEditingSlide({ ...editingSlide, image: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-700 focus:bg-white"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-700"
                 />
               </div>
 
               {/* Live Preview */}
               {editingSlide.image && (
-                <div>
-                  <span className="text-[11px] font-bold text-slate-500 uppercase block mb-1.5">Live Preview</span>
-                  <div className="w-full aspect-[21/9] rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 shadow-inner">
+                <div className="space-y-1">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase">Banner Live Preview (1920x600 Ratio):</span>
+                  <div className="aspect-[1920/600] w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">
                     <img
                       src={editingSlide.image}
                       alt="Banner Preview"
@@ -359,7 +432,8 @@ export default function BannerSlideshowManager() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

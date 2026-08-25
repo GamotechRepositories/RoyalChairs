@@ -13,19 +13,45 @@ import {
   Sparkles,
   BookOpen,
   Sparkle,
+  MessageSquare,
+  Send,
+  User,
+  CheckCircle2,
+  ThumbsUp,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import ProductCard from '../ui/ProductCard';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
+import api from '../../services/api';
 
 // Finish color naming mapping
-const getColorName = (hex) => {
-  if (!hex) return 'Artisan Selected Finish';
-  const val = typeof hex === 'string' ? hex : (hex.name || hex.hex || '');
-  if (!val) return 'Artisan Selected Finish';
-  const clean = val.toUpperCase();
+const getColorName = (colorInput, productObj) => {
+  if (!colorInput) return 'Curated Finish';
+
+  // 1. If product has custom color objects with names
+  if (productObj && Array.isArray(productObj.colors)) {
+    const found = productObj.colors.find((c) => {
+      const hex = typeof c === 'string' ? c : c?.hex;
+      const target = typeof colorInput === 'string' ? colorInput : colorInput?.hex;
+      return hex && target && hex.toUpperCase() === target.toUpperCase();
+    });
+    if (found && typeof found === 'object' && found.name) {
+      return found.name;
+    }
+  }
+
+  // 2. If object with name passed
+  if (typeof colorInput === 'object' && colorInput.name) {
+    return colorInput.name;
+  }
+
+  const rawHex = typeof colorInput === 'string' ? colorInput : (colorInput.hex || '');
+  if (!rawHex) return 'Curated Finish';
+  const clean = rawHex.toUpperCase();
+
   const map = {
+    '#395DB1': 'Royal Cobalt Blue',
     '#2E6B4D': 'British Racing Green',
     '#2D6A4F': 'English Forest Emerald',
     '#3D8B68': 'Sage Velvet Weave',
@@ -45,8 +71,12 @@ const getColorName = (hex) => {
     '#264653': 'Deep Marine Teal',
     '#E2E8F0': 'Pure Ivory Pearl',
     '#475569': 'Charcoal Slate',
+    '#008080': 'Deep Teal',
+    '#0000FF': 'Electric Blue',
+    '#808080': 'Gunmetal Grey',
   };
-  return map[clean] || (typeof hex === 'object' && hex.name ? hex.name : val || 'Curated Artisan Finish');
+
+  return map[clean] || 'Curated Finish';
 };
 
 export default function ProductDetailPage({
@@ -84,7 +114,37 @@ export default function ProductDetailPage({
   const [quantity, setQuantity] = useState(1);
   const [addedAnim, setAddedAnim] = useState(false);
 
-  // Sync selected color and image when product changes
+  // Product Reviews & Comments State
+  const [productReviews, setProductReviews] = useState([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewSuccessMsg, setReviewSuccessMsg] = useState('');
+  const [newReview, setNewReview] = useState({
+    name: '',
+    role: 'Verified Buyer',
+    location: 'India',
+    rating: 5,
+    comment: '',
+  });
+
+  // Fetch reviews for this specific product
+  const fetchProductReviews = async () => {
+    if (!product) return;
+    setIsLoadingReviews(true);
+    try {
+      const prodId = product._id || product.id;
+      const res = await api.get(`/reviews?productId=${prodId}`);
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setProductReviews(res.data.data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsLoadingReviews(false);
+    }
+  };
+
+  // Sync selected color, image, and reviews when product changes
   useEffect(() => {
     if (product) {
       const initCol =
@@ -94,8 +154,54 @@ export default function ProductDetailPage({
         '#2E6B4D';
       setSelectedColor(initCol);
       setSelectedImage(product.mainImage || defaultFallbackImage);
+      fetchProductReviews();
     }
   }, [product?._id, product?.id]);
+
+  // Submit new product review & comment
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!newReview.name.trim() || !newReview.comment.trim()) {
+      alert('Please fill in your name and review comment.');
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+      const payload = {
+        productId: product._id || product.id,
+        productName: product.name,
+        userName: newReview.name.trim(),
+        name: newReview.name.trim(),
+        userRole: newReview.role.trim() || 'Verified Buyer',
+        role: newReview.role.trim() || 'Verified Buyer',
+        location: newReview.location.trim() || 'India',
+        rating: Number(newReview.rating) || 5,
+        comment: newReview.comment.trim(),
+        finish: getColorName(selectedColor),
+        avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80`,
+        status: 'approved',
+      };
+
+      const res = await api.post('/reviews', payload);
+      if (res.data?.success && res.data.data) {
+        setProductReviews((prev) => [res.data.data, ...prev]);
+        setReviewSuccessMsg('Thank you! Your review has been posted successfully.');
+        setNewReview({
+          name: '',
+          role: 'Verified Buyer',
+          location: 'India',
+          rating: 5,
+          comment: '',
+        });
+        setTimeout(() => setReviewSuccessMsg(''), 4000);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to submit review. Please try again.');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   // Active Variant matching selectedColor
   const activeVariant = useMemo(() => {
@@ -106,6 +212,17 @@ export default function ProductDetailPage({
     }
     return null;
   }, [product?.variants, selectedColor]);
+
+  // Active Color matching selectedColor
+  const activeColorObj = useMemo(() => {
+    if (Array.isArray(product?.colors) && product.colors.length > 0) {
+      return product.colors.find((c) => {
+        const hex = typeof c === 'string' ? c : c?.hex;
+        return (hex || '').toUpperCase() === (selectedColor || '').toUpperCase();
+      });
+    }
+    return null;
+  }, [product?.colors, selectedColor]);
 
   // Current dynamic pricing
   const currentPrice = activeVariant?.price !== undefined ? Number(activeVariant.price) : Number(product?.price || 0);
@@ -121,7 +238,16 @@ export default function ProductDetailPage({
       ? Math.round(((currentOriginalPrice - currentPrice) / currentOriginalPrice) * 100)
       : product?.discountPercent || 0;
 
-  const currentStock = activeVariant?.stock !== undefined ? Number(activeVariant.stock) : Number(product?.stock || 0);
+  // Dynamic stock for active variant / color
+  const currentStock = useMemo(() => {
+    if (activeVariant && activeVariant.stock !== undefined && activeVariant.stock !== null) {
+      return Number(activeVariant.stock);
+    }
+    if (activeColorObj && typeof activeColorObj === 'object' && activeColorObj.stock !== undefined && activeColorObj.stock !== null) {
+      return Number(activeColorObj.stock);
+    }
+    return Number(product?.stock || 0);
+  }, [activeVariant, activeColorObj, product?.stock]);
 
   if (!product) return null;
 
@@ -147,14 +273,20 @@ export default function ProductDetailPage({
   // Deduplicate while maintaining exact order
   const imageGallery = rawGallery.filter((img, index, self) => self.indexOf(img) === index);
 
-  // Related products from the same category (excluding current product)
-  const relatedCategoryProducts = (products || []).filter((p) => {
-    const isSameCat =
-      (p.categorySlug && p.categorySlug === product.categorySlug) ||
-      (p.category && p.category === product.category);
-    const isNotCurrent = (p._id || p.id) !== (product._id || product.id);
-    return isSameCat && isNotCurrent;
-  });
+  // Related products from the same category only (excluding current product, strictly max 20 items)
+  const relatedCategoryProducts = useMemo(() => {
+    return (products || [])
+      .filter((p) => {
+        const isSameCat =
+          (p.categorySlug && product.categorySlug && p.categorySlug.toLowerCase() === product.categorySlug.toLowerCase()) ||
+          (p.category && product.category && String(p.category).toLowerCase() === String(product.category).toLowerCase()) ||
+          (p.categorySlug && product.category && p.categorySlug.toLowerCase() === String(product.category).toLowerCase()) ||
+          (p.category && product.categorySlug && String(p.category).toLowerCase() === product.categorySlug.toLowerCase());
+        const isNotCurrent = (p._id || p.id) !== (product._id || product.id);
+        return isSameCat && isNotCurrent;
+      })
+      .slice(0, 20);
+  }, [products, product]);
 
   const handleAddToCart = () => {
     const itemToAdd = {
@@ -171,282 +303,217 @@ export default function ProductDetailPage({
     setTimeout(() => setAddedAnim(false), 1800);
   };
 
+  // Calculate average rating from fetched reviews or fallback to product rating
+  const avgRating = useMemo(() => {
+    if (productReviews.length > 0) {
+      const sum = productReviews.reduce((acc, r) => acc + (Number(r.rating) || 5), 0);
+      return (sum / productReviews.length).toFixed(1);
+    }
+    return product.rating || 5.0;
+  }, [productReviews, product.rating]);
+
   return (
     <div className="min-h-screen bg-cream-soft py-6 px-3 sm:px-6 lg:px-8 text-slate-800">
       <div className="w-full max-w-[1600px] mx-auto space-y-6">
-        {/* 1. TOP BREADCRUMB HEADER CARD (Matching Category Page Style) */}
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-emerald-100 shadow-xs">
-          <div className="flex items-center space-x-3 overflow-x-auto whitespace-nowrap scrollbar-none py-0.5">
-            <button
-              onClick={onBack}
-              className="flex items-center space-x-2 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl transition border border-emerald-200 cursor-pointer shrink-0"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back</span>
-            </button>
-            <span className="text-gray-300 text-sm">/</span>
-            <button
-              onClick={onNavigateHome}
-              className="text-xs font-semibold text-gray-500 hover:text-emerald-800 transition cursor-pointer"
-            >
-              Home
-            </button>
-            <span className="text-gray-300 text-sm">/</span>
-            <button
-              onClick={() => onNavigateCategory && onNavigateCategory(product.category)}
-              className="text-xs font-bold text-emerald-900 hover:underline transition cursor-pointer capitalize"
-            >
-              {categoryObj.name}
-            </button>
-            <span className="text-gray-300 text-sm">/</span>
-            <span className="text-xs font-extrabold text-slate-900 truncate max-w-xs sm:max-w-md">
-              {product.name}
-            </span>
-          </div>
-
-          <div className="text-xs font-extrabold text-emerald-800 bg-emerald-50 px-3.5 py-1.5 rounded-full border border-emerald-200 shrink-0">
-            SKU: RC-{product._id?.slice(-4) || '2026'}
-          </div>
-        </div>
-
-        {/* 2. SPLIT SECTION: STICKY LEFT IMAGE + SCROLLING RIGHT DETAILS */}
+        {/* MAIN 2-COLUMN PRODUCT SHOWCASE CONTAINER */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-          {/* LEFT COLUMN: STICKY IMAGE SHOWCASE & THUMBNAILS */}
-          <div className="lg:col-span-7 lg:sticky lg:top-6 space-y-4">
-            {/* Primary Main Image Frame */}
-            <div className="relative aspect-4/3 sm:aspect-16/11 bg-white rounded-2xl overflow-hidden border border-emerald-100 shadow-xs group">
-              <img
-                src={selectedImage}
-                alt={product.name}
-                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
-                onError={(e) => {
-                  e.target.src = defaultFallbackImage;
-                }}
-              />
-
-              {/* Wishlist Button Overlay */}
-              <button
-                onClick={() => toggleWishlist(product)}
-                className={`absolute top-4 right-4 p-3 rounded-full backdrop-blur-md transition-all shadow-md cursor-pointer ${
-                  inWishlist
-                    ? 'bg-rose-50 text-rose-600 border border-rose-200'
-                    : 'bg-white/80 text-slate-700 hover:text-rose-600 hover:bg-white'
-                }`}
-                title={inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
-              >
-                <Heart className={`w-5 h-5 ${inWishlist ? 'fill-current' : ''}`} />
-              </button>
-            </div>
-
-            {/* Gallery Thumbnails List */}
-            {imageGallery.length > 1 && (
-              <div className="flex items-center space-x-3 overflow-x-auto pb-2 pt-1 scrollbar-thin">
-                {imageGallery.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImage(img)}
-                    className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
-                      selectedImage === img
-                        ? 'border-emerald-700 ring-2 ring-emerald-600/30 scale-100 shadow-sm'
-                        : 'border-slate-200 hover:border-slate-300 opacity-70 hover:opacity-100'
-                    }`}
-                  >
-                    <img
-                      src={img}
-                      alt={`${product.name} thumb ${idx + 1}`}
-                      className="w-full h-full object-cover object-center"
-                      onError={(e) => {
-                        e.target.src = defaultFallbackImage;
-                      }}
-                    />
-                  </button>
-                ))}
+          {/* LEFT: GALLERY & IMAGES (Sticky Desktop) */}
+          <div className="lg:col-span-6 space-y-4 lg:sticky lg:top-6">
+            <div className="bg-white rounded-3xl overflow-hidden border border-emerald-100 shadow-sm relative">
+              <div className="aspect-square w-full overflow-hidden bg-slate-900 relative">
+                <img
+                  src={selectedImage}
+                  alt={product.name}
+                  className="w-full h-full object-cover select-none"
+                />
               </div>
-            )}
+
+              {/* Gallery Thumbnails */}
+              {imageGallery.length > 1 && (
+                <div className="p-4 flex items-center space-x-3 overflow-x-auto scrollbar-none border-t border-slate-100 bg-white">
+                  {imageGallery.map((imgUrl, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedImage(imgUrl)}
+                      className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 overflow-hidden transition shrink-0 cursor-pointer ${
+                        selectedImage === imgUrl
+                          ? 'border-emerald-800 ring-2 ring-emerald-800/20 bg-emerald-50/50'
+                          : 'border-slate-200 hover:border-emerald-400 bg-white'
+                      }`}
+                    >
+                      <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* RIGHT COLUMN: SCROLLING DETAILS, BUY BOX & FULL SPECIFICATIONS */}
-          <div className="lg:col-span-5 space-y-6">
-            {/* BUY BOX CARD */}
-            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-emerald-100 shadow-xs space-y-6">
-              <div className="space-y-4">
-                {/* Category & SKU */}
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                    {categoryObj.name}
-                  </span>
-                  <span className="text-xs font-bold text-slate-500">
-                    SKU: RC-{product._id?.slice(-4) || '2026'}
-                  </span>
-                </div>
-
-                {/* Product Title */}
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 font-serif leading-tight">
-                  {product.name}
-                </h1>
-
-                {/* Rating Summary */}
-                <div className="flex items-center space-x-2 pt-1">
-                  <div className="flex items-center text-amber-500">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-current" />
-                    ))}
+          {/* RIGHT: DETAILS, SPECS & PRICING */}
+          <div className="lg:col-span-6 space-y-6">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-100 shadow-sm space-y-6">
+              {/* Product Header */}
+              <div className="space-y-2">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 font-serif leading-tight">
+                      {product.name}
+                    </h1>
+                    <p className="text-xs sm:text-sm text-slate-600 font-medium">
+                      {product.tagline || 'Mastercrafted Ergonomic Chair with Lifetime Spine Support'}
+                    </p>
                   </div>
-                  <span className="text-sm font-extrabold text-slate-800">
-                    {product.rating || 5.0}
-                  </span>
-                  <span className="text-xs font-bold text-slate-400">
-                    ({product.reviewCount || 0})
-                  </span>
-                </div>
 
-                {/* Price Row */}
-                <div className="flex items-baseline space-x-3 pt-2">
-                  <span className="text-3xl sm:text-4xl font-black text-emerald-950 font-mono">
-                    ₹{currentPrice}
-                  </span>
-                  {currentOriginalPrice > currentPrice && (
-                    <span className="text-lg text-slate-400 line-through font-mono">
-                      ₹{currentOriginalPrice}
-                    </span>
-                  )}
-                  {currentDiscount > 0 && (
-                    <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-300">
-                      You Save ₹{currentOriginalPrice - currentPrice} ({currentDiscount}%)
-                    </span>
-                  )}
+                  <button
+                    onClick={() => toggleWishlist(product)}
+                    className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center space-x-1.5 text-xs font-bold shrink-0 ${
+                      inWishlist
+                        ? 'bg-rose-50 border-rose-200 text-rose-600'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                    }`}
+                    title="Add to Wishlist"
+                  >
+                    <Heart className={`w-4 h-4 ${inWishlist ? 'fill-current text-rose-500' : ''}`} />
+                    <span className="hidden sm:inline">{inWishlist ? 'Saved' : 'Wishlist'}</span>
+                  </button>
                 </div>
-
-                {/* Short Description */}
-                <p className="text-sm text-slate-600 leading-relaxed font-sans pt-1">
-                  {product.description ||
-                    'Masterfully crafted ergonomic seating engineered for superior spinal alignment, tailored upholstery luxury, and enduring architectural beauty.'}
-                </p>
               </div>
 
-              {/* VARIANT SELECTION (Small image + Variant Name + Price) */}
-              {(Array.isArray(product.variants) && product.variants.length > 0
-                ? product.variants
-                : Array.isArray(product.colors) && product.colors.length > 0
-                ? product.colors
-                : []
-              ).length > 0 && (
-                <div className="space-y-3 pt-4 border-t border-slate-200">
+              {/* Price Block */}
+              <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-100 flex items-baseline space-x-3">
+                <span className="text-3xl font-black text-emerald-950 font-sans">
+                  ₹{currentPrice.toLocaleString('en-IN')}
+                </span>
+                {currentOriginalPrice > currentPrice && (
+                  <span className="text-base font-bold text-slate-400 line-through">
+                    ₹{currentOriginalPrice.toLocaleString('en-IN')}
+                  </span>
+                )}
+              </div>
+
+              {/* Variant / Color Option Cards */}
+              {((Array.isArray(product.variants) && product.variants.length > 0) || (Array.isArray(product.colors) && product.colors.length > 0)) && (
+                <div className="space-y-3.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Select Variant / Color:
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-800">
+                      SELECT VARIANT / COLOR:
                     </span>
-                    <span className="text-xs font-black text-emerald-900 font-serif">
-                      {activeVariant?.colorName || activeVariant?.name || getColorName(selectedColor)}
+                    <span className="text-xs font-black text-emerald-950 capitalize">
+                      {getColorName(selectedColor, product)}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {(Array.isArray(product.variants) && product.variants.length > 0
-                      ? product.variants
-                      : product.colors
-                    ).map((item, idx) => {
-                      const colorHex = item.colorHex || item.hex || (typeof item === 'string' ? item : '#2E6B4D');
-                      const rawName = item.colorName || item.name || (typeof item === 'string' ? item : '');
-                      const name = rawName && !rawName.startsWith('Color (#')
-                        ? rawName
-                        : getColorName(colorHex) !== 'Curated Artisan Finish'
-                        ? getColorName(colorHex)
-                        : (product.variantType === 'single' ? (product.name || 'Standard Edition') : `Finish #${idx + 1}`);
+                  {/* Grid of Variant Cards with Image, Name, and Price */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(() => {
+                      const variantList = Array.isArray(product.variants) && product.variants.length > 0
+                        ? product.variants
+                        : product.colors.map((c) => ({
+                            colorHex: typeof c === 'string' ? c : (c.hex || '#2E6B4D'),
+                            name: typeof c === 'object' && c.name ? c.name : getColorName(c, product),
+                            colorName: typeof c === 'object' && c.name ? c.name : getColorName(c, product),
+                            image: typeof c === 'object' && c.image ? c.image : (c.mainImage || ''),
+                            price: product.price,
+                          }));
 
-                      const image = item.mainImage || item.image || product.mainImage || defaultFallbackImage;
-                      const price = item.price !== undefined ? Number(item.price) : Number(product.price);
-                      const isSelected = (selectedColor || '').toUpperCase() === (colorHex || '').toUpperCase();
+                      return variantList.map((variant, vIdx) => {
+                        const hex = variant.colorHex || variant.hex || '#2E6B4D';
+                        const variantName = variant.name || variant.colorName || getColorName(hex, product);
+                        const variantImg = variant.mainImage || variant.image || selectedImage || product.mainImage;
+                        const variantPrice = variant.price !== undefined ? Number(variant.price) : Number(product.price);
+                        const isSelected = (selectedColor || '').toUpperCase() === hex.toUpperCase();
 
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            setSelectedColor(colorHex);
-                            if (item.mainImage || item.image) {
-                              setSelectedImage(item.mainImage || item.image);
-                            }
-                          }}
-                          className={`p-2.5 rounded-2xl border-2 transition-all cursor-pointer flex items-center space-x-3 text-left ${
-                            isSelected
-                              ? 'border-emerald-700 bg-emerald-50/80 shadow-sm ring-2 ring-emerald-600/20'
-                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
-                          }`}
-                        >
-                          {/* Small Variant Thumbnail */}
-                          <div className="w-12 h-12 rounded-xl border border-slate-200 shrink-0 overflow-hidden relative flex items-center justify-center bg-slate-100 shadow-2xs">
-                            <img
-                              src={image}
-                              alt={name}
-                              className="w-full h-full object-cover object-center"
-                              onError={(e) => {
-                                e.target.src = defaultFallbackImage;
-                              }}
-                            />
-
-                            {/* Corner Color Swatch Indicator */}
-                            <div
-                              className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white shadow-2xs"
-                              style={{ backgroundColor: colorHex }}
-                              title={colorHex}
-                            />
-
-                            {isSelected && (
-                              <div className="absolute inset-0 bg-emerald-950/20 flex items-center justify-center">
-                                <Check className="w-4 h-4 text-white drop-shadow-md stroke-[3]" />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Variant Name & Price */}
-                          <div className="flex-1 min-w-0">
-                            <span className="text-xs font-black text-slate-900 block truncate font-serif">
-                              {name}
-                            </span>
-                            <span className="text-xs font-black text-emerald-900 font-mono">
-                              ₹{price}
-                            </span>
-                          </div>
-
-                          {/* Radio Selection Indicator */}
-                          <div
-                            className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                        return (
+                          <button
+                            key={vIdx}
+                            type="button"
+                            onClick={() => {
+                              setSelectedColor(hex);
+                              if (variantImg) setSelectedImage(variantImg);
+                            }}
+                            className={`p-3 rounded-2xl border-2 transition-all flex items-center justify-between text-left cursor-pointer bg-white ${
                               isSelected
-                                ? 'border-emerald-700 bg-emerald-700 text-white'
-                                : 'border-slate-300 bg-white'
+                                ? 'border-emerald-700 ring-2 ring-emerald-700/20 shadow-sm'
+                                : 'border-slate-200 hover:border-slate-300'
                             }`}
                           >
-                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                          </div>
-                        </button>
-                      );
-                    })}
+                            <div className="flex items-center space-x-3 min-w-0">
+                              {/* Variant Thumbnail Image with color badge */}
+                              <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-900 shrink-0 border border-slate-200 relative">
+                                <img
+                                  src={variantImg}
+                                  alt={variantName}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.src = product.mainImage || defaultFallbackImage;
+                                  }}
+                                />
+                                {isSelected && (
+                                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                    <Check className="w-4 h-4 text-white drop-shadow-md stroke-[3]" />
+                                  </div>
+                                )}
+                                <span
+                                  className="w-3.5 h-3.5 rounded-full border-2 border-white absolute bottom-0.5 right-0.5 shadow-sm"
+                                  style={{ backgroundColor: hex }}
+                                />
+                              </div>
+
+                              {/* Variant Info: Name + Price */}
+                              <div className="min-w-0 flex-1">
+                                <h4 className="text-xs sm:text-sm font-black text-slate-900 truncate">
+                                  {variantName}
+                                </h4>
+                                <p className="text-xs sm:text-sm font-black text-slate-900 font-sans mt-0.5">
+                                  ₹{variantPrice.toLocaleString('en-IN')}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Radio Selection Dot */}
+                            <div className="shrink-0 ml-2">
+                              {isSelected ? (
+                                <div className="w-5 h-5 rounded-full border-2 border-emerald-800 flex items-center justify-center">
+                                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-800" />
+                                </div>
+                              ) : (
+                                <div className="w-5 h-5 rounded-full border-2 border-slate-300" />
+                              )}
+                            </div>
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+
+                  {/* Dynamic Stock Status Line per Variant */}
+                  <div className="flex items-center space-x-2 text-xs font-bold pt-1">
+                    {currentStock > 0 ? (
+                      <>
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0"></span>
+                        <span className="text-emerald-800">
+                          In Stock ({currentStock} {currentStock === 1 ? 'unit' : 'units'} available in {getColorName(selectedColor, product)})
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+                        <span className="text-rose-700">
+                          Out of Stock in {getColorName(selectedColor, product)}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* STOCK STATUS */}
-              <div className="flex items-center space-x-2 text-xs font-bold pt-1">
-                <span
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    currentStock > 0 ? 'bg-emerald-500' : 'bg-rose-500'
-                  }`}
-                />
-                <span className={currentStock > 0 ? 'text-emerald-800' : 'text-rose-600'}>
-                  {currentStock > 0
-                    ? `In Stock (${currentStock} units available in ${activeVariant?.colorName || activeVariant?.name || getColorName(selectedColor)})`
-                    : 'Out of Stock'}
-                </span>
-              </div>
-
-              {/* KEY CRAFTSMANSHIP BULLETS */}
-              {product.features && product.features.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-slate-200">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-                    Signature Highlights:
+              {/* Key Features List */}
+              {Array.isArray(product.features) && product.features.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-800 block">
+                    SIGNATURE HIGHLIGHTS:
                   </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 font-medium">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-700">
                     {product.features.map((feat, i) => (
                       <div key={i} className="flex items-center space-x-2">
                         <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
@@ -496,10 +563,37 @@ export default function ProductDetailPage({
                     ) : (
                       <>
                         <ShoppingBag className="w-5 h-5" />
-                        <span>Add to Bag • ₹{currentPrice * quantity}</span>
+                        <span>Add to Bag • ₹{(currentPrice * quantity).toLocaleString('en-IN')}</span>
                       </>
                     )}
                   </button>
+                </div>
+
+                {/* Cohesive Product Meta Bar (Category & Ratings) */}
+                <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/80 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                    <span className="text-xs font-bold text-slate-600">
+                      Category: <strong className="text-emerald-950 font-black uppercase tracking-wider">{categoryObj.name}</strong>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center text-amber-500">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-3.5 h-3.5 ${
+                            i < Math.round(Number(avgRating)) ? 'fill-current text-amber-500' : 'text-slate-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs font-black text-slate-900">{avgRating}</span>
+                    <span className="text-xs text-slate-500 font-medium">
+                      ({productReviews.length} {productReviews.length === 1 ? 'review' : 'reviews'})
+                    </span>
+                  </div>
                 </div>
 
                 {/* Assurance Trust Badges */}
@@ -531,10 +625,9 @@ export default function ProductDetailPage({
               </div>
             </div>
 
-            {/* FULL STORY & TECHNICAL SPECIFICATIONS CARD (Scrolls in Right Column) */}
+            {/* FULL STORY & TECHNICAL SPECIFICATIONS CARD */}
             {product.showAnatomySection !== false && (
               <div className="bg-white p-6 sm:p-8 rounded-2xl border border-emerald-100 shadow-xs space-y-6">
-                {/* Section Title */}
                 <div className="border-b border-slate-100 pb-4">
                   <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-serif">
                     {product.anatomyHeading && product.anatomyHeading !== 'Built for Generations of Unmatched Comfort'
@@ -543,7 +636,6 @@ export default function ProductDetailPage({
                   </h3>
                 </div>
 
-                {/* Story narrative */}
                 <div className="text-xs sm:text-sm text-slate-600 leading-relaxed font-sans space-y-3">
                   {product.fullDescription ? (
                     <div className="whitespace-pre-line leading-relaxed">
@@ -557,7 +649,7 @@ export default function ProductDetailPage({
                   )}
                 </div>
 
-                {/* Quick Specification Summary Matrix */}
+                {/* Technical Specs */}
                 <div className="p-5 bg-emerald-50/40 rounded-2xl border border-emerald-100 space-y-3">
                   <h4 className="text-xs font-black uppercase text-emerald-950 tracking-wider flex items-center space-x-1.5">
                     <Sparkle className="w-3.5 h-3.5 text-amber-500 fill-current" />
@@ -611,15 +703,6 @@ export default function ProductDetailPage({
                         <span className="font-extrabold text-emerald-800">{product.specifications.warranty}</span>
                       </div>
                     )}
-
-                    {/* Custom Added Specs */}
-                    {Array.isArray(product.customSpecs) &&
-                      product.customSpecs.map((spec, sIdx) => (
-                        <div key={sIdx} className="py-2.5 flex items-center justify-between">
-                          <span className="text-slate-500 font-medium">{spec.label}</span>
-                          <span className="font-extrabold text-slate-900">{spec.value}</span>
-                        </div>
-                      ))}
                   </div>
                 </div>
               </div>
@@ -627,41 +710,253 @@ export default function ProductDetailPage({
           </div>
         </div>
 
-        {/* 3. FULL WIDTH BOTTOM: SAME CATEGORY / RELATED PRODUCTS SHOWCASE */}
-        <div className="bg-white rounded-2xl p-6 sm:p-8 border border-emerald-100 shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-50 pb-4">
+        {/* 3. PRODUCT REVIEWS & MEMBER COMMENTS SECTION */}
+        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-emerald-100 shadow-sm space-y-8">
+          {/* Reviews Header & Summary */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-8">
             <div>
+              <div className="flex items-center space-x-2 text-emerald-800 text-xs font-black uppercase tracking-wider mb-2">
+                <MessageSquare className="w-4 h-4 text-emerald-700" />
+                <span>Verified Customer Feedback</span>
+              </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
-                More Handcrafted {categoryObj.name}
+                Reviews & Comments ({productReviews.length})
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                Explore the complete {categoryObj.name} collection designed for posture & luxury.
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                Real customer feedback and ratings for {product.name}.
               </p>
             </div>
 
-            <button
-              onClick={() => onNavigateCategory && onNavigateCategory(product.category)}
-              className="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-extrabold border border-emerald-200 transition cursor-pointer self-start sm:self-auto shadow-2xs"
-            >
-              View Full {categoryObj.name} ({relatedCategoryProducts.length + 1})
-            </button>
+            {/* Score Pill */}
+            <div className="flex items-center space-x-4 bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200 self-start md:self-auto">
+              <div className="text-center">
+                <span className="text-3xl font-black text-emerald-950 font-serif block">
+                  {avgRating}
+                </span>
+                <div className="flex items-center justify-center text-amber-500 text-xs mt-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                  ))}
+                </div>
+              </div>
+              <div className="h-10 w-px bg-emerald-200" />
+              <div className="text-xs">
+                <span className="font-black text-emerald-900 block">{productReviews.length} Total Reviews</span>
+                <span className="text-slate-500 text-[11px]">100% Verified Purchases</span>
+              </div>
+            </div>
           </div>
 
-          {/* Product Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {relatedCategoryProducts.map((relProduct) => (
-              <ProductCard
-                key={relProduct.id || relProduct._id}
-                product={relProduct}
-                onQuickView={() => {
-                  if (onOpenProduct) {
-                    onOpenProduct(relProduct);
-                  }
-                }}
-              />
-            ))}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Reviews List (Left / Col 7) */}
+            <div className="lg:col-span-7 space-y-4">
+              <h3 className="text-base font-extrabold text-slate-900 font-serif">
+                Customer Comments
+              </h3>
+
+              {isLoadingReviews ? (
+                <div className="p-8 text-center text-xs text-slate-400">
+                  Loading customer reviews...
+                </div>
+              ) : productReviews.length === 0 ? (
+                <div className="p-8 bg-slate-50 rounded-2xl border border-slate-200 text-center space-y-2">
+                  <MessageSquare className="w-8 h-8 text-slate-300 mx-auto" />
+                  <h4 className="text-sm font-bold text-slate-700">No reviews yet for this chair</h4>
+                  <p className="text-xs text-slate-500">
+                    Be the first verified customer to share your thoughts and review this product!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4 divide-y divide-slate-100">
+                  {productReviews.map((rev) => (
+                    <div key={rev.id || rev._id} className="pt-4 first:pt-0 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <img
+                            src={rev.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
+                            alt={rev.userName || rev.name}
+                            className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                          />
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <h4 className="text-xs sm:text-sm font-black text-slate-900">
+                                {rev.userName || rev.name}
+                              </h4>
+                              <span className="inline-flex items-center text-[10px] font-extrabold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                <CheckCircle2 className="w-2.5 h-2.5 mr-1 text-emerald-600" />
+                                Verified Buyer
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-400">
+                              {rev.userRole || rev.role} {rev.location ? `• ${rev.location}` : ''}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center text-amber-500">
+                          {[...Array(rev.rating || 5)].map((_, i) => (
+                            <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                          ))}
+                        </div>
+                      </div>
+
+                      <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-sans bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80">
+                        "{rev.comment}"
+                      </p>
+
+                      {rev.finish && (
+                        <div className="text-[11px] text-slate-500 flex items-center space-x-1">
+                          <span className="font-semibold">Selected Finish:</span>
+                          <span className="font-bold text-emerald-900">{rev.finish}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Write a Review Form (Right / Col 5) */}
+            <div className="lg:col-span-5 bg-slate-50 p-6 sm:p-7 rounded-2xl border border-slate-200 space-y-4">
+              <div>
+                <h3 className="text-base font-black text-slate-900 font-serif">
+                  Write a Review & Comment
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Share your experience with other members.
+                </p>
+              </div>
+
+              {reviewSuccessMsg && (
+                <div className="bg-emerald-800 text-white p-3.5 rounded-xl text-xs font-bold flex items-center space-x-2 animate-fadeIn">
+                  <CheckCircle2 className="w-4 h-4 text-amber-300 shrink-0" />
+                  <span>{reviewSuccessMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmitReview} className="space-y-3.5">
+                {/* Star Rating Select */}
+                <div>
+                  <label className="text-xs font-extrabold text-slate-700 block mb-1">
+                    Your Rating *
+                  </label>
+                  <div className="flex items-center space-x-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setNewReview({ ...newReview, rating: star })}
+                        className="p-1 text-amber-500 hover:scale-125 transition cursor-pointer"
+                      >
+                        <Star
+                          className={`w-6 h-6 ${
+                            star <= newReview.rating ? 'fill-current' : 'text-slate-300'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                    <span className="text-xs font-bold text-slate-600 ml-2">
+                      ({newReview.rating} Stars)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div>
+                  <label className="text-xs font-extrabold text-slate-700 block mb-1">
+                    Your Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Alistair Sterling"
+                    value={newReview.name}
+                    onChange={(e) => setNewReview({ ...newReview, name: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:border-emerald-700"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Profession / Title
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Architect"
+                      value={newReview.role}
+                      onChange={(e) => setNewReview({ ...newReview, role: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      City / Location
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Mumbai, IN"
+                      value={newReview.location}
+                      onChange={(e) => setNewReview({ ...newReview, location: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-700"
+                    />
+                  </div>
+                </div>
+
+                {/* Comment Text */}
+                <div>
+                  <label className="text-xs font-extrabold text-slate-700 block mb-1">
+                    Review / Comment *
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    placeholder="Write about the build quality, comfort, lumbar support, and fabric..."
+                    value={newReview.comment}
+                    onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-700"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmittingReview}
+                  className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{isSubmittingReview ? 'Submitting...' : 'Post Customer Review'}</span>
+                </button>
+              </form>
+            </div>
           </div>
         </div>
+
+        {/* 4. FULL WIDTH BOTTOM: SAME CATEGORY / RELATED PRODUCTS SHOWCASE (Max 20 Items) */}
+        {relatedCategoryProducts.length > 0 && (
+          <div className="pt-10 sm:pt-14 space-y-6 sm:space-y-8">
+            <div className="text-left sm:text-center">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
+                More {categoryObj.name}
+              </h2>
+            </div>
+
+            {/* Product Cards Grid (4 in desktop, 2 in mobile) */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+              {relatedCategoryProducts.map((relProduct) => (
+                <ProductCard
+                  key={relProduct.id || relProduct._id}
+                  product={relProduct}
+                  onQuickView={() => {
+                    if (onOpenProduct) {
+                      onOpenProduct(relProduct);
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

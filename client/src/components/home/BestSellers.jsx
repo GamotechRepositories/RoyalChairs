@@ -1,12 +1,10 @@
-import { useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import ProductCard from '../ui/ProductCard';
 
 export default function BestSellers({ onQuickView }) {
   const { products, categories } = useStore();
   const [activeTab, setActiveTab] = useState('all');
-  const scrollRef = useRef(null);
 
   const bestSellersList = (products || []).filter((p) => p.isBestSeller);
 
@@ -29,29 +27,18 @@ export default function BestSellers({ onQuickView }) {
     })),
   ];
 
-  const scroll = (direction) => {
-    if (scrollRef.current) {
-      const { scrollLeft, clientWidth } = scrollRef.current;
-      const scrollAmount = clientWidth * 0.75;
-      scrollRef.current.scrollTo({
-        left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
-        behavior: 'smooth',
-      });
-    }
-  };
-
   return (
     <section id="best-sellers" className="py-16 bg-cream-soft animate-fadeIn">
       <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="mb-6">
-          <h2 className="text-3xl sm:text-4xl font-black text-emerald-950 font-serif">
+        <div className="text-left sm:text-center mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
             Best Seller Chairs
           </h2>
 
           {/* Category Filter Tabs */}
           {dynamicTabs.length > 1 && (
-            <div className="flex flex-wrap gap-2 mt-5">
+            <div className="flex flex-wrap justify-start sm:justify-center gap-2 mt-4 sm:mt-5">
               {dynamicTabs.map((tab) => (
                 <button
                   key={tab.id}
@@ -69,37 +56,15 @@ export default function BestSellers({ onQuickView }) {
           )}
         </div>
 
-        {/* Carousel Container with Overlay Left and Right Arrows */}
-        <div className="relative group">
-          {/* Left Overlay Arrow Button */}
-          <button
-            onClick={() => scroll('left')}
-            className="absolute left-0 sm:-left-4 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-white/95 text-emerald-900 hover:bg-emerald-700 hover:text-white shadow-xl backdrop-blur-xs transition-all border border-gray-200 opacity-90 group-hover:opacity-100 hover:scale-110 cursor-pointer"
-            aria-label="Scroll left"
-          >
-            <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
-          </button>
-
-          {/* Right Overlay Arrow Button */}
-          <button
-            onClick={() => scroll('right')}
-            className="absolute right-0 sm:-right-4 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-white/95 text-emerald-900 hover:bg-emerald-700 hover:text-white shadow-xl backdrop-blur-xs transition-all border border-gray-200 opacity-90 group-hover:opacity-100 hover:scale-110 cursor-pointer"
-            aria-label="Scroll right"
-          >
-            <ChevronRight className="w-6 h-6 stroke-[2.5]" />
-          </button>
-
-          {/* Scrollable Horizontal Card List */}
-          <div
-            ref={scrollRef}
-            className="flex space-x-6 overflow-x-auto no-scrollbar py-3 px-2 snap-x snap-mandatory scroll-smooth"
-          >
-            {filteredProducts.map((product) => (
-              <div key={product._id || product.id} className="flex-none w-72 sm:w-80 snap-start">
-                <ProductCard product={product} onQuickView={onQuickView} />
-              </div>
-            ))}
-          </div>
+        {/* Products Grid (4 on desktop, 2 on mobile) */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+          {filteredProducts.map((product) => (
+            <ProductCard
+              key={product._id || product.id}
+              product={product}
+              onQuickView={onQuickView}
+            />
+          ))}
         </div>
       </div>
     </section>

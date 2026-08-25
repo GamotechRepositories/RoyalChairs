@@ -18,51 +18,38 @@ export default function WishlistPage({ onBackToHome, onQuickView }) {
     <div className="min-h-screen bg-cream-soft pt-6 pb-20">
       <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
 
-        {/* Breadcrumb Navigation */}
-        <div className="flex items-center space-x-2 text-xs font-bold text-gray-500 mb-6">
-          <button onClick={onBackToHome} className="hover:text-emerald-900 transition flex items-center cursor-pointer">
-            <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-            <span>Home</span>
-          </button>
-          <span>/</span>
-          <span className="text-emerald-950 font-extrabold">My Saved Wishlist</span>
-        </div>
-
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 pb-4 border-b border-emerald-900/10 gap-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center shadow-md">
-              <Heart className="w-6 h-6 fill-current" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-4xl font-black text-emerald-950 font-serif">
-                My Saved Wishlist
-              </h1>
-              <p className="text-gray-600 text-xs sm:text-sm mt-0.5">
-                {wishlistItems.length} {wishlistItems.length === 1 ? 'saved chair' : 'saved chairs'} in your favorites
-              </p>
-            </div>
+        <div className="flex items-center justify-between mb-8 pb-4 border-b border-emerald-900/10 gap-4">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
+            My Saved Wishlist
+          </h1>
+
+          <div className="flex items-center space-x-2.5">
+            <span className="text-xs font-extrabold text-slate-700 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs">
+              {wishlistItems.length} {wishlistItems.length === 1 ? 'Item' : 'Items'}
+            </span>
+
+            {wishlistItems.length > 0 && (
+              <>
+                <button
+                  onClick={handleMoveAllToCart}
+                  className="px-4 py-2 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Move All to Cart</span>
+                </button>
+
+                <button
+                  onClick={clearWishlist}
+                  className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold text-xs rounded-xl border border-rose-200 transition flex items-center space-x-1 cursor-pointer"
+                  title="Clear Wishlist"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Clear</span>
+                </button>
+              </>
+            )}
           </div>
-
-          {wishlistItems.length > 0 && (
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={handleMoveAllToCart}
-                className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center space-x-2 cursor-pointer"
-              >
-                <ShoppingBag className="w-4 h-4" />
-                <span>Move All Items to Cart</span>
-              </button>
-
-              <button
-                onClick={clearWishlist}
-                className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold text-xs rounded-xl border border-rose-200 transition flex items-center space-x-1.5 cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Clear Wishlist</span>
-              </button>
-            </div>
-          )}
         </div>
 
         {wishlistItems.length === 0 ? (
@@ -89,8 +76,8 @@ export default function WishlistPage({ onBackToHome, onQuickView }) {
             </button>
           </div>
         ) : (
-          /* WISHLIST PRODUCTS GRID */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          /* WISHLIST PRODUCTS GRID (4 on desktop, 2 on mobile) */
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             {wishlistItems.map((product) => (
               <ProductCard
                 key={product.id}

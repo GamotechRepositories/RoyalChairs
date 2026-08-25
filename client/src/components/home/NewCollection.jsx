@@ -1,15 +1,16 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, ShieldCheck, Zap } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { NEW_COLLECTION_SLIDES } from '../../data/chairProductsData';
 import ProductCard from '../ui/ProductCard';
+import api from '../../services/api';
 
 export default function NewCollection({ onQuickView }) {
   const { products } = useStore();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [storageTick, setStorageTick] = useState(0);
-  const scrollRef = useRef(null);
+  const [apiBanners, setApiBanners] = useState([]);
 
   // Synchronize with storage updates from Admin
   useEffect(() => {
@@ -22,28 +23,26 @@ export default function NewCollection({ onQuickView }) {
     };
   }, []);
 
-  // Title and subtitle customization from admin
-  const headerTitle = useMemo(() => {
-    try {
-      return localStorage.getItem('royal_newcoll_title') || 'The 2026 Royal New Collection';
-    } catch {
-      return 'The 2026 Royal New Collection';
-    }
+  // Fetch New Collection banners from MongoDB database via API
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const res = await api.get('/banners?type=new_collection');
+        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          setApiBanners(res.data.data);
+        }
+      } catch (err) {
+        console.log('Error loading new collection banners from API:', err.message);
+      }
+    };
+    fetchBanners();
   }, [storageTick]);
 
-  const headerSubtitle = useMemo(() => {
-    try {
-      return (
-        localStorage.getItem('royal_newcoll_subtitle') ||
-        'Tactile bouclé weaves, 4D dynamic pelvic sync systems, and solid English oak wooden frames hand-buffed with natural beeswax.'
-      );
-    } catch {
-      return 'Tactile bouclé weaves, 4D dynamic pelvic sync systems, and solid English oak wooden frames hand-buffed with natural beeswax.';
-    }
-  }, [storageTick]);
-
-  // Load slides from localStorage (if configured by admin) or fallback to NEW_COLLECTION_SLIDES
+  // Load slides from MongoDB API (if available), or localStorage, or fallback
   const activeSlides = useMemo(() => {
+    if (apiBanners.length > 0) {
+      return apiBanners.filter((s) => s.active !== false);
+    }
     try {
       const saved = localStorage.getItem('royal_newcoll_slides');
       if (saved) {
@@ -55,7 +54,7 @@ export default function NewCollection({ onQuickView }) {
       // Fallback
     }
     return NEW_COLLECTION_SLIDES || [];
-  }, [storageTick]);
+  }, [apiBanners, storageTick]);
 
   // Slideshow auto-rotation timer
   useEffect(() => {
@@ -81,17 +80,6 @@ export default function NewCollection({ onQuickView }) {
     }
   };
 
-  const scroll = (direction) => {
-    if (scrollRef.current) {
-      const { scrollLeft, clientWidth } = scrollRef.current;
-      const scrollAmount = clientWidth * 0.75;
-      scrollRef.current.scrollTo({
-        left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
-        behavior: 'smooth',
-      });
-    }
-  };
-
   const newProducts = (products || []).filter((p) => p.isNew);
 
   if (newProducts.length === 0) {
@@ -101,32 +89,6 @@ export default function NewCollection({ onQuickView }) {
   return (
     <section id="new-collection" className="py-16 bg-white border-t border-emerald-100">
       <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
-        {/* 1. Spotlight Banner Header */}
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-8 bg-emerald-700 text-white rounded-3xl p-8 lg:p-12 relative overflow-hidden shadow-lg">
-          <div className="relative z-10 max-w-2xl">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black font-serif leading-tight text-white">
-              {headerTitle}
-            </h2>
-          </div>
-
-          <div className="relative z-10 mt-6 lg:mt-0 flex flex-wrap gap-4">
-            <div className="bg-emerald-600/90 border border-emerald-400/40 p-3.5 rounded-2xl flex items-center space-x-3 shadow-xs">
-              <ShieldCheck className="w-6 h-6 text-amber-300" />
-              <div className="text-xs">
-                <span className="font-extrabold text-white block">10-Year Warranty</span>
-                <span className="text-emerald-100">On all 2026 frames</span>
-              </div>
-            </div>
-
-            <div className="bg-emerald-600/90 border border-emerald-400/40 p-3.5 rounded-2xl flex items-center space-x-3 shadow-xs">
-              <Zap className="w-6 h-6 text-amber-300" />
-              <div className="text-xs">
-                <span className="font-extrabold text-white block">Zero-Cost Delivery</span>
-                <span className="text-emerald-100">Free doorstep delivery</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* 2. Full-Size In-Between Banner Slideshow */}
         {activeSlides.length > 0 && (
@@ -211,44 +173,21 @@ export default function NewCollection({ onQuickView }) {
         )}
 
         {/* 3. Section Header */}
-        <div className="mb-6">
-          <h3 className="text-xl font-extrabold text-emerald-900 font-serif">
+        <div className="text-left sm:text-center mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
             Explore New Arrival Chairs
-          </h3>
+          </h2>
         </div>
 
-        {/* 4. Products Carousel Wrapper with Left & Right Overlay Arrows */}
-        <div className="relative group">
-          {/* Left Edge Overlay Button */}
-          <button
-            onClick={() => scroll('left')}
-            className="absolute left-0 sm:-left-4 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-white/95 text-emerald-900 hover:bg-emerald-700 hover:text-white shadow-xl backdrop-blur-xs transition-all border border-gray-200 opacity-90 group-hover:opacity-100 hover:scale-110 cursor-pointer"
-            aria-label="Scroll left"
-          >
-            <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
-          </button>
-
-          {/* Right Edge Overlay Button */}
-          <button
-            onClick={() => scroll('right')}
-            className="absolute right-0 sm:-right-4 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-white/95 text-emerald-900 hover:bg-emerald-700 hover:text-white shadow-xl backdrop-blur-xs transition-all border border-gray-200 opacity-90 group-hover:opacity-100 hover:scale-110 cursor-pointer"
-            aria-label="Scroll right"
-          >
-            <ChevronRight className="w-6 h-6 stroke-[2.5]" />
-          </button>
-
-          {/* Scrollable Horizontal Card List */}
-          <div
-            ref={scrollRef}
-            className="flex space-x-6 overflow-x-auto no-scrollbar py-3 px-2 snap-x snap-mandatory"
-            style={{ scrollBehavior: 'smooth' }}
-          >
-            {newProducts.map((product) => (
-              <div key={product.id} className="flex-none w-72 sm:w-80 snap-start">
-                <ProductCard product={product} onQuickView={onQuickView} />
-              </div>
-            ))}
-          </div>
+        {/* 4. Products Grid (4 on desktop, 2 on mobile) */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+          {newProducts.map((product) => (
+            <ProductCard
+              key={product.id || product._id}
+              product={product}
+              onQuickView={onQuickView}
+            />
+          ))}
         </div>
       </div>
     </section>

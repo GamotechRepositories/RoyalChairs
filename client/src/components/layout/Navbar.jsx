@@ -11,8 +11,8 @@ export default function Navbar({ onOpenSearch, onOpenTrackOrder, onOpenAccount, 
   const searchInputId = useId();
 
   return (
-    <header className="sticky top-0 z-40 w-full transition-all">
-      <nav className="glass-header border-b border-emerald-500/20 shadow-xs px-3 sm:px-6 lg:px-8 py-3">
+    <header className="relative z-40 w-full bg-white transition-all">
+      <nav className="bg-white border-b border-emerald-500/20 shadow-xs px-3 sm:px-6 lg:px-8 py-3">
         <div className="w-full max-w-[1600px] mx-auto flex items-center justify-between gap-2 sm:gap-4">
 
           {/* Logo */}

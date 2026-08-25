@@ -7,7 +7,7 @@
   --font-mono: 'Poppins', sans-serif;
 }
 
-*, html, body, input, select, textarea, button, h1, h2, h3, h4, h5, h6, span, p, a, div, table, tr, td, th {
+*, *::before, *::after, html, body, input, select, textarea, button, h1, h2, h3, h4, h5, h6, span, p, a, div, section, main, article, aside, header, footer, nav, table, thead, tbody, tr, td, th, label, dialog {
   font-family: 'Poppins', sans-serif !important;
 }
 
@@ -56,6 +56,36 @@ select:disabled {
 
 .font-serif, .font-sans, .font-mono {
   font-family: 'Poppins', sans-serif !important;
+}
+
+/* Refined Typography Hierarchy: Distinct headings without harsh 900 black heaviness */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 650 !important;
+  letter-spacing: -0.015em;
+}
+
+.font-black, h1.font-black, h2.font-black, h3.font-black, h4.font-black {
+  font-weight: 650 !important;
+}
+
+.font-extrabold {
+  font-weight: 600 !important;
+}
+
+.font-bold {
+  font-weight: 600 !important;
+}
+
+.font-semibold {
+  font-weight: 550 !important;
+}
+
+.font-medium {
+  font-weight: 500 !important;
+}
+
+.font-normal {
+  font-weight: 400 !important;
 }
 
 /* Custom Scrollbar for Light Admin */

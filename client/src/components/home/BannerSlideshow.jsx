@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { HERO_SLIDES } from '../../data/chairProductsData';
+import api from '../../services/api';
 
 export default function BannerSlideshow() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [storageTick, setStorageTick] = useState(0);
+  const [apiBanners, setApiBanners] = useState([]);
 
   // Synchronize with storage updates from Admin
   useEffect(() => {
@@ -18,8 +20,26 @@ export default function BannerSlideshow() {
     };
   }, []);
 
-  // Load slides from localStorage (if configured by admin) or fallback to default HERO_SLIDES
+  // Fetch real-time banner list from MongoDB database via API
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const res = await api.get('/banners');
+        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          setApiBanners(res.data.data);
+        }
+      } catch (err) {
+        console.log('Error loading banners from API:', err.message);
+      }
+    };
+    fetchBanners();
+  }, [storageTick]);
+
+  // Load slides from MongoDB API, or localStorage, or fallback
   const activeSlides = useMemo(() => {
+    if (apiBanners.length > 0) {
+      return apiBanners.filter((s) => s.active !== false);
+    }
     try {
       const saved = localStorage.getItem('royal_admin_slides');
       if (saved) {
@@ -31,7 +51,7 @@ export default function BannerSlideshow() {
       // Fallback
     }
     return HERO_SLIDES;
-  }, [storageTick]);
+  }, [apiBanners, storageTick]);
 
   useEffect(() => {
     if (isPaused || activeSlides.length <= 1) return;
@@ -57,8 +77,8 @@ export default function BannerSlideshow() {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* Full Width Photo Banner Carousel Box */}
-      <div className="relative w-full h-[240px] sm:h-[360px] md:h-[460px] lg:h-[560px] xl:h-[640px] flex items-center overflow-hidden">
+      {/* Full Width Photo Banner Carousel Box (1920x600) */}
+      <div className="relative w-full aspect-[1920/600] max-h-[600px] flex items-center overflow-hidden">
         {activeSlides.map((slide, idx) => {
           const isActive = idx === currentSlide;
           const SlideWrapper = slide.link ? 'a' : 'div';
@@ -66,7 +86,7 @@ export default function BannerSlideshow() {
 
           return (
             <SlideWrapper
-              key={slide.id || idx}
+              key={slide.id || slide._id || idx}
               {...wrapperProps}
               className={`absolute inset-0 w-full h-full transition-opacity duration-700 ease-in-out cursor-pointer ${
                 isActive ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'

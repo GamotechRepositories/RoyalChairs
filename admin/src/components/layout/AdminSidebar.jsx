@@ -9,6 +9,8 @@ import {
   ShieldAlert,
   LogOut,
   ExternalLink,
+  Image,
+  Sparkles,
 } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
 import { useAdminAuth } from '../../context/AdminAuthContext';
@@ -27,6 +29,18 @@ export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose 
       id: 'overview',
       label: 'Dashboard',
       icon: LayoutDashboard,
+      badge: null,
+    },
+    {
+      id: 'banner-slideshow',
+      label: 'Hero Banners',
+      icon: Image,
+      badge: null,
+    },
+    {
+      id: 'new-collection',
+      label: 'New Arrivals Banners',
+      icon: Sparkles,
       badge: null,
     },
     {

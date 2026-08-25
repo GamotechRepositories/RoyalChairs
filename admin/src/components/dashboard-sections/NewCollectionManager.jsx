@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Sparkles,
   Plus,
@@ -11,12 +12,9 @@ import {
   ArrowDown,
   Link2,
   X,
-  Layers,
   CheckCircle2,
-  Armchair,
 } from 'lucide-react';
-import { useAdminData } from '../../context/AdminDataContext';
-import ProductModal from '../products/ProductModal';
+import api from '../../services/api';
 
 const DEFAULT_NEWCOLL_SLIDES = [
   {
@@ -46,9 +44,6 @@ const DEFAULT_NEWCOLL_SLIDES = [
 ];
 
 export default function NewCollectionManager() {
-  const { products, updateProduct, deleteProduct } = useAdminData();
-
-  // 1. Slides Controller State
   const [slides, setSlides] = useState(() => {
     try {
       const saved = localStorage.getItem('royal_newcoll_slides');
@@ -56,7 +51,7 @@ export default function NewCollectionManager() {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map((s, idx) => ({
-            id: s.id || `newcoll-${idx + 1}`,
+            id: s.id || s._id || `newcoll-${idx + 1}`,
             image: s.image || '',
             link: s.link || '#new-collection',
             active: s.active !== false,
@@ -69,56 +64,60 @@ export default function NewCollectionManager() {
     return DEFAULT_NEWCOLL_SLIDES;
   });
 
-  // 2. Header Text States
-  const [headerTitle, setHeaderTitle] = useState(() => {
-    return localStorage.getItem('royal_newcoll_title') || 'The 2026 Royal New Collection';
-  });
-
-  const [headerSubtitle, setHeaderSubtitle] = useState(() => {
-    return (
-      localStorage.getItem('royal_newcoll_subtitle') ||
-      'Tactile bouclé weaves, 4D dynamic pelvic sync systems, and solid English oak wooden frames hand-buffed with natural beeswax.'
-    );
-  });
-
   const [editingSlide, setEditingSlide] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+  const [toastMessage, setToastMessage] = useState('');
   const fileInputRef = useRef(null);
+  const cardFileInputRefs = useRef({});
 
-  const notifyChange = () => {
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
+
+  // Fetch New Collection banners from API on mount
+  useEffect(() => {
+    const loadBannersFromAPI = async () => {
+      try {
+        const res = await api.get('/banners?type=new_collection&status=all');
+        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          const formatted = res.data.data.map((b, idx) => ({
+            id: b.id || b._id || `newcoll-${idx + 1}`,
+            image: b.image,
+            link: b.link || '#new-collection',
+            active: b.active !== false,
+          }));
+          setSlides(formatted);
+          localStorage.setItem('royal_newcoll_slides', JSON.stringify(formatted));
+        }
+      } catch (err) {
+        console.log('Using local new collection banner cache:', err.message);
+      }
+    };
+    loadBannersFromAPI();
+  }, []);
+
+  const saveSlides = async (newSlides, toastText = 'New Arrival banners updated and synced to store!') => {
+    setSlides(newSlides);
+    localStorage.setItem('royal_newcoll_slides', JSON.stringify(newSlides));
     try {
       window.dispatchEvent(new Event('royal_storage_update'));
     } catch {
       // ignore
     }
-  };
 
-  const saveSlides = (newSlides) => {
-    setSlides(newSlides);
-    localStorage.setItem('royal_newcoll_slides', JSON.stringify(newSlides));
-    notifyChange();
-    showToast('New Collection banner slides saved successfully!');
-  };
+    try {
+      await api.post('/banners', { banners: newSlides, type: 'new_collection' });
+    } catch (err) {
+      console.log('API new collection banner save note:', err.message);
+    }
 
-  const showToast = (msg) => {
-    setSaveSuccessMsg(msg);
-    setTimeout(() => setSaveSuccessMsg(''), 3500);
-  };
-
-  const handleSaveHeader = (e) => {
-    e?.preventDefault();
-    localStorage.setItem('royal_newcoll_title', headerTitle);
-    localStorage.setItem('royal_newcoll_subtitle', headerSubtitle);
-    notifyChange();
-    showToast('New Collection header details updated!');
+    showToast(toastText);
   };
 
   const handleToggleActive = (id) => {
     const updated = slides.map((s) => (s.id === id ? { ...s, active: !s.active } : s));
-    saveSlides(updated);
+    saveSlides(updated, 'Banner visibility updated!');
   };
 
   const handleDeleteSlide = (id) => {
@@ -127,7 +126,7 @@ export default function NewCollectionManager() {
       return;
     }
     const updated = slides.filter((s) => s.id !== id);
-    saveSlides(updated);
+    saveSlides(updated, 'Banner photo removed!');
   };
 
   const handleMove = (index, direction) => {
@@ -137,7 +136,7 @@ export default function NewCollectionManager() {
     const temp = updated[index];
     updated[index] = updated[newIdx];
     updated[newIdx] = temp;
-    saveSlides(updated);
+    saveSlides(updated, 'Banner order updated!');
   };
 
   const handleOpenAddModal = () => {
@@ -166,10 +165,26 @@ export default function NewCollectionManager() {
     }
   };
 
+  const handleDirectCardUpload = (slideId, e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        if (uploadEvent.target?.result) {
+          const updated = slides.map((s) =>
+            s.id === slideId ? { ...s, image: uploadEvent.target.result } : s
+          );
+          saveSlides(updated, 'Banner photo updated from file!');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSaveModal = (e) => {
     e.preventDefault();
     if (!editingSlide.image?.trim()) {
-      alert('Please select or paste a banner image.');
+      alert('Please select or paste an image.');
       return;
     }
 
@@ -181,24 +196,18 @@ export default function NewCollectionManager() {
     } else {
       updated = [...slides, editingSlide];
     }
-    saveSlides(updated);
+    saveSlides(updated, 'New Arrival banner slide updated!');
     setIsModalOpen(false);
     setEditingSlide(null);
   };
 
-  const handleToggleNew = (product) => {
-    updateProduct(product.id, { isNew: !product.isNew });
-  };
-
-  const newCollectionProducts = products.filter((p) => p.isNew);
-
   return (
     <div className="space-y-8 animate-fadeIn pb-12">
-      {/* Toast Alert */}
-      {saveSuccessMsg && (
+      {/* Toast Alert Notification */}
+      {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-emerald-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-amber-300/40 flex items-center space-x-3 animate-bounce">
           <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-          <span className="text-sm font-extrabold">{saveSuccessMsg}</span>
+          <span className="text-sm font-extrabold">{toastMessage}</span>
         </div>
       )}
 
@@ -207,13 +216,13 @@ export default function NewCollectionManager() {
         <div>
           <div className="inline-flex items-center space-x-2 bg-emerald-50 text-emerald-800 text-xs font-black px-3.5 py-1 rounded-full mb-2 border border-emerald-200">
             <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
-            <span>NEW COLLECTION FULL-SIZE BANNER CONTROLLER</span>
+            <span>NEW ARRIVALS BANNER CONTROLLER</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
-            New Collection Banners
+            New Arrivals Banners
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm mt-1">
-            Upload, arrange, and manage full-size banner slideshow images displayed in the New Collection section.
+            Upload, arrange, and manage banner images displayed above the "Explore New Arrival Chairs" section.
           </p>
         </div>
 
@@ -233,11 +242,20 @@ export default function NewCollectionManager() {
             key={slide.id}
             className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-600/40 transition-all flex flex-col group"
           >
+            {/* Hidden File Input for direct card upload */}
+            <input
+              type="file"
+              ref={(el) => (cardFileInputRefs.current[slide.id] = el)}
+              onChange={(e) => handleDirectCardUpload(slide.id, e)}
+              accept="image/*"
+              className="hidden"
+            />
+
             {/* Full Banner Photo Preview */}
             <div className="relative w-full aspect-[21/9] bg-slate-950 overflow-hidden">
               <img
                 src={slide.image}
-                alt={`New Collection Banner #${index + 1}`}
+                alt={`New Arrival Banner #${index + 1}`}
                 className="w-full h-full object-cover group-hover:scale-102 transition duration-500"
                 onError={(e) => {
                   e.target.src =
@@ -291,6 +309,15 @@ export default function NewCollectionManager() {
               {/* Action Buttons */}
               <div className="flex items-center space-x-2">
                 <button
+                  onClick={() => cardFileInputRefs.current[slide.id]?.click()}
+                  className="px-3.5 py-2 text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition flex items-center space-x-1.5 cursor-pointer"
+                  title="Upload from Device"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload File</span>
+                </button>
+
+                <button
                   onClick={() => {
                     setEditingSlide(slide);
                     setIsModalOpen(true);
@@ -298,7 +325,7 @@ export default function NewCollectionManager() {
                   className="px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-emerald-50 rounded-xl border border-slate-200 transition flex items-center space-x-1.5 cursor-pointer"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
-                  <span>Change Photo</span>
+                  <span>Edit URL</span>
                 </button>
 
                 <button
@@ -314,165 +341,17 @@ export default function NewCollectionManager() {
         ))}
       </div>
 
-      {/* 3. Section Text Settings */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
-        <div className="flex items-center space-x-2">
-          <Layers className="w-5 h-5 text-emerald-700" />
-          <h2 className="text-xl font-black text-slate-900 font-serif">
-            Spotlight Header Text
-          </h2>
-        </div>
-
-        <form onSubmit={handleSaveHeader} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block mb-1.5">
-                Section Heading
-              </label>
-              <input
-                type="text"
-                value={headerTitle}
-                onChange={(e) => setHeaderTitle(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-extrabold text-slate-900 focus:outline-hidden focus:border-emerald-700 transition"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-extrabold uppercase tracking-wider text-slate-700 block mb-1.5">
-                Sub-description Paragraph
-              </label>
-              <input
-                type="text"
-                value={headerSubtitle}
-                onChange={(e) => setHeaderSubtitle(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-700 transition"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition cursor-pointer shadow-xs"
-          >
-            Save Header Text
-          </button>
-        </form>
-      </div>
-
-      {/* 4. Flagged New Collection Products */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-black text-slate-900 font-serif">
-              New Collection Flagged Products ({newCollectionProducts.length})
-            </h2>
-            <p className="text-xs text-slate-500">Chairs displayed in the New Arrival carousel</p>
-          </div>
-
-          <button
-            onClick={() => {
-              setEditingProduct(null);
-              setIsProductModalOpen(true);
-            }}
-            className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center space-x-2 cursor-pointer self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add New Chair</span>
-          </button>
-        </div>
-
-        <div className="divide-y divide-slate-100">
-          {newCollectionProducts.map((prod) => (
-            <div
-              key={prod.id}
-              className="p-5 flex flex-col sm:flex-row items-center justify-between gap-4 hover:bg-slate-50/50 transition"
-            >
-              <div className="flex items-center space-x-4 w-full sm:w-auto">
-                <div className="w-16 h-16 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden relative shadow-2xs">
-                  {prod.mainImage && prod.mainImage.startsWith('http') ? (
-                    <img
-                      src={prod.mainImage}
-                      alt={prod.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        const fallback = e.target.parentNode.querySelector('.fallback-icon');
-                        if (fallback) fallback.classList.remove('hidden');
-                      }}
-                    />
-                  ) : null}
-                  <div
-                    className={`fallback-icon absolute inset-0 flex items-center justify-center bg-emerald-50 text-emerald-800 ${
-                      prod.mainImage && prod.mainImage.startsWith('http') ? 'hidden' : ''
-                    }`}
-                  >
-                    <Armchair className="w-6 h-6 text-emerald-700/60" />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-[10px] font-black uppercase text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      NEW ARRIVAL
-                    </span>
-                    <span className="text-xs text-slate-500 font-bold capitalize">
-                      {prod.category}
-                    </span>
-                  </div>
-                  <h3 className="text-sm font-extrabold text-slate-900 font-serif mt-0.5">
-                    {prod.name}
-                  </h3>
-                  <p className="text-xs text-slate-500 font-mono">₹{prod.price}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between sm:justify-end space-x-4 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0">
-                <button
-                  onClick={() => handleToggleNew(prod)}
-                  className="px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 transition cursor-pointer flex items-center space-x-1"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>Flagged New</span>
-                </button>
-
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => {
-                      setEditingProduct(prod);
-                      setIsProductModalOpen(true);
-                    }}
-                    className="p-2 text-slate-600 hover:text-emerald-800 bg-slate-50 rounded-lg border border-slate-200 transition cursor-pointer"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (confirm(`Remove "${prod.name}" from catalog?`)) {
-                        deleteProduct(prod.id);
-                      }
-                    }}
-                    className="p-2 text-slate-400 hover:text-rose-600 bg-slate-50 rounded-lg border border-slate-200 transition cursor-pointer"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 5. Add / Edit Banner Slide Modal */}
-      {isModalOpen && editingSlide && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs animate-fadeIn">
+      {/* 3. Add / Edit Banner Slide Modal (Mounted via createPortal) */}
+      {isModalOpen && editingSlide && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs animate-fadeIn">
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 sm:p-8 border border-slate-200 relative max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 mb-5 border-b border-slate-100">
               <div className="flex items-center space-x-2">
                 <Image className="w-5 h-5 text-emerald-700" />
                 <h2 className="text-xl font-black text-slate-900 font-serif">
                   {slides.some((s) => s.id === editingSlide.id)
-                    ? 'Change New Collection Banner'
-                    : 'Add New Collection Banner'}
+                    ? 'Change New Arrival Banner'
+                    : 'Add New Arrival Banner'}
                 </h2>
               </div>
               <button
@@ -518,7 +397,7 @@ export default function NewCollectionManager() {
                 </div>
 
                 <input
-                  type="url"
+                  type="text"
                   placeholder="https://images.unsplash.com/..."
                   value={editingSlide.image}
                   onChange={(e) =>
@@ -598,16 +477,8 @@ export default function NewCollectionManager() {
               </div>
             </form>
           </div>
-        </div>
-      )}
-
-      {/* Product Modal */}
-      {isProductModalOpen && (
-        <ProductModal
-          isOpen={isProductModalOpen}
-          onClose={() => setIsProductModalOpen(false)}
-          productToEdit={editingProduct}
-        />
+        </div>,
+        document.body
       )}
     </div>
   );

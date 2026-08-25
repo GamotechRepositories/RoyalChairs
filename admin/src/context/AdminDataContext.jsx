@@ -26,26 +26,6 @@ const INITIAL_SETTINGS = {
 };
 
 export function AdminDataProvider({ children }) {
-  // Purge legacy mock data on startup
-  useEffect(() => {
-    try {
-      const isClean = localStorage.getItem('royal_admin_clean_v2');
-      if (!isClean) {
-        localStorage.removeItem('royal_admin_products');
-        localStorage.removeItem('royal_admin_categories');
-        localStorage.removeItem('royal_admin_orders');
-        localStorage.removeItem('royal_admin_reviews');
-        localStorage.setItem('royal_admin_clean_v2', 'true');
-        setProducts([]);
-        setCategories([]);
-        setOrders([]);
-        setReviews([]);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
-
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [orders, setOrders] = useState([]);

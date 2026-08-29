@@ -38,17 +38,21 @@ export const CartProvider = ({ children }) => {
   };
 
   const addToCart = (product, colorSelected = null, quantity = 1) => {
-    const pId = product._id || product.id;
+    if (!product) return;
+    const pId = product._id || product.id || `prod-${Date.now()}`;
     const selectedColor = colorSelected || (product.colors && product.colors[0]) || '#1E3E2B';
+    const colorKey = typeof selectedColor === 'object' ? (selectedColor.hex || selectedColor.name || '#1E3E2B') : String(selectedColor);
 
     setCartItems((prev) => {
       const existingIndex = prev.findIndex(
-        (item) => (item._id === pId || item.id === pId) && item.color === selectedColor
+        (item) =>
+          (item._id === pId || item.id === pId) &&
+          (item.color === selectedColor || item.colorKey === colorKey || item.color === colorKey)
       );
 
       if (existingIndex > -1) {
         const updated = [...prev];
-        updated[existingIndex].quantity += quantity;
+        updated[existingIndex].quantity = (Number(updated[existingIndex].quantity) || 1) + (Number(quantity) || 1);
         return updated;
       } else {
         return [
@@ -58,34 +62,44 @@ export const CartProvider = ({ children }) => {
             id: pId,
             _id: pId,
             color: selectedColor,
-            quantity: quantity,
+            colorKey: colorKey,
+            quantity: Number(quantity) || 1,
+            price: Number(product.price) || 0,
           },
         ];
       }
     });
 
-    showNotification(`Added "${product.name}" to your shopping bag!`);
+    showNotification(`Added "${product.name || 'Chair'}" to your shopping bag!`);
   };
 
   const removeFromCart = (productId, color) => {
+    const colorKey = typeof color === 'object' ? (color.hex || color.name) : String(color);
     setCartItems((prev) =>
-      prev.filter((item) => !((item.id === productId || item._id === productId) && item.color === color))
+      prev.filter((item) => {
+        const matchId = item.id === productId || item._id === productId;
+        const matchColor = !color || item.color === color || item.colorKey === colorKey || item.color === colorKey;
+        return !(matchId && matchColor);
+      })
     );
     showNotification('Item removed from bag');
   };
 
   const updateQuantity = (productId, color, delta) => {
+    const colorKey = typeof color === 'object' ? (color.hex || color.name) : String(color);
     setCartItems((prev) =>
       prev
         .map((item) => {
-          if ((item.id === productId || item._id === productId) && item.color === color) {
-            const newQty = item.quantity + delta;
+          const matchId = item.id === productId || item._id === productId;
+          const matchColor = !color || item.color === color || item.colorKey === colorKey || item.color === colorKey;
+          if (matchId && matchColor) {
+            const newQty = (Number(item.quantity) || 1) + delta;
             return newQty > 0 ? { ...item, quantity: newQty } : null;
           }
           return item;
         })
         .filter(Boolean)
-      );
+    );
   };
 
   const getItemQuantity = (productId, colorSelected = null) => {

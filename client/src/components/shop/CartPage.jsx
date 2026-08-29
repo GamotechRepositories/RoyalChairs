@@ -87,52 +87,72 @@ export default function CartPage({ onBackToHome, onQuickView }) {
 
             {/* Left 2 Columns: Items List */}
             <div className="lg:col-span-2 space-y-4">
-              {cartItems.map((item) => {
-                const itemColor = item.color || item.selectedColor;
+              {cartItems.map((item, index) => {
+                if (!item) return null;
+                const itemId = item._id || item.id || `cart-${index}`;
+                const rawColor = item.color || item.selectedColor;
+                const itemColorHex = typeof rawColor === 'string' && (rawColor.startsWith('#') || rawColor.startsWith('rgb'))
+                  ? rawColor
+                  : (rawColor?.hex || item.colorKey || '#3D8B68');
+
+                const itemVariantName = item.selectedVariantName || item.colorName || (typeof rawColor === 'object' ? rawColor?.name : '') || (typeof rawColor === 'string' && !rawColor.startsWith('#') ? rawColor : '');
+
                 const itemPrice = Number(item.price) || 0;
-                const itemQuantity = Number(item.quantity) || 1;
+                const itemOriginalPrice = Number(item.originalPrice) || itemPrice;
+                const itemQuantity = Math.max(1, Number(item.quantity) || 1);
                 const itemTotal = itemPrice * itemQuantity;
+                const itemImg = item.mainImage || item.image || 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80';
 
                 return (
                   <div
-                    key={`${item.id}-${itemColor}`}
+                    key={`cart-${itemId}-${index}`}
                     className="bg-white rounded-2xl p-4 sm:p-6 border border-emerald-900/10 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 transition hover:border-emerald-700/30"
                   >
                     <div className="flex items-center space-x-4 w-full sm:w-auto">
                       {/* Thumbnail */}
                       <img
-                        src={item.mainImage}
-                        alt={item.name}
+                        src={itemImg}
+                        alt={item.name || 'Chair'}
                         onClick={() => onQuickView && onQuickView(item)}
-                        className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-xl border border-gray-100 shadow-2xs cursor-pointer hover:scale-105 transition flex-shrink-0"
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80';
+                        }}
+                        className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-xl border border-gray-100 shadow-2xs cursor-pointer hover:scale-105 transition flex-shrink-0 bg-slate-100"
                       />
 
                       <div>
-                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 block">
-                          {item.category}
-                        </span>
+                        {item.category && (
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 block">
+                            {item.category}
+                          </span>
+                        )}
                         <h3
                           onClick={() => onQuickView && onQuickView(item)}
                           className="text-base font-extrabold text-gray-900 font-serif hover:text-emerald-800 transition cursor-pointer line-clamp-1"
                         >
-                          {item.name}
+                          {item.name || 'Handcrafted Luxury Chair'}
                         </h3>
 
                         <div className="flex items-center space-x-2 mt-1">
                           <span className="text-xs text-gray-500 font-medium">Unit Price:</span>
-                          <span className="text-xs font-black text-emerald-950">₹{itemPrice}</span>
-                          {item.originalPrice > itemPrice && (
-                            <span className="text-xs text-gray-400 line-through">₹{item.originalPrice}</span>
+                          <span className="text-xs font-black text-emerald-950">₹{itemPrice.toLocaleString('en-IN')}</span>
+                          {itemOriginalPrice > itemPrice && (
+                            <span className="text-xs text-gray-400 line-through">₹{itemOriginalPrice.toLocaleString('en-IN')}</span>
                           )}
                         </div>
 
-                        {itemColor && (
+                        {rawColor && (
                           <div className="flex items-center space-x-1.5 mt-2">
                             <span className="text-[11px] font-medium text-gray-500">Finish:</span>
                             <span
-                              className="w-3.5 h-3.5 rounded-full border border-gray-300"
-                              style={{ backgroundColor: itemColor }}
+                              className="w-3.5 h-3.5 rounded-full border border-gray-300 shadow-2xs"
+                              style={{ backgroundColor: itemColorHex }}
                             />
+                            {itemVariantName && (
+                              <span className="text-[11px] font-semibold text-gray-700 capitalize">
+                                {itemVariantName}
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
@@ -142,7 +162,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
                     <div className="flex items-center justify-between sm:justify-end space-x-6 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0">
                       <div className="w-28 h-9 rounded-full bg-emerald-800 text-white flex items-center justify-between shadow-xs overflow-hidden border border-emerald-900/30">
                         <button
-                          onClick={() => updateQuantity(item.id, itemColor, -1)}
+                          onClick={() => updateQuantity(itemId, item.color, -1)}
                           className="w-9 h-full flex items-center justify-center hover:bg-emerald-700 text-amber-300 transition cursor-pointer"
                           title="Decrease quantity"
                         >
@@ -154,7 +174,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
                         </span>
 
                         <button
-                          onClick={() => updateQuantity(item.id, itemColor, 1)}
+                          onClick={() => updateQuantity(itemId, item.color, 1)}
                           className="w-9 h-full flex items-center justify-center hover:bg-emerald-700 text-amber-300 transition cursor-pointer"
                           title="Increase quantity"
                         >
@@ -164,12 +184,12 @@ export default function CartPage({ onBackToHome, onQuickView }) {
 
                       <div className="text-right min-w-[70px]">
                         <span className="text-sm font-black text-emerald-950 block">
-                          ₹{itemTotal}
+                          ₹{itemTotal.toLocaleString('en-IN')}
                         </span>
                       </div>
 
                       <button
-                        onClick={() => removeFromCart(item.id, itemColor)}
+                        onClick={() => removeFromCart(itemId, item.color)}
                         className="p-2 text-gray-400 hover:text-rose-600 transition cursor-pointer"
                         title="Remove item"
                       >

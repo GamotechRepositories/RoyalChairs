@@ -64,55 +64,72 @@ export default function CartDrawer() {
                 </button>
               </div>
             ) : (
-              cartItems.map((item) => (
-                <div key={`${item.id}-${item.color}`} className="py-4 flex space-x-4">
-                  <img
-                    src={item.mainImage}
-                    alt={item.name}
-                    className="w-20 h-20 object-cover rounded-xl border border-gray-100"
-                  />
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <h4 className="text-sm font-bold text-gray-900 leading-tight">{item.name}</h4>
-                        <button
-                          onClick={() => removeFromCart(item.id, item.color)}
-                          className="text-gray-400 hover:text-rose-600 transition ml-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+              cartItems.map((item, index) => {
+                if (!item) return null;
+                const itemId = item._id || item.id || `drawer-${index}`;
+                const rawColor = item.color || item.selectedColor;
+                const itemColorHex = typeof rawColor === 'string' && (rawColor.startsWith('#') || rawColor.startsWith('rgb'))
+                  ? rawColor
+                  : (rawColor?.hex || item.colorKey || '#3D8B68');
+                const itemImg = item.mainImage || item.image || 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80';
+                const itemPrice = Number(item.price) || 0;
+                const itemQty = Math.max(1, Number(item.quantity) || 1);
+
+                return (
+                  <div key={`drawer-${itemId}-${index}`} className="py-4 flex space-x-4">
+                    <img
+                      src={itemImg}
+                      alt={item.name || 'Chair'}
+                      onError={(e) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80';
+                      }}
+                      className="w-20 h-20 object-cover rounded-xl border border-gray-100 bg-slate-100 shrink-0"
+                    />
+                    <div className="flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start">
+                          <h4 className="text-sm font-bold text-gray-900 leading-tight">{item.name || 'Handcrafted Luxury Chair'}</h4>
+                          <button
+                            onClick={() => removeFromCart(itemId, item.color)}
+                            className="text-gray-400 hover:text-rose-600 transition ml-2 cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {rawColor && (
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className="w-3 h-3 rounded-full border border-gray-300 shadow-xs" style={{ backgroundColor: itemColorHex }} />
+                            <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">
+                              Selected Color
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <span className="w-3 h-3 rounded-full border border-gray-300 shadow-xs" style={{ backgroundColor: item.color }} />
-                        <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">
-                          Selected Color
+
+                      <div className="flex justify-between items-center mt-3">
+                        <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50">
+                          <button
+                            onClick={() => updateQuantity(itemId, item.color, -1)}
+                            className="p-1 hover:bg-gray-200 rounded-l-lg transition text-gray-600 cursor-pointer"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="px-3 text-xs font-bold text-gray-900 select-none">{itemQty}</span>
+                          <button
+                            onClick={() => updateQuantity(itemId, item.color, 1)}
+                            className="p-1 hover:bg-gray-200 rounded-r-lg transition text-gray-600 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <span className="text-sm font-extrabold text-emerald-950">
+                          ₹{(itemPrice * itemQty).toLocaleString('en-IN')}
                         </span>
                       </div>
                     </div>
-
-                    <div className="flex justify-between items-center mt-3">
-                      <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50">
-                        <button
-                          onClick={() => updateQuantity(item.id, item.color, -1)}
-                          className="p-1 hover:bg-gray-200 rounded-l-lg transition text-gray-600"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="px-3 text-xs font-bold text-gray-900">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.id, item.color, 1)}
-                          className="p-1 hover:bg-gray-200 rounded-r-lg transition text-gray-600"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <span className="text-sm font-extrabold text-emerald-950">
-                        ₹{(item.price * item.quantity).toLocaleString()}
-                      </span>
-                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 

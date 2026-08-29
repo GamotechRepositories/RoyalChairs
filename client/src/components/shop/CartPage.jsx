@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { ShoppingCart, Trash2, Plus, Minus, ArrowLeft, ArrowRight, ShieldCheck, Truck, Sparkles, Tag } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, ArrowRight, ShieldCheck, Truck, Sparkles, Tag } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 
 export default function CartPage({ onBackToHome, onQuickView }) {
-  const { cartItems, removeFromCart, updateQuantity, clearCart, cartTotal, cartSubtotal, cartCount } = useCart();
+  const { cartItems = [], removeFromCart, updateQuantity, clearCart, cartTotal, cartSubtotal, cartCount = 0 } = useCart();
   const [promoCode, setPromoCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState(0);
   const [promoError, setPromoError] = useState('');
@@ -14,7 +14,11 @@ export default function CartPage({ onBackToHome, onQuickView }) {
     ? cartTotal
     : typeof cartSubtotal === 'number' && !isNaN(cartSubtotal)
       ? cartSubtotal
-      : cartItems.reduce((acc, item) => acc + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+      : (cartItems || []).reduce((acc, item) => {
+          const p = typeof item?.price === 'number' ? item.price : Number(String(item?.price || 0).replace(/[^0-9.-]+/g, '')) || 0;
+          const q = Math.max(1, Number(item?.quantity) || 1);
+          return acc + p * q;
+        }, 0);
 
   const finalTotal = Math.max(0, subtotalAmount - appliedDiscount);
 
@@ -23,8 +27,8 @@ export default function CartPage({ onBackToHome, onQuickView }) {
     setPromoError('');
     setPromoSuccess('');
     if (promoCode.trim().toUpperCase() === 'ROYAL50' || promoCode.trim().toUpperCase() === 'ROYAL10') {
-
-      setAppliedDiscount(4000); setPromoSuccess('ROYAL50 Applied: ₹4,000 Discount Unlocked!');
+      setAppliedDiscount(4000);
+      setPromoSuccess('ROYAL50 Applied: ₹4,000 Discount Unlocked!');
     } else if (promoCode.trim().length > 0) {
       setPromoError('Invalid Coupon Code. Try "ROYAL50"');
     }
@@ -36,19 +40,19 @@ export default function CartPage({ onBackToHome, onQuickView }) {
 
         {/* Page Header */}
         <div className="flex items-center justify-between mb-8 pb-4 border-b border-emerald-900/10 gap-4">
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif">
             Your Shopping Cart
           </h1>
 
           <div className="flex items-center space-x-2.5">
-            <span className="text-xs font-extrabold text-slate-700 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs">
+            <span className="text-xs font-bold text-slate-700 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs">
               {cartCount} {cartCount === 1 ? 'Item' : 'Items'}
             </span>
 
-            {cartItems.length > 0 && (
+            {Array.isArray(cartItems) && cartItems.length > 0 && (
               <button
                 onClick={clearCart}
-                className="text-xs font-extrabold text-rose-700 hover:text-rose-900 flex items-center space-x-1.5 bg-rose-50 hover:bg-rose-100 px-3.5 py-2 rounded-xl border border-rose-200 transition cursor-pointer"
+                className="text-xs font-bold text-rose-700 hover:text-rose-900 flex items-center space-x-1.5 bg-rose-50 hover:bg-rose-100 px-3.5 py-2 rounded-xl border border-rose-200 transition cursor-pointer"
                 title="Empty Entire Cart"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -58,14 +62,14 @@ export default function CartPage({ onBackToHome, onQuickView }) {
           </div>
         </div>
 
-        {cartItems.length === 0 ? (
+        {!Array.isArray(cartItems) || cartItems.length === 0 ? (
           /* EMPTY CART VIEW */
           <div className="bg-white rounded-3xl p-12 text-center border border-emerald-900/10 shadow-lg max-w-2xl mx-auto my-12">
             <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-800 border border-emerald-200">
               <ShoppingCart className="w-10 h-10" />
             </div>
 
-            <h2 className="text-2xl font-black text-emerald-950 font-serif mb-2">
+            <h2 className="text-2xl font-bold text-emerald-950 font-serif mb-2">
               Your Bag is Currently Empty
             </h2>
 
@@ -75,7 +79,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
 
             <button
               onClick={onBackToHome}
-              className="px-8 py-4 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-sm rounded-xl shadow-lg transition inline-flex items-center space-x-2 cursor-pointer"
+              className="px-8 py-4 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg transition inline-flex items-center space-x-2 cursor-pointer"
             >
               <span>Explore Chair Collection</span>
               <ArrowRight className="w-4 h-4" />
@@ -88,20 +92,43 @@ export default function CartPage({ onBackToHome, onQuickView }) {
             {/* Left 2 Columns: Items List */}
             <div className="lg:col-span-2 space-y-4">
               {cartItems.map((item, index) => {
-                if (!item) return null;
+                if (!item || typeof item !== 'object') return null;
                 const itemId = item._id || item.id || `cart-${index}`;
                 const rawColor = item.color || item.selectedColor;
                 const itemColorHex = typeof rawColor === 'string' && (rawColor.startsWith('#') || rawColor.startsWith('rgb'))
                   ? rawColor
-                  : (rawColor?.hex || item.colorKey || '#3D8B68');
+                  : (typeof rawColor === 'object' && typeof rawColor?.hex === 'string' ? rawColor.hex : '#3D8B68');
 
-                const itemVariantName = item.selectedVariantName || item.colorName || (typeof rawColor === 'object' ? rawColor?.name : '') || (typeof rawColor === 'string' && !rawColor.startsWith('#') ? rawColor : '');
+                const itemVariantName = typeof item.selectedVariantName === 'string'
+                  ? item.selectedVariantName
+                  : (typeof item.colorName === 'string'
+                    ? item.colorName
+                    : (typeof rawColor === 'object' && typeof rawColor?.name === 'string'
+                      ? rawColor.name
+                      : (typeof rawColor === 'string' && !rawColor.startsWith('#') ? rawColor : '')));
 
-                const itemPrice = Number(item.price) || 0;
-                const itemOriginalPrice = Number(item.originalPrice) || itemPrice;
+                const categoryText = typeof item.category === 'object'
+                  ? (item.category?.name || item.categorySlug || '')
+                  : (typeof item.category === 'string' ? item.category : (item.categorySlug || ''));
+
+                const nameText = typeof item.name === 'string' ? item.name : 'Handcrafted Luxury Chair';
+
+                const itemPrice = typeof item.price === 'number' && !isNaN(item.price)
+                  ? item.price
+                  : Number(String(item.price || 0).replace(/[^0-9.-]+/g, '')) || 0;
+
+                const itemOriginalPrice = typeof item.originalPrice === 'number' && !isNaN(item.originalPrice)
+                  ? item.originalPrice
+                  : Number(String(item.originalPrice || itemPrice).replace(/[^0-9.-]+/g, '')) || itemPrice;
+
                 const itemQuantity = Math.max(1, Number(item.quantity) || 1);
                 const itemTotal = itemPrice * itemQuantity;
-                const itemImg = item.mainImage || item.image || 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80';
+
+                const itemImg = typeof item.mainImage === 'string' && item.mainImage
+                  ? item.mainImage
+                  : (typeof item.image === 'string' && item.image
+                    ? item.image
+                    : (Array.isArray(item.images) && typeof item.images[0] === 'string' ? item.images[0] : 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80'));
 
                 return (
                   <div
@@ -112,7 +139,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
                       {/* Thumbnail */}
                       <img
                         src={itemImg}
-                        alt={item.name || 'Chair'}
+                        alt={nameText}
                         onClick={() => onQuickView && onQuickView(item)}
                         onError={(e) => {
                           e.target.src = 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80';
@@ -121,21 +148,22 @@ export default function CartPage({ onBackToHome, onQuickView }) {
                       />
 
                       <div>
-                        {item.category && (
-                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 block">
-                            {item.category}
+                        {categoryText ? (
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 block">
+                            {categoryText}
                           </span>
-                        )}
+                        ) : null}
+
                         <h3
                           onClick={() => onQuickView && onQuickView(item)}
-                          className="text-base font-extrabold text-gray-900 font-serif hover:text-emerald-800 transition cursor-pointer line-clamp-1"
+                          className="text-base font-bold text-gray-900 font-serif hover:text-emerald-800 transition cursor-pointer line-clamp-1"
                         >
-                          {item.name || 'Handcrafted Luxury Chair'}
+                          {nameText}
                         </h3>
 
                         <div className="flex items-center space-x-2 mt-1">
                           <span className="text-xs text-gray-500 font-medium">Unit Price:</span>
-                          <span className="text-xs font-black text-emerald-950">₹{itemPrice.toLocaleString('en-IN')}</span>
+                          <span className="text-xs font-bold text-emerald-950">₹{itemPrice.toLocaleString('en-IN')}</span>
                           {itemOriginalPrice > itemPrice && (
                             <span className="text-xs text-gray-400 line-through">₹{itemOriginalPrice.toLocaleString('en-IN')}</span>
                           )}
@@ -145,11 +173,11 @@ export default function CartPage({ onBackToHome, onQuickView }) {
                           <div className="flex items-center space-x-1.5 mt-2">
                             <span className="text-[11px] font-medium text-gray-500">Finish:</span>
                             <span
-                              className="w-3.5 h-3.5 rounded-full border border-gray-300 shadow-2xs"
+                              className="w-3.5 h-3.5 rounded-full border border-gray-300 shadow-2xs shrink-0"
                               style={{ backgroundColor: itemColorHex }}
                             />
                             {itemVariantName && (
-                              <span className="text-[11px] font-semibold text-gray-700 capitalize">
+                              <span className="text-[11px] font-semibold text-gray-700 capitalize truncate max-w-[180px]">
                                 {itemVariantName}
                               </span>
                             )}
@@ -169,7 +197,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
                           <Minus className="w-3.5 h-3.5" />
                         </button>
 
-                        <span className="flex-1 text-center text-xs font-black text-white font-mono select-none">
+                        <span className="flex-1 text-center text-xs font-bold text-white font-mono select-none">
                           {itemQuantity}
                         </span>
 
@@ -183,7 +211,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
                       </div>
 
                       <div className="text-right min-w-[70px]">
-                        <span className="text-sm font-black text-emerald-950 block">
+                        <span className="text-sm font-bold text-emerald-950 block">
                           ₹{itemTotal.toLocaleString('en-IN')}
                         </span>
                       </div>
@@ -203,14 +231,14 @@ export default function CartPage({ onBackToHome, onQuickView }) {
 
             {/* Right Column: Order Summary Box */}
             <div className="bg-white rounded-3xl p-6 border border-emerald-900/10 shadow-lg space-y-6 sticky top-24">
-              <h2 className="text-lg font-black text-emerald-950 font-serif border-b border-gray-100 pb-3">
+              <h2 className="text-lg font-bold text-emerald-950 font-serif border-b border-gray-100 pb-3">
                 Order Summary
               </h2>
 
               <div className="space-y-3 text-xs">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal ({cartCount} items):</span>
-                  <span className="font-bold text-gray-900">₹{subtotalAmount}</span>
+                  <span className="font-bold text-gray-900">₹{subtotalAmount.toLocaleString('en-IN')}</span>
                 </div>
 
                 <div className="flex justify-between text-gray-600">
@@ -221,19 +249,19 @@ export default function CartPage({ onBackToHome, onQuickView }) {
                 {appliedDiscount > 0 && (
                   <div className="flex justify-between text-emerald-800 font-bold bg-emerald-50 p-2 rounded-lg">
                     <span>Voucher Discount:</span>
-                    <span>-₹{appliedDiscount}</span>
+                    <span>-₹{appliedDiscount.toLocaleString('en-IN')}</span>
                   </div>
                 )}
 
-                <div className="border-t border-gray-100 pt-3 flex justify-between items-baseline text-base font-black text-emerald-950">
+                <div className="border-t border-gray-100 pt-3 flex justify-between items-baseline text-base font-bold text-emerald-950">
                   <span>Order Total:</span>
-                  <span className="text-xl text-emerald-900">₹{finalTotal}</span>
+                  <span className="text-xl text-emerald-900">₹{finalTotal.toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
               {/* Promo Coupon Input */}
               <form onSubmit={handleApplyPromo} className="space-y-2 pt-2">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-950 block flex items-center">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-emerald-950 block flex items-center">
                   <Tag className="w-3.5 h-3.5 mr-1 text-emerald-700" />
                   <span>Voucher / Promo Code</span>
                 </label>
@@ -247,7 +275,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                    className="px-4 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
                   >
                     Apply
                   </button>
@@ -259,11 +287,11 @@ export default function CartPage({ onBackToHome, onQuickView }) {
 
               {/* Checkout Action Button */}
               <button
-                onClick={() => alert(`Thank you for ordering with RoyalChairs! Total: ₹${finalTotal}`)}
-                className="w-full py-4 bg-gradient-to-r from-emerald-800 to-emerald-700 hover:from-emerald-700 hover:to-emerald-600 text-white font-black text-sm uppercase tracking-wider rounded-2xl shadow-xl transition transform active:scale-98 flex items-center justify-center space-x-2 cursor-pointer"
+                onClick={() => alert(`Thank you for ordering with RoyalChairs! Total: ₹${finalTotal.toLocaleString('en-IN')}`)}
+                className="w-full py-4 bg-gradient-to-r from-emerald-800 to-emerald-700 hover:from-emerald-700 hover:to-emerald-600 text-white font-bold text-sm uppercase tracking-wider rounded-2xl shadow-xl transition transform active:scale-98 flex items-center justify-center space-x-2 cursor-pointer"
               >
                 <ShieldCheck className="w-5 h-5 text-amber-300" />
-                <span>Proceed to Checkout (₹{finalTotal})</span>
+                <span>Proceed to Checkout (₹{finalTotal.toLocaleString('en-IN')})</span>
               </button>
 
               <div className="pt-2 text-[11px] text-gray-500 space-y-1.5 border-t border-gray-100">

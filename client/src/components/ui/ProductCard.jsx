@@ -141,13 +141,13 @@ export default function ProductCard({ product, onQuickView }) {
       onMouseEnter={() => setIsCardHovered(true)}
       onMouseLeave={() => setIsCardHovered(false)}
       className={`bg-white rounded-2xl overflow-hidden transition-all duration-300 flex flex-col justify-between relative h-full border ${isCardHovered
-          ? 'border-emerald-500 shadow-lg ring-1 ring-emerald-500/20'
-          : 'border-emerald-100 shadow-xs'
+        ? 'border-emerald-500 shadow-lg ring-1 ring-emerald-500/20'
+        : 'border-emerald-100 shadow-xs'
         }`}
     >
-      {/* Full-Bleed Image Container */}
+      {/* Full-Bleed Image Container (Compact on mobile) */}
       <div
-        className="relative h-64 sm:h-72 w-full overflow-hidden bg-cream-soft cursor-pointer group/cardimg"
+        className="relative h-44 sm:h-60 lg:h-64 w-full overflow-hidden bg-cream-soft cursor-pointer group/cardimg"
         onClick={handleQuickViewClick}
       >
         {/* Primary Main Image (1st Image of active color variant) */}
@@ -159,8 +159,8 @@ export default function ProductCard({ product, onQuickView }) {
             e.target.src = defaultFallbackImage;
           }}
           className={`w-full h-full object-cover transform transition-all duration-500 ease-out ${isCardHovered && currentHoverImage && currentHoverImage !== currentMainImage
-              ? 'opacity-0 scale-105'
-              : 'opacity-100 scale-100'
+            ? 'opacity-0 scale-105'
+            : 'opacity-100 scale-100'
             }`}
           loading="lazy"
         />
@@ -186,21 +186,21 @@ export default function ProductCard({ product, onQuickView }) {
             e.stopPropagation();
             toggleWishlist(product);
           }}
-          className={`absolute top-3 right-3 p-2 rounded-full shadow-md backdrop-blur-xs transition z-20 cursor-pointer ${inWishlist
-              ? 'bg-rose-500 text-white'
-              : 'bg-white/80 text-gray-700 hover:bg-white hover:text-rose-600'
+          className={`absolute top-2.5 right-2.5 p-1.5 sm:p-2 rounded-full shadow-md backdrop-blur-xs transition z-20 cursor-pointer ${inWishlist
+            ? 'bg-rose-500 text-white'
+            : 'bg-white/80 text-gray-700 hover:bg-white hover:text-rose-600'
             }`}
           title={inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
         >
-          <Heart className={`w-4 h-4 ${inWishlist ? 'fill-current' : ''}`} />
+          <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${inWishlist ? 'fill-current' : ''}`} />
         </button>
       </div>
 
-      {/* Product Details & Action Section with Padding */}
-      <div className="p-4 pt-3 flex flex-col justify-between flex-1">
+      {/* Product Details & Action Section */}
+      <div className="p-3 sm:p-4 pt-2.5 sm:pt-3 flex flex-col justify-between flex-1">
         {/* Product Title & Category */}
-        <div className="space-y-1">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700">
+        <div className="space-y-0.5 sm:space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block truncate">
             {typeof product.category === 'object'
               ? product.category?.name || product.categorySlug
               : product.categorySlug || product.category}
@@ -208,115 +208,83 @@ export default function ProductCard({ product, onQuickView }) {
 
           <h3
             onClick={handleQuickViewClick}
-            className={`text-base font-extrabold text-gray-900 transition line-clamp-1 cursor-pointer font-serif ${isCardHovered ? 'text-emerald-700' : ''
+            className={`text-sm sm:text-base font-bold text-gray-900 transition line-clamp-1 cursor-pointer font-serif ${isCardHovered ? 'text-emerald-700' : ''
               }`}
           >
             {product.name}
           </h3>
-
-          {/* Star Ratings */}
-          <div className="flex items-center space-x-2 pt-0.5">
-            <div className="flex items-center text-amber-500">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-3.5 h-3.5 fill-current" />
-              ))}
-            </div>
-            <span className="text-xs font-bold text-gray-700">{product.rating || 5}</span>
-            <span className="text-xs text-gray-400">({product.reviewCount || 0})</span>
-          </div>
-
-          {/* Color Swatches (Clicking changes 1st & 2nd images & price instantly!) */}
-          {swatchesList.length > 0 && (
-            <div className="flex items-center space-x-2 pt-1.5">
-              {swatchesList.map((swatch, idx) => {
-                const isSelected = (selectedColor || '').toUpperCase() === (swatch.hex || '').toUpperCase();
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedColor(swatch.hex);
-                    }}
-                    className={`w-5 h-5 rounded-full border-2 transition-all cursor-pointer shadow-xs ${isSelected
-                        ? 'border-emerald-800 ring-2 ring-emerald-500 scale-125'
-                        : 'border-white hover:scale-110 opacity-90'
-                      }`}
-                    style={{ backgroundColor: swatch.hex }}
-                    title={`${swatch.name} (Click to switch images & price)`}
-                  />
-                );
-              })}
-            </div>
-          )}
         </div>
 
         {/* Card Bottom Price & Action */}
-        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-          <div>
-            <div className="flex items-baseline space-x-1.5 font-mono">
-              <span className="text-lg font-extrabold text-emerald-900">₹{currentPrice}</span>
+        <div className="mt-3 pt-2.5 border-t border-gray-100 space-y-2">
+          {/* Price & Discount Row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-baseline space-x-1 sm:space-x-1.5 font-mono">
+              <span className="text-base sm:text-lg font-bold text-emerald-950">₹{currentPrice.toLocaleString('en-IN')}</span>
               {currentOriginalPrice > currentPrice && (
-                <span className="text-xs text-gray-400 line-through">₹{currentOriginalPrice}</span>
+                <span className="text-[11px] sm:text-xs text-gray-400 line-through">₹{currentOriginalPrice.toLocaleString('en-IN')}</span>
               )}
             </div>
             {currentDiscount > 0 && (
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-sm">
+              <span className="text-[9px] sm:text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-sm">
                 Save {currentDiscount}%
               </span>
             )}
           </div>
 
-          {currentQty > 0 ? (
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="w-32 h-10 rounded-full bg-emerald-700 text-white flex items-center justify-between shadow-sm overflow-hidden border border-emerald-800/30"
-            >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  updateQuantity(product._id || product.id, selectedColor, -1);
-                }}
-                className="w-10 h-full flex items-center justify-center hover:bg-emerald-800 text-amber-300 transition font-extrabold cursor-pointer"
-                title="Decrease quantity"
+          {/* Add to Cart Button / Quantity Controller on Next Line */}
+          <div>
+            {currentQty > 0 ? (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="w-full h-10 sm:h-11 rounded-2xl bg-emerald-700 text-white flex items-center justify-between shadow-xs overflow-hidden border border-emerald-800/30"
               >
-                <Minus className="w-3.5 h-3.5 stroke-[3]" />
-              </button>
-              <span className="flex-1 text-center text-xs font-black text-white font-mono select-none">
-                {currentQty}
-              </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateQuantity(product._id || product.id, selectedColor, -1);
+                  }}
+                  className="w-12 h-full flex items-center justify-center hover:bg-emerald-800 text-amber-300 transition font-extrabold cursor-pointer"
+                  title="Decrease quantity"
+                >
+                  <Minus className="w-4 h-4 stroke-[3]" />
+                </button>
+                <span className="flex-1 text-center text-sm sm:text-base font-bold text-white font-mono select-none">
+                  {currentQty}
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateQuantity(product._id || product.id, selectedColor, 1);
+                  }}
+                  className="w-12 h-full flex items-center justify-center hover:bg-emerald-800 text-amber-300 transition font-extrabold cursor-pointer"
+                  title="Increase quantity"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                </button>
+              </div>
+            ) : (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  updateQuantity(product._id || product.id, selectedColor, 1);
-                }}
-                className="w-10 h-full flex items-center justify-center hover:bg-emerald-800 text-amber-300 transition font-extrabold cursor-pointer"
-                title="Increase quantity"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[3]" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleAddToCart}
-              className={`w-32 h-10 rounded-full font-bold text-xs flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer ${addedAnim
+                onClick={handleAddToCart}
+                className={`w-full h-10 sm:h-11 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center space-x-2 transition shadow-xs cursor-pointer ${addedAnim
                   ? 'bg-amber-400 text-emerald-950'
                   : 'bg-emerald-700 hover:bg-emerald-600 text-white'
-                }`}
-            >
-              {addedAnim ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span>Added!</span>
-                </>
-              ) : (
-                <>
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>Add to Bag</span>
-                </>
-              )}
-            </button>
-          )}
+                  }`}
+              >
+                {addedAnim ? (
+                  <>
+                    <Check className="w-4 h-4 stroke-[2.5]" />
+                    <span>Added!</span>
+                  </>
+                ) : (
+                  <>
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>Add to Bag</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

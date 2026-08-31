@@ -63,10 +63,10 @@ export default function ShopByCategory({ onSelectCategory }) {
           {canScrollLeft && (
             <button
               onClick={() => scroll('left')}
-              className="absolute -left-3 sm:-left-5 top-[60px] sm:top-[75px] -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-md hover:shadow-lg border border-slate-200 flex items-center justify-center text-slate-700 hover:text-slate-950 transition-all hover:scale-105 cursor-pointer"
+              className="absolute -left-2 sm:-left-5 top-[44px] sm:top-[70px] -translate-y-1/2 z-20 w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-white shadow-md hover:shadow-lg border border-slate-200 flex items-center justify-center text-slate-700 hover:text-slate-950 transition-all hover:scale-105 cursor-pointer"
               aria-label="Scroll left"
             >
-              <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+              <ChevronLeft className="w-4 h-4 sm:w-6 sm:h-6" />
             </button>
           )}
 
@@ -74,26 +74,26 @@ export default function ShopByCategory({ onSelectCategory }) {
           {canScrollRight && (
             <button
               onClick={() => scroll('right')}
-              className="absolute -right-3 sm:-right-5 top-[60px] sm:top-[75px] -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-md hover:shadow-lg border border-slate-200 flex items-center justify-center text-slate-700 hover:text-slate-950 transition-all hover:scale-105 cursor-pointer"
+              className="absolute -right-2 sm:-right-5 top-[44px] sm:top-[70px] -translate-y-1/2 z-20 w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-white shadow-md hover:shadow-lg border border-slate-200 flex items-center justify-center text-slate-700 hover:text-slate-950 transition-all hover:scale-105 cursor-pointer"
               aria-label="Scroll right"
             >
-              <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+              <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6" />
             </button>
           )}
 
-          {/* Horizontal Circular Category List */}
+          {/* Horizontal Circular Category List (3 per view on mobile, smooth horizontal snap) */}
           <div
             ref={scrollRef}
-            className="flex items-start space-x-6 sm:space-x-10 overflow-x-auto no-scrollbar py-2 px-1 scroll-smooth"
+            className="flex items-start space-x-3.5 sm:space-x-8 overflow-x-auto no-scrollbar py-2 px-1 scroll-smooth snap-x snap-mandatory"
           >
             {categories.map((cat) => (
               <button
                 key={cat._id || cat.slug || cat.id}
                 onClick={() => onSelectCategory && onSelectCategory(cat.slug || cat.id)}
-                className="flex-none flex flex-col items-center text-center cursor-pointer w-28 sm:w-36 focus:outline-hidden"
+                className="flex-none flex flex-col items-center text-center cursor-pointer w-[calc(33.333%-10px)] sm:w-32 lg:w-36 focus:outline-hidden snap-start group/cat"
               >
                 {/* Circular Backdrop Container */}
-                <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-[#f1f3f6] flex items-center justify-center mb-3 overflow-hidden">
+                <div className="relative w-20 h-20 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-full bg-[#f1f3f6] flex items-center justify-center mb-2 sm:mb-3 overflow-hidden border border-slate-100 shadow-2xs group-hover/cat:scale-105 transition-transform duration-300">
                   <img
                     src={cat.image}
                     alt={cat.name}
@@ -106,7 +106,7 @@ export default function ShopByCategory({ onSelectCategory }) {
                 </div>
 
                 {/* Category Name */}
-                <span className="text-xs sm:text-sm font-semibold text-slate-800 leading-snug">
+                <span className="text-[11px] sm:text-xs lg:text-sm font-semibold text-slate-800 leading-snug line-clamp-2 group-hover/cat:text-emerald-800 transition-colors">
                   {cat.name}
                 </span>
               </button>

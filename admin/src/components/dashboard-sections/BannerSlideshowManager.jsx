@@ -210,7 +210,7 @@ export default function BannerSlideshowManager() {
             Banner Photos ({slides.length})
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm mt-1">
-            Upload, change, or rearrange full-width photo banners (1920x600) displayed on the live store.
+            Upload, change, or rearrange hero photo banners (Website: 1920x600, Phone: 1080x1080) displayed on the live store.
           </p>
         </div>
 

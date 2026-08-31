@@ -77,8 +77,8 @@ export default function BannerSlideshow() {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* Full Width Photo Banner Carousel Box (1920x600) */}
-      <div className="relative w-full aspect-[1920/600] max-h-[600px] flex items-center overflow-hidden">
+      {/* Full Width Photo Banner Carousel Box (Mobile: 1080x1080 / aspect-square, Website: 1920x600 / aspect-[1920/600]) */}
+      <div className="relative w-full aspect-square sm:aspect-[1920/600] max-h-[600px] flex items-center overflow-hidden">
         {activeSlides.map((slide, idx) => {
           const isActive = idx === currentSlide;
           const SlideWrapper = slide.link ? 'a' : 'div';
@@ -92,16 +92,21 @@ export default function BannerSlideshow() {
                 isActive ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
               }`}
             >
-              <img
-                src={slide.image}
-                alt={slide.title || `Royal Chairs Banner ${idx + 1}`}
-                onError={(e) => {
-                  e.target.src =
-                    'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=2000&q=85';
-                }}
-                className="w-full h-full object-cover object-center transform hover:scale-[1.02] transition-transform duration-1000 select-none"
-                loading={idx === 0 ? 'eager' : 'lazy'}
-              />
+              <picture className="w-full h-full block">
+                {slide.mobileImage && (
+                  <source media="(max-width: 640px)" srcSet={slide.mobileImage} />
+                )}
+                <img
+                  src={slide.image}
+                  alt={slide.title || `Royal Chairs Banner ${idx + 1}`}
+                  onError={(e) => {
+                    e.target.src =
+                      'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=2000&q=85';
+                  }}
+                  className="w-full h-full object-cover object-center transform hover:scale-[1.02] transition-transform duration-1000 select-none"
+                  loading={idx === 0 ? 'eager' : 'lazy'}
+                />
+              </picture>
             </SlideWrapper>
           );
         })}

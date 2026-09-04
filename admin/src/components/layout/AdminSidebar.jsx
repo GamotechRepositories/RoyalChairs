@@ -44,6 +44,12 @@ export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose 
       badge: null,
     },
     {
+      id: 'category-spotlight',
+      label: 'Category Spotlight',
+      icon: Image,
+      badge: null,
+    },
+    {
       id: 'category-handling',
       label: 'Category Handling',
       icon: Layers,

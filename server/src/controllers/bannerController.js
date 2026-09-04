@@ -48,13 +48,35 @@ const DEFAULT_NEWCOLL_BANNERS = [
   },
 ];
 
+const DEFAULT_SPOTLIGHT_BANNERS = [
+  {
+    image: 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=1600&q=85',
+    link: '#category-gaming',
+    categorySlug: 'gaming',
+    title: 'The Sovereign Orthopedic Executive Leather Throne',
+    subtitle: 'Master-Crafted Ergonomics & Unmatched Spinal Comfort',
+    description:
+      'Smart, adaptable design engineered for high-focus professionals and esports champions. Seamlessly elevates your space with dual-density cold-cured foam, 4D adaptive lumbar alignment, and premium breathable leatherette.',
+    buttonText: 'SHOP NOW',
+    active: true,
+    order: 0,
+    type: 'spotlight',
+  },
+];
+
 // @desc    Get banners by type
 // @route   GET /api/banners
 // @access  Public
 export const getBanners = async (req, res) => {
   try {
     const { status, type = 'hero' } = req.query;
-    const bannerType = type === 'new_collection' ? 'new_collection' : 'hero';
+    let bannerType = type;
+    if (
+      bannerType !== 'new_collection' &&
+      bannerType !== 'spotlight'
+    ) {
+      bannerType = 'hero';
+    }
 
     const query = {
       type: bannerType === 'hero' ? { $in: ['hero', null, undefined] } : bannerType,
@@ -63,26 +85,25 @@ export const getBanners = async (req, res) => {
 
     let banners = await Banner.find(query).sort({ order: 1, createdAt: 1 });
 
-    // Seed defaults if database is empty for this type
-    if (banners.length === 0 && !status) {
-      const defaultsToSeed = bannerType === 'new_collection' ? DEFAULT_NEWCOLL_BANNERS : DEFAULT_HERO_BANNERS;
-      await Banner.insertMany(defaultsToSeed);
+    // Seed defaults if table is empty
+    if (banners.length === 0 && status !== 'all') {
+      const defaults =
+        bannerType === 'new_collection'
+          ? DEFAULT_NEWCOLL_BANNERS
+          : bannerType === 'spotlight'
+          ? DEFAULT_SPOTLIGHT_BANNERS
+          : DEFAULT_HERO_BANNERS;
+      await Banner.insertMany(defaults);
       banners = await Banner.find(query).sort({ order: 1, createdAt: 1 });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: banners.length,
-      data: banners.map((b) => {
-        const obj = b.toObject();
-        return {
-          ...obj,
-          id: obj._id.toString(),
-        };
-      }),
+      data: banners,
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to fetch banners',
       error: error.message,
@@ -96,7 +117,14 @@ export const getBanners = async (req, res) => {
 export const saveBanners = async (req, res) => {
   try {
     const { banners, type = 'hero' } = req.body;
-    const bannerType = type === 'new_collection' ? 'new_collection' : 'hero';
+    let bannerType = type;
+    if (
+      bannerType !== 'new_collection' &&
+      bannerType !== 'spotlight' &&
+      bannerType !== 'instagram'
+    ) {
+      bannerType = 'hero';
+    }
 
     if (!Array.isArray(banners)) {
       return res.status(400).json({
@@ -116,8 +144,18 @@ export const saveBanners = async (req, res) => {
 
     const docsToInsert = banners.map((b, idx) => ({
       image: b.image,
-      link: b.link || (bannerType === 'new_collection' ? '#new-collection' : '#shop-by-category'),
+      link:
+        b.link ||
+        (bannerType === 'new_collection'
+          ? '#new-collection'
+          : bannerType === 'instagram'
+          ? 'https://instagram.com/royalchairs'
+          : '#shop-by-category'),
       title: b.title || '',
+      subtitle: b.subtitle || '',
+      description: b.description || '',
+      buttonText: b.buttonText || 'SHOP NOW',
+      categorySlug: b.categorySlug || '',
       type: bannerType,
       active: b.active !== false,
       order: idx,
@@ -127,7 +165,7 @@ export const saveBanners = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `${bannerType === 'new_collection' ? 'New Collection' : 'Hero'} Banners saved and synced successfully`,
+      message: `${bannerType.toUpperCase()} Banners saved and synced successfully`,
       count: inserted.length,
       data: inserted.map((b) => {
         const obj = b.toObject();

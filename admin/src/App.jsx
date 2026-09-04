@@ -15,11 +15,12 @@ import ReviewsManager from './components/reviews/ReviewsManager';
 import SettingsManager from './components/settings/SettingsManager';
 import ProductModal from './components/products/ProductModal';
 
-// 6 Client Dashboard Section Controllers
+// Client Dashboard Section Controllers
 import BannerSlideshowManager from './components/dashboard-sections/BannerSlideshowManager';
 import CategoryHandlingManager from './components/dashboard-sections/CategoryHandlingManager';
 import BestSellerManager from './components/dashboard-sections/BestSellerManager';
 import NewCollectionManager from './components/dashboard-sections/NewCollectionManager';
+import SpotlightManager from './components/dashboard-sections/SpotlightManager';
 import OffersDiscountsManager from './components/dashboard-sections/OffersDiscountsManager';
 import WhyChooseUsManager from './components/dashboard-sections/WhyChooseUsManager';
 
@@ -49,6 +50,8 @@ function AdminShell() {
         return <BestSellerManager />;
       case 'new-collection':
         return <NewCollectionManager />;
+      case 'category-spotlight':
+        return <SpotlightManager />;
       case 'offers-discounts':
         return <OffersDiscountsManager />;
       case 'why-choose-us':

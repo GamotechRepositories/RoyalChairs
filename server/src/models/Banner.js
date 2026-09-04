@@ -14,9 +14,25 @@ const bannerSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    subtitle: {
+      type: String,
+      default: '',
+    },
+    description: {
+      type: String,
+      default: '',
+    },
+    buttonText: {
+      type: String,
+      default: 'SHOP NOW',
+    },
+    categorySlug: {
+      type: String,
+      default: '',
+    },
     type: {
       type: String,
-      enum: ['hero', 'new_collection'],
+      enum: ['hero', 'new_collection', 'spotlight', 'instagram'],
       default: 'hero',
       index: true,
     },

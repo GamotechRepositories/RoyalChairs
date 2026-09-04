@@ -9,7 +9,9 @@ import BannerSlideshow from './components/home/BannerSlideshow';
 import ShopByCategory from './components/home/ShopByCategory';
 import BestSellers from './components/home/BestSellers';
 import NewCollection from './components/home/NewCollection';
+import CategorySpotlight from './components/home/CategorySpotlight';
 import HighDiscountOffers from './components/home/HighDiscountOffers';
+import LifestyleGallery from './components/home/LifestyleGallery';
 import WhyChooseUs from './components/home/WhyChooseUs';
 import Footer from './components/layout/Footer';
 
@@ -144,10 +146,19 @@ function DashboardContent() {
             {/* 5. New Collection */}
             <NewCollection onQuickView={(prod) => handleOpenProduct(prod)} />
 
-            {/* 6. Offers */}
+            {/* 6. Featured Best Category Spotlight */}
+            <CategorySpotlight
+              onSelectCategory={(catId) => handleOpenCategory(catId)}
+              onOpenProduct={(prod) => handleOpenProduct(prod)}
+            />
+
+            {/* 7. Offers */}
             <HighDiscountOffers onQuickView={(prod) => handleOpenProduct(prod)} />
 
-            {/* 7. Why Choose Us */}
+            {/* 8. Lifestyle Gallery (Static 10-photo 2-second auto-slide) */}
+            <LifestyleGallery />
+
+            {/* 9. Why Choose Us */}
             <WhyChooseUs />
           </>
         )}

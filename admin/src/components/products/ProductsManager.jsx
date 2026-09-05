@@ -14,7 +14,7 @@ import { useAdminData } from '../../context/AdminDataContext';
 import ProductFormPage from './ProductFormPage';
 
 export default function ProductsManager() {
-  const { products, categories, deleteProduct, updateStock } = useAdminData();
+  const { products, categories, deleteProduct, toggleAvailability } = useAdminData();
 
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'form'
   const [editingProduct, setEditingProduct] = useState(null);
@@ -22,7 +22,7 @@ export default function ProductsManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSubcategory, setSelectedSubcategory] = useState('All');
-  const [stockFilter, setStockFilter] = useState('All');
+  const [availabilityFilter, setAvailabilityFilter] = useState('All');
 
   // Subcategories for active category
   const activeCategoryObj = (categories || []).find(
@@ -50,13 +50,13 @@ export default function ProductsManager() {
       selectedSubcategory === 'All' ||
       pSub.toLowerCase() === selectedSubcategory.toLowerCase();
 
-    const matchesStock =
-      stockFilter === 'All' ||
-      (stockFilter === 'In Stock' && p.stock >= 10) ||
-      (stockFilter === 'Low Stock' && p.stock > 0 && p.stock < 10) ||
-      (stockFilter === 'Out of Stock' && p.stock === 0);
+    const isAvail = p.isAvailable !== false && (p.stock === undefined || p.stock > 0);
+    const matchesAvailability =
+      availabilityFilter === 'All' ||
+      (availabilityFilter === 'Available' && isAvail) ||
+      (availabilityFilter === 'Out of Stock' && !isAvail);
 
-    return matchesSearch && matchesCategory && matchesSubcategory && matchesStock;
+    return matchesSearch && matchesCategory && matchesSubcategory && matchesAvailability;
   });
 
   const handleOpenAddForm = () => {
@@ -163,16 +163,15 @@ export default function ProductsManager() {
             </select>
           )}
 
-          {/* Stock Filter */}
+          {/* Availability Filter */}
           <select
-            value={stockFilter}
-            onChange={(e) => setStockFilter(e.target.value)}
+            value={availabilityFilter}
+            onChange={(e) => setAvailabilityFilter(e.target.value)}
             className="px-3.5 py-2 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 focus:bg-white focus:border-emerald-600 focus:outline-hidden cursor-pointer"
           >
-            <option value="All">All Stock Levels</option>
-            <option value="In Stock">In Stock (10+)</option>
-            <option value="Low Stock">Low Stock (&lt;10)</option>
-            <option value="Out of Stock">Out of Stock (0)</option>
+            <option value="All">All Availability</option>
+            <option value="Available">Available (In Stock)</option>
+            <option value="Out of Stock">Out of Stock</option>
           </select>
         </div>
       </div>
@@ -186,7 +185,7 @@ export default function ProductsManager() {
                 <th className="py-4 px-4">Chair Model</th>
                 <th className="py-4 px-4">Category &amp; Variants</th>
                 <th className="py-4 px-4">Price &amp; Savings</th>
-                <th className="py-4 px-4">Stock Inventory</th>
+                <th className="py-4 px-4">Availability</th>
                 <th className="py-4 px-4">Rating</th>
                 <th className="py-4 px-4 text-right">Actions</th>
               </tr>
@@ -287,40 +286,40 @@ export default function ProductsManager() {
                         </div>
                       </td>
 
-                      {/* Stock Inventory */}
+                      {/* Availability */}
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center space-x-2">
-                          <div className="inline-flex items-center bg-slate-50 rounded-lg p-0.5 border border-slate-200">
-                            <button
-                              onClick={() => updateStock(product._id || product.id, Math.max(0, product.stock - 1))}
-                              className="w-5 h-5 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded transition cursor-pointer"
-                            >
-                              <Minus className="w-2.5 h-2.5" />
-                            </button>
-                            <span className="font-bold text-slate-800 font-mono text-xs px-2 select-none">
-                              {product.stock}
-                            </span>
-                            <button
-                              onClick={() => updateStock(product._id || product.id, product.stock + 1)}
-                              className="w-5 h-5 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded transition cursor-pointer"
-                            >
-                              <Plus className="w-2.5 h-2.5" />
-                            </button>
-                          </div>
-                          {product.stock === 0 ? (
-                            <span className="text-[10px] font-extrabold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
-                              Out of Stock
-                            </span>
-                          ) : product.stock < 10 ? (
-                            <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                              Low
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                              OK
-                            </span>
-                          )}
-                        </div>
+                        {(() => {
+                          const isAvail = product.isAvailable !== false && (product.stock === undefined || product.stock > 0);
+                          return (
+                            <div className="flex items-center space-x-2.5">
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={isAvail}
+                                onClick={() => toggleAvailability(product._id || product.id, isAvail)}
+                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                                  isAvail ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-300 hover:bg-slate-400'
+                                }`}
+                                title={isAvail ? 'Click to mark Out of Stock' : 'Click to mark Available'}
+                              >
+                                <span
+                                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                    isAvail ? 'translate-x-5' : 'translate-x-0'
+                                  }`}
+                                />
+                              </button>
+                              <span
+                                className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border tracking-wide transition ${
+                                  isAvail
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    : 'bg-rose-50 text-rose-700 border-rose-200'
+                                }`}
+                              >
+                                {isAvail ? 'Available' : 'Out of Stock'}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Rating */}

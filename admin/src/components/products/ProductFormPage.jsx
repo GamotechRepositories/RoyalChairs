@@ -87,7 +87,8 @@ export default function ProductFormPage({ productToEdit, onBack }) {
     price: '',
     originalPrice: '',
     discountPercent: 0,
-    stock: 15,
+    isAvailable: true,
+    stock: 20,
     mainImage: '',
     hoverImage: '',
     galleryImages: [],
@@ -116,7 +117,8 @@ export default function ProductFormPage({ productToEdit, onBack }) {
         colorHex: '#2E6B4D',
         colorName: '',
         price: '',
-        stock: '',
+        isAvailable: true,
+        stock: 20,
         mainImage: '',
         hoverImage: '',
         galleryImages: [],
@@ -162,12 +164,17 @@ export default function ProductFormPage({ productToEdit, onBack }) {
 
       // Normalize variants
       const hasMulti = productToEdit.variantType === 'multi' || (Array.isArray(productToEdit.variants) && productToEdit.variants.length > 0);
+      const isInitialAvail = productToEdit.isAvailable !== undefined
+        ? Boolean(productToEdit.isAvailable)
+        : (productToEdit.stock !== undefined ? productToEdit.stock > 0 : true);
+
       const normalizedVariants = hasMulti && Array.isArray(productToEdit.variants) && productToEdit.variants.length > 0
         ? productToEdit.variants.map((v) => ({
           colorHex: v.colorHex || '#2E6B4D',
           colorName: v.colorName || v.name || getDefaultColorName(v.colorHex),
           price: v.price || productToEdit.price || 499,
-          stock: v.stock !== undefined ? v.stock : 15,
+          isAvailable: v.isAvailable !== undefined ? Boolean(v.isAvailable) : (v.stock !== undefined ? v.stock > 0 : true),
+          stock: v.isAvailable === false ? 0 : (v.stock !== undefined ? v.stock : 20),
           mainImage: v.mainImage || v.image || '',
           hoverImage: v.hoverImage || '',
           galleryImages: Array.isArray(v.galleryImages) ? v.galleryImages : [],
@@ -177,7 +184,8 @@ export default function ProductFormPage({ productToEdit, onBack }) {
             colorHex: normalizedColors[0]?.hex || '#2E6B4D',
             colorName: normalizedColors[0]?.name || 'British Racing Green',
             price: productToEdit.price || 499,
-            stock: productToEdit.stock || 20,
+            isAvailable: isInitialAvail,
+            stock: isInitialAvail ? 20 : 0,
             mainImage: productToEdit.mainImage || '',
             hoverImage: productToEdit.hoverImage || '',
             galleryImages: Array.isArray(productToEdit.galleryImages) ? productToEdit.galleryImages : [],
@@ -192,7 +200,8 @@ export default function ProductFormPage({ productToEdit, onBack }) {
         price: productToEdit.price || 450,
         originalPrice: productToEdit.originalPrice || productToEdit.price || 450,
         discountPercent: productToEdit.discountPercent || 0,
-        stock: productToEdit.stock || 15,
+        isAvailable: isInitialAvail,
+        stock: isInitialAvail ? 20 : 0,
         mainImage: productToEdit.mainImage || '',
         hoverImage: productToEdit.hoverImage || '',
         galleryImages: Array.isArray(productToEdit.galleryImages) ? productToEdit.galleryImages : [],
@@ -293,12 +302,73 @@ export default function ProductFormPage({ productToEdit, onBack }) {
   };
 
   // --- MULTI-VARIANT HELPERS ---
+  const handleToggleVariantType = () => {
+    if (formData.variantType === 'single') {
+      // Switch from Single to Multi: Copy current single variant details into Variant 1
+      const currentPrice = formData.price || '';
+      const currentPrimaryImg = formData.mainImage || '';
+      const currentHoverImg = formData.hoverImage || '';
+      const currentGallery = Array.isArray(formData.galleryImages) ? formData.galleryImages : [];
+      const currentColor = (formData.colors && formData.colors[0]) || { hex: '#2E6B4D', name: '' };
+      const currentIsAvailable = formData.isAvailable !== false;
+
+      let updatedVariants = Array.isArray(formData.variants) && formData.variants.length > 0
+        ? [...formData.variants]
+        : [];
+
+      if (updatedVariants.length === 0) {
+        updatedVariants = [{
+          colorHex: currentColor.hex || '#2E6B4D',
+          colorName: currentColor.name || getDefaultColorName(currentColor.hex),
+          price: currentPrice,
+          isAvailable: currentIsAvailable,
+          stock: currentIsAvailable ? 20 : 0,
+          mainImage: currentPrimaryImg,
+          hoverImage: currentHoverImg,
+          galleryImages: currentGallery,
+        }];
+      } else {
+        updatedVariants[0] = {
+          ...updatedVariants[0],
+          colorHex: currentColor.hex || updatedVariants[0].colorHex || '#2E6B4D',
+          colorName: currentColor.name || updatedVariants[0].colorName || getDefaultColorName(currentColor.hex),
+          price: currentPrice || updatedVariants[0].price || '',
+          isAvailable: currentIsAvailable,
+          stock: currentIsAvailable ? 20 : 0,
+          mainImage: currentPrimaryImg || updatedVariants[0].mainImage || '',
+          hoverImage: currentHoverImg || updatedVariants[0].hoverImage || '',
+          galleryImages: currentGallery.length > 0 ? currentGallery : (updatedVariants[0].galleryImages || []),
+        };
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        variantType: 'multi',
+        variants: updatedVariants,
+      }));
+    } else {
+      // Switch from Multi to Single: Copy Variant 1 details back into single fields
+      const firstVariant = formData.variants?.[0];
+      setFormData((prev) => ({
+        ...prev,
+        variantType: 'single',
+        price: firstVariant?.price || prev.price,
+        mainImage: firstVariant?.mainImage || prev.mainImage,
+        hoverImage: firstVariant?.hoverImage || prev.hoverImage,
+        galleryImages: firstVariant?.galleryImages || prev.galleryImages,
+        isAvailable: firstVariant?.isAvailable !== undefined ? firstVariant.isAvailable : prev.isAvailable,
+        colors: firstVariant?.colorHex ? [{ hex: firstVariant.colorHex, name: firstVariant.colorName || getDefaultColorName(firstVariant.colorHex) }] : prev.colors,
+      }));
+    }
+  };
+
   const handleAddVariantRow = () => {
     const newVariant = {
       colorHex: '#2E6B4D',
       colorName: '',
-      price: '',
-      stock: '',
+      price: formData.price || '',
+      isAvailable: true,
+      stock: 20,
       mainImage: '',
       hoverImage: '',
       galleryImages: [],
@@ -501,7 +571,8 @@ export default function ProductFormPage({ productToEdit, onBack }) {
         colorHex: v.colorHex,
         colorName: v.colorName || getDefaultColorName(v.colorHex),
         price: Number(v.price) || Number(formData.price),
-        stock: Number(v.stock) || 0,
+        isAvailable: v.isAvailable !== false,
+        stock: v.isAvailable !== false ? 20 : 0,
         image: v.mainImage || '',
         mainImage: v.mainImage || '',
         hoverImage: v.hoverImage || '',
@@ -509,9 +580,11 @@ export default function ProductFormPage({ productToEdit, onBack }) {
       }))
       : [];
 
-    const calculatedStock = formData.variantType === 'multi'
-      ? formData.variants.reduce((acc, v) => acc + (Number(v.stock) || 0), 0)
-      : Number(formData.stock);
+    const isOverallAvailable = formData.variantType === 'multi'
+      ? finalVariants.some((v) => v.isAvailable !== false)
+      : formData.isAvailable !== false;
+
+    const calculatedStock = isOverallAvailable ? 20 : 0;
 
     const firstVariantPrice = formData.variantType === 'multi' && formData.variants.length > 0
       ? Number(formData.variants[0].price)
@@ -531,6 +604,8 @@ export default function ProductFormPage({ productToEdit, onBack }) {
       hasVariants: formData.variantType === 'multi',
       variants: finalVariants,
       colors: finalColors,
+      isAvailable: isOverallAvailable,
+      inStock: isOverallAvailable,
       stock: calculatedStock,
       discountPercent: formData.isOffer ? Number(formData.discountPercent) : 0,
       originalPrice: formData.isOffer && formData.discountPercent > 0
@@ -725,57 +800,45 @@ export default function ProductFormPage({ productToEdit, onBack }) {
             </div>
           </div>
 
-          {/* RADIO BUTTONS FOR SINGLE VS MULTI VARIANT */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Option A: Single Variant */}
-            <label
-              className={`p-5 rounded-2xl border-2 cursor-pointer transition flex items-start space-x-3.5 ${formData.variantType === 'single'
-                  ? 'border-emerald-700 bg-emerald-50/50 shadow-sm ring-2 ring-emerald-600/20'
-                  : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-            >
-              <input
-                type="radio"
-                name="variantType"
-                value="single"
-                checked={formData.variantType === 'single'}
-                onChange={() => setFormData({ ...formData, variantType: 'single' })}
-                className="mt-1 w-4 h-4 text-emerald-800 focus:ring-emerald-600"
-              />
-              <div>
-                <span className="font-extrabold text-slate-900 text-sm block">
-                  Single Variant (Single Color)
+          {/* SINGLE TOGGLE FOR SINGLE VS MULTI VARIANT */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl bg-slate-50 border border-slate-200/90 gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center space-x-2.5">
+                <span className="font-extrabold text-slate-900 text-sm">
+                  Enable Multiple Color Variants
                 </span>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Chair sold in 1 single color with fixed price and images.
-                </p>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                    formData.variantType === 'multi'
+                      ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                      : 'bg-slate-200 text-slate-700 border-slate-300'
+                  }`}
+                >
+                  {formData.variantType === 'multi' ? 'Multi Variant Active' : 'Single Variant'}
+                </span>
               </div>
-            </label>
+              <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
+                {formData.variantType === 'multi'
+                  ? 'Chair has multiple color finishes. Each color has its own custom photos, pricing, and availability.'
+                  : 'Chair is offered in a single signature color finish with fixed photos and pricing.'}
+              </p>
+            </div>
 
-            {/* Option B: Multi Variant */}
-            <label
-              className={`p-5 rounded-2xl border-2 cursor-pointer transition flex items-start space-x-3.5 ${formData.variantType === 'multi'
-                  ? 'border-emerald-700 bg-emerald-50/50 shadow-sm ring-2 ring-emerald-600/20'
-                  : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={formData.variantType === 'multi'}
+              onClick={handleToggleVariantType}
+              className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                formData.variantType === 'multi' ? 'bg-emerald-700' : 'bg-slate-300 hover:bg-slate-400'
+              }`}
             >
-              <input
-                type="radio"
-                name="variantType"
-                value="multi"
-                checked={formData.variantType === 'multi'}
-                onChange={() => setFormData({ ...formData, variantType: 'multi' })}
-                className="mt-1 w-4 h-4 text-emerald-800 focus:ring-emerald-600"
+              <span
+                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                  formData.variantType === 'multi' ? 'translate-x-7' : 'translate-x-0'
+                }`}
               />
-              <div>
-                <span className="font-extrabold text-slate-900 text-sm block flex items-center space-x-1.5">
-                  <span>Multi Variant (Different Colors, Prices &amp; Photos)</span>
-                </span>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Same chair offered in multiple colors where each color has its own <strong>Photos</strong>, <strong>Price (₹)</strong>, and <strong>Stock</strong>!
-                </p>
-              </div>
-            </label>
+            </button>
           </div>
 
           {/* IF SINGLE VARIANT: Standard Price, Stock, Images & Color */}
@@ -885,18 +948,35 @@ export default function ProductFormPage({ productToEdit, onBack }) {
                   />
                 </div>
 
-                {/* Stock Units */}
+                {/* Product Availability Toggle */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-xs">
-                    Inventory Stock Units *
+                    Availability Status *
                   </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.stock}
-                    onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-bold font-mono focus:border-emerald-600 focus:outline-hidden text-sm"
-                  />
+                  <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-white border border-slate-300 h-[42px]">
+                    <span className={`text-xs font-bold flex items-center space-x-1.5 ${
+                      formData.isAvailable !== false ? 'text-emerald-800' : 'text-rose-700'
+                    }`}>
+                      <span className={`w-2 h-2 rounded-full ${formData.isAvailable !== false ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                      <span>{formData.isAvailable !== false ? 'Available (In Stock)' : 'Out of Stock'}</span>
+                    </span>
+
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={formData.isAvailable !== false}
+                      onClick={() => setFormData({ ...formData, isAvailable: formData.isAvailable === false ? true : false, stock: formData.isAvailable === false ? 20 : 0 })}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                        formData.isAvailable !== false ? 'bg-emerald-600' : 'bg-slate-300 hover:bg-slate-400'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          formData.isAvailable !== false ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Color Swatch & Name */}
@@ -1018,19 +1098,39 @@ export default function ProductFormPage({ productToEdit, onBack }) {
                         />
                       </div>
 
-                      {/* Variant Stock (3 cols) */}
+                      {/* Variant Availability Toggle (3 cols) */}
                       <div className="sm:col-span-3">
                         <label className="block font-bold text-slate-600 uppercase tracking-wider text-[10px] mb-1">
-                          Stock Units (Units in this color) *
+                          Variant Availability *
                         </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={variant.stock || 0}
-                          onChange={(e) => handleUpdateVariant(vIdx, 'stock', Number(e.target.value))}
-                          placeholder="15"
-                          className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold font-mono text-slate-800 focus:border-emerald-600 focus:outline-hidden"
-                        />
+                        <div className="flex items-center justify-between px-3 py-1.5 bg-white border border-slate-300 rounded-xl h-[38px]">
+                          <span className={`text-[11px] font-bold flex items-center space-x-1.5 ${
+                            variant.isAvailable !== false ? 'text-emerald-800' : 'text-rose-700'
+                          }`}>
+                            <span className={`w-2 h-2 rounded-full ${variant.isAvailable !== false ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            <span>{variant.isAvailable !== false ? 'In Stock' : 'Out of Stock'}</span>
+                          </span>
+
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={variant.isAvailable !== false}
+                            onClick={() => {
+                              const nextAvail = variant.isAvailable === false ? true : false;
+                              handleUpdateVariant(vIdx, 'isAvailable', nextAvail);
+                              handleUpdateVariant(vIdx, 'stock', nextAvail ? 20 : 0);
+                            }}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                              variant.isAvailable !== false ? 'bg-emerald-600' : 'bg-slate-300 hover:bg-slate-400'
+                            }`}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                variant.isAvailable !== false ? 'translate-x-4' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
                       </div>
                     </div>
 

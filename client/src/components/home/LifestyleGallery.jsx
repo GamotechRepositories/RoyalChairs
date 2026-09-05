@@ -24,7 +24,7 @@ const STATIC_GALLERY_IMAGES = [
   },
   {
     id: 5,
-    image: 'https://m.media-amazon.com/images/I/71gXgk3mmIL._AC_UF894,1000_QL80_.jpg',
+    image: 'https://m.media-amazon.com/images/W/BW_MEDIAX_AVIF_MEASUREMENT_1306696-T4/images/I/41LizE1I5hL._SY300_SX300_QL70_FMwebp_.jpg',
     alt: 'Royal Chairs Showcase 5'
   },
   {

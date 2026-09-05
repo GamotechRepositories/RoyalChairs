@@ -23,6 +23,7 @@ import { useStore } from '../../context/StoreContext';
 import ProductCard from '../ui/ProductCard';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
+import ProductReviewsModal from './ProductReviewsModal';
 import api from '../../services/api';
 
 // Finish color naming mapping
@@ -117,15 +118,7 @@ export default function ProductDetailPage({
   // Product Reviews & Comments State
   const [productReviews, setProductReviews] = useState([]);
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
-  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-  const [reviewSuccessMsg, setReviewSuccessMsg] = useState('');
-  const [newReview, setNewReview] = useState({
-    name: '',
-    role: 'Verified Buyer',
-    location: 'India',
-    rating: 5,
-    comment: '',
-  });
+  const [showReviewsModal, setShowReviewsModal] = useState(false);
 
   // Fetch reviews for this specific product
   const fetchProductReviews = async () => {
@@ -157,51 +150,6 @@ export default function ProductDetailPage({
       fetchProductReviews();
     }
   }, [product?._id, product?.id]);
-
-  // Submit new product review & comment
-  const handleSubmitReview = async (e) => {
-    e.preventDefault();
-    if (!newReview.name.trim() || !newReview.comment.trim()) {
-      alert('Please fill in your name and review comment.');
-      return;
-    }
-
-    setIsSubmittingReview(true);
-    try {
-      const payload = {
-        productId: product._id || product.id,
-        productName: product.name,
-        userName: newReview.name.trim(),
-        name: newReview.name.trim(),
-        userRole: newReview.role.trim() || 'Verified Buyer',
-        role: newReview.role.trim() || 'Verified Buyer',
-        location: newReview.location.trim() || 'India',
-        rating: Number(newReview.rating) || 5,
-        comment: newReview.comment.trim(),
-        finish: getColorName(selectedColor),
-        avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80`,
-        status: 'approved',
-      };
-
-      const res = await api.post('/reviews', payload);
-      if (res.data?.success && res.data.data) {
-        setProductReviews((prev) => [res.data.data, ...prev]);
-        setReviewSuccessMsg('Thank you! Your review has been posted successfully.');
-        setNewReview({
-          name: '',
-          role: 'Verified Buyer',
-          location: 'India',
-          rating: 5,
-          comment: '',
-        });
-        setTimeout(() => setReviewSuccessMsg(''), 4000);
-      }
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to submit review. Please try again.');
-    } finally {
-      setIsSubmittingReview(false);
-    }
-  };
 
   // Active Variant matching selectedColor
   const activeVariant = useMemo(() => {
@@ -238,16 +186,31 @@ export default function ProductDetailPage({
       ? Math.round(((currentOriginalPrice - currentPrice) / currentOriginalPrice) * 100)
       : product?.discountPercent || 0;
 
-  // Dynamic stock for active variant / color
-  const currentStock = useMemo(() => {
+  // Dynamic availability for active variant / color
+  const isAvailable = useMemo(() => {
+    if (activeVariant && activeVariant.isAvailable !== undefined) {
+      return Boolean(activeVariant.isAvailable);
+    }
     if (activeVariant && activeVariant.stock !== undefined && activeVariant.stock !== null) {
-      return Number(activeVariant.stock);
+      return Number(activeVariant.stock) > 0;
+    }
+    if (activeColorObj && typeof activeColorObj === 'object' && activeColorObj.isAvailable !== undefined) {
+      return Boolean(activeColorObj.isAvailable);
     }
     if (activeColorObj && typeof activeColorObj === 'object' && activeColorObj.stock !== undefined && activeColorObj.stock !== null) {
-      return Number(activeColorObj.stock);
+      return Number(activeColorObj.stock) > 0;
     }
-    return Number(product?.stock || 0);
-  }, [activeVariant, activeColorObj, product?.stock]);
+    if (product?.isAvailable !== undefined) {
+      return Boolean(product.isAvailable);
+    }
+    if (product?.inStock !== undefined) {
+      return Boolean(product.inStock);
+    }
+    if (product?.stock !== undefined) {
+      return Number(product.stock) > 0;
+    }
+    return true;
+  }, [activeVariant, activeColorObj, product]);
 
   if (!product) return null;
 
@@ -289,6 +252,7 @@ export default function ProductDetailPage({
   }, [products, product]);
 
   const handleAddToCart = () => {
+    if (!isAvailable) return;
     const itemToAdd = {
       ...product,
       price: currentPrice,
@@ -366,15 +330,15 @@ export default function ProductDetailPage({
 
                   <button
                     onClick={() => toggleWishlist(product)}
-                    className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center space-x-1.5 text-xs font-bold shrink-0 ${
+                    className={`w-11 h-11 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center justify-center shrink-0 ${
                       inWishlist
-                        ? 'bg-rose-50 border-rose-200 text-rose-600'
-                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-xs'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700 hover:border-slate-300'
                     }`}
-                    title="Add to Wishlist"
+                    title={inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                    aria-label={inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
                   >
-                    <Heart className={`w-4 h-4 ${inWishlist ? 'fill-current text-rose-500' : ''}`} />
-                    <span className="hidden sm:inline">{inWishlist ? 'Saved' : 'Wishlist'}</span>
+                    <Heart className={`w-5 h-5 ${inWishlist ? 'fill-current text-rose-500' : ''}`} />
                   </button>
                 </div>
               </div>
@@ -486,24 +450,41 @@ export default function ProductDetailPage({
                     })()}
                   </div>
 
-                  {/* Dynamic Stock Status Line per Variant */}
+                  {/* Dynamic Availability Status Line per Variant */}
                   <div className="flex items-center space-x-2 text-xs font-bold pt-1">
-                    {currentStock > 0 ? (
+                    {isAvailable ? (
                       <>
                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0"></span>
                         <span className="text-emerald-800">
-                          In Stock ({currentStock} {currentStock === 1 ? 'unit' : 'units'} available in {getColorName(selectedColor, product)})
+                          In Stock • Available for Immediate Dispatch
                         </span>
                       </>
                     ) : (
                       <>
                         <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
                         <span className="text-rose-700">
-                          Out of Stock in {getColorName(selectedColor, product)}
+                          Currently Out of Stock in {getColorName(selectedColor, product)}
                         </span>
                       </>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Standalone Availability if no variant cards */}
+              {!((Array.isArray(product.variants) && product.variants.length > 0) || (Array.isArray(product.colors) && product.colors.length > 0)) && (
+                <div className="flex items-center space-x-2 text-xs font-bold pt-1">
+                  {isAvailable ? (
+                    <>
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0"></span>
+                      <span className="text-emerald-800">In Stock • Available for Immediate Dispatch</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+                      <span className="text-rose-700">Currently Out of Stock</span>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -549,13 +530,18 @@ export default function ProductDetailPage({
                   {/* Add to Bag Button */}
                   <button
                     onClick={handleAddToCart}
-                    className={`flex-1 w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 shadow-lg transition cursor-pointer ${
-                      addedAnim
-                        ? 'bg-amber-400 text-emerald-950 shadow-amber-300/40'
-                        : 'bg-emerald-800 hover:bg-emerald-700 text-white shadow-emerald-900/20'
+                    disabled={!isAvailable}
+                    className={`flex-1 w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 shadow-lg transition ${
+                      !isAvailable
+                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 shadow-none'
+                        : addedAnim
+                          ? 'bg-amber-400 text-emerald-950 shadow-amber-300/40 cursor-pointer'
+                          : 'bg-emerald-800 hover:bg-emerald-700 text-white shadow-emerald-900/20 cursor-pointer'
                     }`}
                   >
-                    {addedAnim ? (
+                    {!isAvailable ? (
+                      <span>Currently Out of Stock</span>
+                    ) : addedAnim ? (
                       <>
                         <Check className="w-5 h-5" />
                         <span>Added to Shopping Bag!</span>
@@ -578,7 +564,12 @@ export default function ProductDetailPage({
                     </span>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowReviewsModal(true)}
+                    className="flex items-center space-x-2 group hover:opacity-80 transition cursor-pointer"
+                    title="Click to view all reviews for this chair"
+                  >
                     <div className="flex items-center text-amber-500">
                       {[...Array(5)].map((_, i) => (
                         <Star
@@ -590,10 +581,10 @@ export default function ProductDetailPage({
                       ))}
                     </div>
                     <span className="text-xs font-black text-slate-900">{avgRating}</span>
-                    <span className="text-xs text-slate-500 font-medium">
+                    <span className="text-xs text-emerald-800 underline font-bold group-hover:text-emerald-950">
                       ({productReviews.length} {productReviews.length === 1 ? 'review' : 'reviews'})
                     </span>
-                  </div>
+                  </button>
                 </div>
 
                 {/* Assurance Trust Badges */}
@@ -710,228 +701,6 @@ export default function ProductDetailPage({
           </div>
         </div>
 
-        {/* 3. PRODUCT REVIEWS & MEMBER COMMENTS SECTION */}
-        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-emerald-100 shadow-sm space-y-8">
-          {/* Reviews Header & Summary */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-8">
-            <div>
-              <div className="flex items-center space-x-2 text-emerald-800 text-xs font-black uppercase tracking-wider mb-2">
-                <MessageSquare className="w-4 h-4 text-emerald-700" />
-                <span>Verified Customer Feedback</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
-                Reviews & Comments ({productReviews.length})
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Real customer feedback and ratings for {product.name}.
-              </p>
-            </div>
-
-            {/* Score Pill */}
-            <div className="flex items-center space-x-4 bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200 self-start md:self-auto">
-              <div className="text-center">
-                <span className="text-3xl font-black text-emerald-950 font-serif block">
-                  {avgRating}
-                </span>
-                <div className="flex items-center justify-center text-amber-500 text-xs mt-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-current" />
-                  ))}
-                </div>
-              </div>
-              <div className="h-10 w-px bg-emerald-200" />
-              <div className="text-xs">
-                <span className="font-black text-emerald-900 block">{productReviews.length} Total Reviews</span>
-                <span className="text-slate-500 text-[11px]">100% Verified Purchases</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Reviews List (Left / Col 7) */}
-            <div className="lg:col-span-7 space-y-4">
-              <h3 className="text-base font-extrabold text-slate-900 font-serif">
-                Customer Comments
-              </h3>
-
-              {isLoadingReviews ? (
-                <div className="p-8 text-center text-xs text-slate-400">
-                  Loading customer reviews...
-                </div>
-              ) : productReviews.length === 0 ? (
-                <div className="p-8 bg-slate-50 rounded-2xl border border-slate-200 text-center space-y-2">
-                  <MessageSquare className="w-8 h-8 text-slate-300 mx-auto" />
-                  <h4 className="text-sm font-bold text-slate-700">No reviews yet for this chair</h4>
-                  <p className="text-xs text-slate-500">
-                    Be the first verified customer to share your thoughts and review this product!
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4 divide-y divide-slate-100">
-                  {productReviews.map((rev) => (
-                    <div key={rev.id || rev._id} className="pt-4 first:pt-0 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <img
-                            src={rev.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
-                            alt={rev.userName || rev.name}
-                            className="w-10 h-10 rounded-full object-cover border border-slate-200"
-                          />
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <h4 className="text-xs sm:text-sm font-black text-slate-900">
-                                {rev.userName || rev.name}
-                              </h4>
-                              <span className="inline-flex items-center text-[10px] font-extrabold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                <CheckCircle2 className="w-2.5 h-2.5 mr-1 text-emerald-600" />
-                                Verified Buyer
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-slate-400">
-                              {rev.userRole || rev.role} {rev.location ? `• ${rev.location}` : ''}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center text-amber-500">
-                          {[...Array(rev.rating || 5)].map((_, i) => (
-                            <Star key={i} className="w-3.5 h-3.5 fill-current" />
-                          ))}
-                        </div>
-                      </div>
-
-                      <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-sans bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80">
-                        "{rev.comment}"
-                      </p>
-
-                      {rev.finish && (
-                        <div className="text-[11px] text-slate-500 flex items-center space-x-1">
-                          <span className="font-semibold">Selected Finish:</span>
-                          <span className="font-bold text-emerald-900">{rev.finish}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Write a Review Form (Right / Col 5) */}
-            <div className="lg:col-span-5 bg-slate-50 p-6 sm:p-7 rounded-2xl border border-slate-200 space-y-4">
-              <div>
-                <h3 className="text-base font-black text-slate-900 font-serif">
-                  Write a Review & Comment
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Share your experience with other members.
-                </p>
-              </div>
-
-              {reviewSuccessMsg && (
-                <div className="bg-emerald-800 text-white p-3.5 rounded-xl text-xs font-bold flex items-center space-x-2 animate-fadeIn">
-                  <CheckCircle2 className="w-4 h-4 text-amber-300 shrink-0" />
-                  <span>{reviewSuccessMsg}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmitReview} className="space-y-3.5">
-                {/* Star Rating Select */}
-                <div>
-                  <label className="text-xs font-extrabold text-slate-700 block mb-1">
-                    Your Rating *
-                  </label>
-                  <div className="flex items-center space-x-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setNewReview({ ...newReview, rating: star })}
-                        className="p-1 text-amber-500 hover:scale-125 transition cursor-pointer"
-                      >
-                        <Star
-                          className={`w-6 h-6 ${
-                            star <= newReview.rating ? 'fill-current' : 'text-slate-300'
-                          }`}
-                        />
-                      </button>
-                    ))}
-                    <span className="text-xs font-bold text-slate-600 ml-2">
-                      ({newReview.rating} Stars)
-                    </span>
-                  </div>
-                </div>
-
-                {/* Name */}
-                <div>
-                  <label className="text-xs font-extrabold text-slate-700 block mb-1">
-                    Your Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Alistair Sterling"
-                    value={newReview.name}
-                    onChange={(e) => setNewReview({ ...newReview, name: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:border-emerald-700"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">
-                      Profession / Title
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Architect"
-                      value={newReview.role}
-                      onChange={(e) => setNewReview({ ...newReview, role: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">
-                      City / Location
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Mumbai, IN"
-                      value={newReview.location}
-                      onChange={(e) => setNewReview({ ...newReview, location: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-700"
-                    />
-                  </div>
-                </div>
-
-                {/* Comment Text */}
-                <div>
-                  <label className="text-xs font-extrabold text-slate-700 block mb-1">
-                    Review / Comment *
-                  </label>
-                  <textarea
-                    rows={3}
-                    required
-                    placeholder="Write about the build quality, comfort, lumbar support, and fabric..."
-                    value={newReview.comment}
-                    onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-700"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmittingReview}
-                  className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>{isSubmittingReview ? 'Submitting...' : 'Post Customer Review'}</span>
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-
         {/* 4. FULL WIDTH BOTTOM: SAME CATEGORY / RELATED PRODUCTS SHOWCASE (Max 20 Items) */}
         {relatedCategoryProducts.length > 0 && (
           <div className="pt-10 sm:pt-14 space-y-6 sm:space-y-8">
@@ -958,6 +727,15 @@ export default function ProductDetailPage({
           </div>
         )}
       </div>
+
+      {/* Dedicated Product Reviews Modal */}
+      <ProductReviewsModal
+        isOpen={showReviewsModal}
+        onClose={() => setShowReviewsModal(false)}
+        product={product}
+        reviews={productReviews}
+        avgRating={avgRating}
+      />
     </div>
   );
 }

@@ -52,13 +52,13 @@ const orderSchema = new mongoose.Schema(
       default: null,
     },
     customer: {
-      name: { type: String, required: true },
-      email: { type: String, required: true },
-      phone: { type: String, required: true },
-      address: { type: String, required: true },
-      city: { type: String, required: true },
-      state: { type: String, default: '' },
-      pincode: { type: String, required: true },
+      name: { type: String, required: true, default: 'Valued Client' },
+      email: { type: String, required: true, default: 'client@royalchairs.com' },
+      phone: { type: String, default: '+91 98765 43210' },
+      address: { type: String, default: 'Royal Villa, Mayfair Estate' },
+      city: { type: String, default: 'London' },
+      state: { type: String, default: 'Greater London' },
+      pincode: { type: String, default: 'SW1A 1AA' },
     },
     items: [orderItemSchema],
     totalAmount: {
@@ -67,18 +67,15 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ['cod', 'card', 'upi'],
-      default: 'cod',
+      default: 'online',
     },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'paid', 'failed'],
-      default: 'pending',
+      default: 'paid',
     },
     orderStatus: {
       type: String,
-      enum: ['placed', 'confirmed', 'shipped', 'delivered', 'cancelled'],
-      default: 'placed',
+      default: 'confirmed',
     },
     trackingNumber: {
       type: String,

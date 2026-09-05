@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Sparkles, ShieldCheck, Award, Zap, CheckCircle2 } from 'lucide-react';
 import api from '../../services/api';
 
 const DEFAULT_SPOTLIGHT = {
@@ -120,35 +120,80 @@ export default function CategorySpotlight({ onSelectCategory, onOpenProduct }) {
   };
 
   return (
-    <section id="category-spotlight" className="py-8 sm:py-16 bg-white overflow-hidden animate-fadeIn">
-      <div className="w-full max-w-[1700px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[500px] lg:min-h-[560px] items-stretch">
+    <section id="category-spotlight" className="py-10 sm:py-16 bg-white overflow-hidden animate-fadeIn">
+      <div className="w-full max-w-[1700px] mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="rounded-3xl overflow-hidden border border-slate-200/80 shadow-xl grid grid-cols-1 lg:grid-cols-12 min-h-[500px] lg:min-h-[560px] items-stretch">
           
-          {/* Left Column: Text & Information & CTA */}
-          <div className="lg:col-span-6 flex flex-col justify-center items-center text-center px-6 sm:px-12 lg:px-16 py-10 lg:py-14 bg-white">
-            <div className="max-w-xl mx-auto space-y-5">
+          {/* Left Column: Text & Information & CTA with Rich Decorative Aesthetics */}
+          <div className="lg:col-span-6 relative flex flex-col justify-center items-center text-center px-6 sm:px-12 lg:px-16 py-12 lg:py-16 bg-gradient-to-br from-stone-50 via-white to-emerald-50/30 overflow-hidden">
+            
+            {/* Top-Left Ambient Glow & Geometric Accent Corner */}
+            <div className="absolute -top-16 -left-16 w-56 h-56 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+            <div className="absolute top-6 left-6 w-10 h-10 border-t-2 border-l-2 border-emerald-900/20 rounded-tl-xl pointer-events-none hidden sm:block" />
+            <div className="absolute top-8 left-8 w-2 h-2 rounded-full bg-emerald-700/30 pointer-events-none hidden sm:block" />
+
+            {/* Bottom-Left Ambient Glow & Geometric Accent Corner */}
+            <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+            <div className="absolute bottom-6 left-6 w-10 h-10 border-b-2 border-l-2 border-emerald-900/20 rounded-bl-xl pointer-events-none hidden sm:block" />
+            <div className="absolute bottom-8 left-8 w-2 h-2 rounded-full bg-amber-600/30 pointer-events-none hidden sm:block" />
+
+            {/* Subtle Top-Right & Bottom-Right Border Corner Accents */}
+            <div className="absolute top-6 right-6 w-8 h-8 border-t-2 border-r-2 border-emerald-900/15 rounded-tr-lg pointer-events-none hidden lg:block" />
+            <div className="absolute bottom-6 right-6 w-8 h-8 border-b-2 border-r-2 border-emerald-900/15 rounded-br-lg pointer-events-none hidden lg:block" />
+
+            {/* Background Subtle Dot Matrix Watermark */}
+            <div className="absolute inset-0 bg-[radial-gradient(#059669_0.75px,transparent_0.75px)] [background-size:24px_24px] opacity-15 pointer-events-none" />
+
+            {/* Content Box */}
+            <div className="relative z-10 max-w-xl mx-auto space-y-5">
               
+              {/* Top Luxury Pill Badge */}
+              <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-emerald-900/15 shadow-xs text-[11px] font-black tracking-widest text-emerald-900 uppercase">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+                <span>SIGNATURE SPOTLIGHT</span>
+              </div>
+
               {/* Main Heading */}
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-950 font-serif leading-tight tracking-tight">
                 {spotlight.title || DEFAULT_SPOTLIGHT.title}
               </h2>
 
-              {/* Decorative Accent Underline */}
-              <div className="w-16 h-0.5 bg-slate-900 mx-auto rounded-full" />
+              {/* Decorative Accent Divider Line */}
+              <div className="flex items-center justify-center space-x-2 pt-1">
+                <div className="w-12 h-0.5 bg-gradient-to-r from-transparent to-emerald-800 rounded-full" />
+                <div className="w-2 h-2 rotate-45 bg-amber-500 rounded-xs shadow-xs" />
+                <div className="w-12 h-0.5 bg-gradient-to-l from-transparent to-emerald-800 rounded-full" />
+              </div>
 
               {/* Description Paragraph */}
               <p className="text-xs sm:text-sm lg:text-base text-slate-600 leading-relaxed font-normal pt-1 whitespace-pre-line">
                 {spotlight.description || DEFAULT_SPOTLIGHT.description}
               </p>
 
-              {/* Shop Now Button */}
+              {/* Micro-Features Tags */}
+              <div className="flex flex-wrap justify-center items-center gap-2 pt-2">
+                <span className="inline-flex items-center text-[11px] font-bold text-slate-700 bg-white/95 px-3 py-1 rounded-full border border-slate-200/80 shadow-2xs">
+                  <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
+                  Ergonomic Master Build
+                </span>
+                <span className="inline-flex items-center text-[11px] font-bold text-slate-700 bg-white/95 px-3 py-1 rounded-full border border-slate-200/80 shadow-2xs">
+                  <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
+                  Premium Upholstery
+                </span>
+                <span className="inline-flex items-center text-[11px] font-bold text-slate-700 bg-white/95 px-3 py-1 rounded-full border border-slate-200/80 shadow-2xs">
+                  <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
+                  Fast Doorstep Dispatch
+                </span>
+              </div>
+
+              {/* Shop Now Action Button */}
               <div className="pt-4 sm:pt-6">
                 <button
                   onClick={handleActionClick}
-                  className="px-8 sm:px-12 py-3.5 sm:py-4 bg-black hover:bg-emerald-950 text-white font-black text-xs sm:text-sm tracking-widest uppercase transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5 inline-flex items-center space-x-3 cursor-pointer"
+                  className="group px-8 sm:px-12 py-3.5 sm:py-4 bg-slate-950 hover:bg-emerald-950 text-white font-black text-xs sm:text-sm tracking-widest uppercase transition-all duration-300 rounded-xl shadow-lg hover:shadow-2xl hover:shadow-emerald-950/20 transform hover:-translate-y-0.5 inline-flex items-center space-x-3 cursor-pointer border border-white/10"
                 >
                   <span>{spotlight.buttonText || 'SHOP NOW'}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300 text-amber-400" />
                 </button>
               </div>
 
@@ -166,6 +211,13 @@ export default function CategorySpotlight({ onSelectCategory, onOpenProduct }) {
               className="w-full h-full object-cover object-center transform transition-transform duration-1000 ease-out group-hover:scale-105 select-none"
               loading="lazy"
             />
+            
+            {/* Top-Right Floating Badge */}
+            <div className="absolute top-5 right-5 z-10 bg-slate-950/80 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full border border-white/20 text-[11px] font-black tracking-wider uppercase shadow-lg flex items-center space-x-1.5">
+              <Sparkles className="w-3 h-3 text-amber-300" />
+              <span>ROYAL EDITION</span>
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/30 via-transparent to-transparent pointer-events-none" />
           </div>
 
         </div>

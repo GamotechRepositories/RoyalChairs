@@ -28,7 +28,7 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0) + 124500;
   const activeOrdersCount = orders.length + 338;
   const avgOrderValue = Math.round(totalRevenue / activeOrdersCount);
-  const lowStockChairs = products.filter((p) => p.stock < 10);
+  const outOfStockChairs = products.filter((p) => p.isAvailable === false || p.stock === 0);
   const pendingOrders = orders.filter((o) => o.fulfillmentStatus === 'Pending' || o.fulfillmentStatus === 'In Production');
 
   // Chart Data Points
@@ -171,13 +171,13 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
               {products.length} Chairs
             </h3>
             <div className="mt-2 flex items-center space-x-2 text-xs">
-              {lowStockChairs.length > 0 ? (
-                <span className="text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 flex items-center">
+              {outOfStockChairs.length > 0 ? (
+                <span className="text-rose-800 font-bold bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 flex items-center">
                   <AlertTriangle className="w-3 h-3 mr-1" />
-                  {lowStockChairs.length} Low Stock
+                  {outOfStockChairs.length} Out of Stock
                 </span>
               ) : (
-                <span className="text-emerald-700 font-bold">100% Stock Healthy</span>
+                <span className="text-emerald-700 font-bold">100% Available</span>
               )}
             </div>
           </div>
@@ -376,65 +376,73 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
           </div>
         </div>
 
-        {/* Low Stock Alerts Widget (1 Column) */}
+        {/* Catalog Availability Status Widget (1 Column) */}
         <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-900 font-serif flex items-center space-x-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                <span>Inventory Alerts</span>
+                <Armchair className="w-4 h-4 text-emerald-800" />
+                <span>Catalog Availability</span>
               </h3>
-              <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">
-                {lowStockChairs.length} Attention Needed
+              <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
+                outOfStockChairs.length > 0
+                  ? 'bg-rose-100 text-rose-800 border-rose-200'
+                  : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+              }`}>
+                {outOfStockChairs.length > 0 ? `${outOfStockChairs.length} Out of Stock` : 'All Available'}
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1">Chairs nearing stockout threshold</p>
+            <p className="text-xs text-slate-500 mt-1">
+              {outOfStockChairs.length > 0 ? 'Models currently marked unavailable' : 'All chair models are ready to order'}
+            </p>
           </div>
 
           <div className="space-y-3">
-            {lowStockChairs.map((prod) => (
-              <div
-                key={prod.id}
-                className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between space-x-3"
-              >
-                <div className="w-10 h-10 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden relative shadow-2xs">
-                  {prod.mainImage && prod.mainImage.startsWith('http') ? (
-                    <img
-                      src={prod.mainImage}
-                      alt={prod.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        const fallback = e.target.parentNode.querySelector('.fallback-icon');
-                        if (fallback) fallback.classList.remove('hidden');
-                      }}
-                    />
-                  ) : null}
-                  <div className={`fallback-icon absolute inset-0 flex items-center justify-center bg-emerald-50 text-emerald-800 ${prod.mainImage && prod.mainImage.startsWith('http') ? 'hidden' : ''}`}>
-                    <Armchair className="w-4 h-4 text-emerald-700/60" />
-                  </div>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <p className="text-xs font-bold text-slate-900 truncate">{prod.name}</p>
-                  <p className="text-[10px] text-slate-500 capitalize">{prod.category} Chair</p>
-                </div>
-                <span
-                  className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${prod.stock === 0
-                    ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                    : 'bg-amber-100 text-amber-800 border border-amber-200'
-                    }`}
-                >
-                  {prod.stock === 0 ? 'Out of Stock' : `${prod.stock} Left`}
-                </span>
+            {outOfStockChairs.length === 0 ? (
+              <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100 text-center space-y-1">
+                <p className="text-xs font-bold text-emerald-900">Full Catalog Available</p>
+                <p className="text-[11px] text-emerald-700">All luxury chairs are active and in stock for customers.</p>
               </div>
-            ))}
+            ) : (
+              outOfStockChairs.slice(0, 4).map((prod) => (
+                <div
+                  key={prod._id || prod.id}
+                  className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between space-x-3"
+                >
+                  <div className="w-10 h-10 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden relative shadow-2xs">
+                    {prod.mainImage && prod.mainImage.startsWith('http') ? (
+                      <img
+                        src={prod.mainImage}
+                        alt={prod.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          const fallback = e.target.parentNode.querySelector('.fallback-icon');
+                          if (fallback) fallback.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className={`fallback-icon absolute inset-0 flex items-center justify-center bg-emerald-50 text-emerald-800 ${prod.mainImage && prod.mainImage.startsWith('http') ? 'hidden' : ''}`}>
+                      <Armchair className="w-4 h-4 text-emerald-700/60" />
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <p className="text-xs font-bold text-slate-900 truncate">{prod.name}</p>
+                    <p className="text-[10px] text-slate-500 capitalize">{prod.category} Chair</p>
+                  </div>
+                  <span className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 border border-rose-200">
+                    Out of Stock
+                  </span>
+                </div>
+              ))
+            )}
           </div>
 
           <button
             onClick={() => onNavigateTab('products')}
             className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer"
           >
-            <span>Manage Inventory Levels</span>
+            <span>Manage Catalog Availability</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>

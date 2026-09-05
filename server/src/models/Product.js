@@ -47,8 +47,12 @@ const variantItemSchema = new mongoose.Schema(
     },
     stock: {
       type: Number,
-      default: 15,
+      default: 20,
       min: 0,
+    },
+    isAvailable: {
+      type: Boolean,
+      default: true,
     },
     image: {
       type: String,
@@ -143,9 +147,12 @@ const productSchema = new mongoose.Schema(
     },
     stock: {
       type: Number,
-      required: true,
-      default: 15,
+      default: 20,
       min: 0,
+    },
+    isAvailable: {
+      type: Boolean,
+      default: true,
     },
     description: {
       type: String,

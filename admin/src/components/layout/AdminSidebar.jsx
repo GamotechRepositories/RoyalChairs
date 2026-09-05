@@ -21,7 +21,6 @@ export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose 
   const { adminUser, logout } = useAdminAuth();
 
   const pendingOrders = orders.filter((o) => o.fulfillmentStatus === 'Pending' || o.fulfillmentStatus === 'In Production').length;
-  const lowStock = products.filter((p) => p.stock < 10).length;
   const pendingReviews = reviews.filter((r) => r.status === 'Pending').length;
 
   const NAV_ITEMS = [
@@ -30,6 +29,26 @@ export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose 
       label: 'Dashboard',
       icon: LayoutDashboard,
       badge: null,
+    },
+    {
+      id: 'orders',
+      label: 'Order History',
+      icon: ShoppingBag,
+      badge: pendingOrders > 0 ? `${pendingOrders} New` : null,
+      badgeColor: 'bg-emerald-100 text-emerald-800 font-black',
+    },
+    {
+      id: 'category-handling',
+      label: 'Category Handling',
+      icon: Layers,
+      badge: null,
+    },
+    {
+      id: 'products',
+      label: 'Catalogue',
+      icon: Armchair,
+      badge: `${products.length}`,
+      badgeColor: 'bg-slate-100 text-slate-700 font-bold',
     },
     {
       id: 'banner-slideshow',
@@ -50,30 +69,10 @@ export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose 
       badge: null,
     },
     {
-      id: 'category-handling',
-      label: 'Category Handling',
-      icon: Layers,
-      badge: null,
-    },
-    {
-      id: 'products',
-      label: 'Catalogue',
-      icon: Armchair,
-      badge: lowStock > 0 ? `${lowStock} Low` : `${products.length}`,
-      badgeColor: lowStock > 0 ? 'bg-amber-100 text-amber-800 font-bold' : 'bg-slate-100 text-slate-700 font-bold',
-    },
-    {
       id: 'why-choose-us',
       label: 'Why Choose Us',
       icon: Star,
       badge: null,
-    },
-    {
-      id: 'orders',
-      label: 'Order History',
-      icon: ShoppingBag,
-      badge: pendingOrders > 0 ? `${pendingOrders} New` : null,
-      badgeColor: 'bg-emerald-100 text-emerald-800 font-black',
     },
     {
       id: 'customers',

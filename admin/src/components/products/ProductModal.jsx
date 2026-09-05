@@ -49,6 +49,7 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
     price: 499,
     originalPrice: 499,
     discountPercent: 0,
+    isAvailable: true,
     stock: 20,
     mainImage: '',
     hoverImage: '',
@@ -109,7 +110,8 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
         price: productToEdit.price || 450,
         originalPrice: productToEdit.originalPrice || productToEdit.price || 450,
         discountPercent: isOfferActive ? (productToEdit.discountPercent || 25) : 0,
-        stock: productToEdit.stock !== undefined ? productToEdit.stock : 15,
+        isAvailable: productToEdit.isAvailable !== undefined ? Boolean(productToEdit.isAvailable) : (productToEdit.stock !== undefined ? productToEdit.stock > 0 : true),
+        stock: productToEdit.stock !== undefined ? productToEdit.stock : 20,
         mainImage: productToEdit.mainImage || '',
         hoverImage: productToEdit.hoverImage || '',
         description: productToEdit.description || '',
@@ -128,7 +130,8 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
         price: 499,
         originalPrice: 499,
         discountPercent: 0,
-        stock: 25,
+        isAvailable: true,
+        stock: 20,
         mainImage: '',
         hoverImage: '',
         description: 'Handcrafted luxury seat engineered for supreme comfort and posture alignment.',
@@ -151,8 +154,12 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
+    const isAvail = formData.isAvailable !== false;
     const submissionData = {
       ...formData,
+      isAvailable: isAvail,
+      inStock: isAvail,
+      stock: isAvail ? 20 : 0,
       categorySlug: formData.category,
       subCategory: customSubcategory.trim() || formData.subCategory || 'All',
       discountPercent: formData.isOffer ? Number(formData.discountPercent) : 0,
@@ -416,18 +423,35 @@ export default function ProductModal({ isOpen, onClose, productToEdit }) {
                 />
               </div>
 
-              {/* Stock */}
+              {/* Availability Toggle */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
-                  Inventory Stock Units *
+                  Availability Status *
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold font-mono focus:bg-white focus:border-emerald-600 focus:outline-hidden"
-                />
+                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 h-[38px]">
+                  <span className={`text-[11px] font-bold flex items-center space-x-1.5 ${
+                    formData.isAvailable !== false ? 'text-emerald-800' : 'text-rose-700'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${formData.isAvailable !== false ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    <span>{formData.isAvailable !== false ? 'In Stock' : 'Out of Stock'}</span>
+                  </span>
+
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={formData.isAvailable !== false}
+                    onClick={() => setFormData({ ...formData, isAvailable: formData.isAvailable === false ? true : false, stock: formData.isAvailable === false ? 20 : 0 })}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                      formData.isAvailable !== false ? 'bg-emerald-600' : 'bg-slate-300 hover:bg-slate-400'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        formData.isAvailable !== false ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             </div>
 

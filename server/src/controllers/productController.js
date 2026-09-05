@@ -241,7 +241,8 @@ export const createProduct = async (req, res) => {
       price: numPrice,
       originalPrice: numOriginalPrice,
       discountPercent: calcDiscount,
-      stock: stock !== undefined ? Number(stock) : 15,
+      isAvailable: req.body.isAvailable !== undefined ? Boolean(req.body.isAvailable) : true,
+      stock: req.body.isAvailable === false ? 0 : (stock !== undefined ? Number(stock) : 20),
       description: description || '',
       fullDescription: fullDescription || description || '',
       features: Array.isArray(features) ? features : [],
@@ -307,6 +308,14 @@ export const updateProduct = async (req, res) => {
     if (updates.originalPrice) updates.originalPrice = Number(updates.originalPrice);
     if (updates.discountPercent !== undefined)
       updates.discountPercent = Number(updates.discountPercent);
+    if (updates.isAvailable !== undefined) {
+      updates.isAvailable = Boolean(updates.isAvailable);
+      if (updates.isAvailable && (updates.stock === undefined || updates.stock === 0)) {
+        updates.stock = 20;
+      } else if (!updates.isAvailable) {
+        updates.stock = 0;
+      }
+    }
     if (updates.stock !== undefined) updates.stock = Number(updates.stock);
 
     const updatedProduct = await Product.findByIdAndUpdate(id, updates, {

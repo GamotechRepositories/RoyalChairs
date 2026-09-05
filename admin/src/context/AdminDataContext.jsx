@@ -10,6 +10,53 @@ const INITIAL_COUPONS = [
   { id: 'CPN-4', code: 'FREESHIP', type: 'fixed', value: 45, minSpend: 300, usageCount: 140, limit: 500, active: true, expiry: '2026-10-15' },
 ];
 
+const normalizeOrder = (o) => {
+  const totalVal = Number(o.totalAmount !== undefined ? o.totalAmount : (o.total || 0));
+  const rawStatus = (o.fulfillmentStatus || o.orderStatus || 'Pending').toLowerCase();
+  let displayStatus = 'Pending';
+  if (rawStatus === 'in production' || rawStatus === 'confirmed') displayStatus = 'In Production';
+  else if (rawStatus === 'dispatched' || rawStatus === 'shipped') displayStatus = 'Dispatched';
+  else if (rawStatus === 'delivered') displayStatus = 'Delivered';
+  else if (rawStatus === 'cancelled') displayStatus = 'Cancelled';
+  else displayStatus = 'Pending';
+
+  return {
+    _id: o._id || o.id,
+    id: o.orderNumber || o.id || `ORD-${Date.now().toString().slice(-6)}`,
+    orderNumber: o.orderNumber || o.id || `RC-${Date.now().toString().slice(-6)}`,
+    date: o.createdAt || o.date || new Date().toISOString(),
+    createdAt: o.createdAt || o.date || new Date().toISOString(),
+    customer: {
+      name: o.customer?.name || 'Valued Client',
+      email: o.customer?.email || 'client@royalchairs.com',
+      phone: o.customer?.phone || '+91 98765 43210',
+      address: o.customer?.address || 'Royal Villa, Luxury Estate, London',
+      city: o.customer?.city || 'London',
+      state: o.customer?.state || 'Greater London',
+      pincode: o.customer?.pincode || 'SW1A 1AA',
+    },
+    items: Array.isArray(o.items)
+      ? o.items.map((i) => ({
+          name: i.name || 'Royal Luxury Chair',
+          price: Number(i.price) || 0,
+          quantity: Number(i.quantity) || 1,
+          color: typeof i.color === 'string' ? i.color : (i.color?.hex || '#1E3E2B'),
+          image: i.image || i.mainImage || 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=85',
+        }))
+      : [],
+    total: totalVal,
+    totalAmount: totalVal,
+    subtotal: Number(o.subtotal || totalVal),
+    discount: Number(o.discount || 0),
+    paymentMethod: (o.paymentMethod || 'ONLINE').toUpperCase(),
+    paymentStatus: (o.paymentStatus || 'PAID').toUpperCase(),
+    fulfillmentStatus: displayStatus,
+    orderStatus: o.orderStatus || (displayStatus === 'In Production' ? 'confirmed' : displayStatus.toLowerCase()),
+    trackingNumber: o.trackingNumber || `TRK-UK-${Date.now().toString().slice(-6)}`,
+    carrier: o.carrier || 'Royal Express Logistics',
+  };
+};
+
 const INITIAL_SETTINGS = {
   storeName: 'RoyalChairs London Ltd.',
   tagline: 'Purveyors of Handcrafted British & European Seating',
@@ -28,7 +75,24 @@ const INITIAL_SETTINGS = {
 export function AdminDataProvider({ children }) {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState(() => {
+    try {
+      const savedAdmin = localStorage.getItem('royal_admin_orders');
+      if (savedAdmin) {
+        const parsed = JSON.parse(savedAdmin);
+        // Filter out any mock starter IDs
+        const realAdmin = Array.isArray(parsed) ? parsed.filter(p => !['RC-998241', 'RC-997120', 'RC-995408'].includes(p.id || p.orderNumber)) : [];
+        if (realAdmin.length > 0) return realAdmin.map(normalizeOrder);
+      }
+      const savedUser = localStorage.getItem('royal_user_orders');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        const realUser = Array.isArray(parsed) ? parsed.filter(p => !['RC-998241', 'RC-997120', 'RC-995408'].includes(p.id || p.orderNumber)) : [];
+        if (realUser.length > 0) return realUser.map(normalizeOrder);
+      }
+    } catch {}
+    return [];
+  });
 
   const [customers, setCustomers] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -69,17 +133,38 @@ export function AdminDataProvider({ children }) {
     }
   };
 
-  // 3. Fetch Orders from Database
+  // 3. Fetch Orders from Database & sync with localStorage
   const fetchOrders = async () => {
     try {
       const res = await api.get('/orders');
       if (res.data?.success && Array.isArray(res.data.data)) {
-        setOrders(res.data.data);
-        localStorage.setItem('royal_admin_orders', JSON.stringify(res.data.data));
+        const realOrders = res.data.data
+          .filter(p => !['RC-998241', 'RC-997120', 'RC-995408'].includes(p.orderNumber || p.id))
+          .map(normalizeOrder);
+        setOrders(realOrders);
+        localStorage.setItem('royal_admin_orders', JSON.stringify(realOrders));
+        return;
       }
     } catch (err) {
       console.log('Using local order storage:', err.message);
     }
+
+    // Fallback: check localStorage for real user orders
+    try {
+      const savedUser = localStorage.getItem('royal_user_orders');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        const realUser = Array.isArray(parsed) ? parsed.filter(p => !['RC-998241', 'RC-997120', 'RC-995408'].includes(p.id || p.orderNumber)) : [];
+        if (realUser.length > 0) {
+          const normalized = realUser.map(normalizeOrder);
+          setOrders(normalized);
+          localStorage.setItem('royal_admin_orders', JSON.stringify(normalized));
+          return;
+        }
+      }
+      setOrders([]);
+      localStorage.setItem('royal_admin_orders', JSON.stringify([]));
+    } catch {}
   };
 
   // 4. Fetch Reviews from Database
@@ -122,13 +207,25 @@ export function AdminDataProvider({ children }) {
     }
   };
 
-  // Load all data on mount
+  // Load all data on mount and on storage events
   useEffect(() => {
     fetchCategories();
     fetchProducts();
     fetchOrders();
     fetchReviews();
     fetchUsers();
+
+    const handleStorage = () => {
+      fetchOrders();
+      fetchReviews();
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('royal_storage_update', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('royal_storage_update', handleStorage);
+    };
   }, []);
 
   // Category Operations
@@ -199,15 +296,26 @@ export function AdminDataProvider({ children }) {
     try {
       const res = await api.put(`/products/${id}`, updatedFields);
       if (res.data?.success && res.data.data) {
-        setProducts((prev) => prev.map((p) => (p.id === id ? res.data.data : p)));
+        setProducts((prev) =>
+          prev.map((p) => (p._id === id || p.id === id ? res.data.data : p))
+        );
         return res.data.data;
       }
     } catch (err) {
       console.error('API product update error:', err);
     }
     setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updatedFields } : p))
+      prev.map((p) => (p._id === id || p.id === id ? { ...p, ...updatedFields } : p))
     );
+  };
+
+  const toggleAvailability = async (id, currentStatus) => {
+    const newStatus = !currentStatus;
+    return updateProduct(id, {
+      isAvailable: newStatus,
+      inStock: newStatus,
+      stock: newStatus ? 20 : 0,
+    });
   };
 
   const deleteProduct = async (id) => {
@@ -216,16 +324,21 @@ export function AdminDataProvider({ children }) {
     } catch (err) {
       console.error('API product delete error:', err);
     }
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+    setProducts((prev) => prev.filter((p) => p._id !== id && p.id !== id));
   };
 
   const updateStock = async (id, newStock) => {
+    const isAvail = Number(newStock) > 0;
     try {
       await api.patch(`/products/${id}/stock`, { stock: newStock });
     } catch (err) {
       console.error('API stock update error:', err);
     }
-    updateProduct(id, { stock: Math.max(0, newStock) });
+    updateProduct(id, {
+      stock: Math.max(0, newStock),
+      isAvailable: isAvail,
+      inStock: isAvail,
+    });
   };
 
   const toggleProductFlag = (id, flagName) => {
@@ -237,25 +350,39 @@ export function AdminDataProvider({ children }) {
 
   // Order Operations
   const updateOrderStatus = async (orderId, newStatus, trackingNumber) => {
+    const targetOrder = orders.find((o) => o.id === orderId || o.orderNumber === orderId || o._id === orderId);
+    const apiId = targetOrder?._id || targetOrder?.id || orderId;
+
+    let backendStatus = (newStatus || 'Pending').toLowerCase();
+    if (newStatus === 'Pending') backendStatus = 'placed';
+    else if (newStatus === 'In Production') backendStatus = 'confirmed';
+    else if (newStatus === 'Dispatched') backendStatus = 'shipped';
+    else if (newStatus === 'Delivered') backendStatus = 'delivered';
+    else if (newStatus === 'Cancelled') backendStatus = 'cancelled';
+
     try {
-      await api.patch(`/orders/${orderId}/status`, {
-        orderStatus: newStatus,
+      await api.patch(`/orders/${apiId}/status`, {
+        orderStatus: backendStatus,
         trackingNumber,
       });
     } catch (err) {
       console.error('API order update error:', err);
     }
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId
+
+    setOrders((prev) => {
+      const updated = prev.map((o) =>
+        o.id === orderId || o._id === apiId || o.orderNumber === orderId
           ? {
               ...o,
-              orderStatus: newStatus || o.orderStatus,
+              fulfillmentStatus: newStatus || o.fulfillmentStatus,
+              orderStatus: backendStatus,
               trackingNumber: trackingNumber !== undefined ? trackingNumber : o.trackingNumber,
             }
           : o
-      )
-    );
+      );
+      localStorage.setItem('royal_admin_orders', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   // Review Operations
@@ -330,6 +457,7 @@ export function AdminDataProvider({ children }) {
         deleteProduct,
         toggleProductFlag,
         updateStock,
+        toggleAvailability,
         updateOrderStatus,
         addCoupon,
         toggleCouponStatus,

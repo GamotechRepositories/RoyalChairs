@@ -10,7 +10,40 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
-import { WHY_CHOOSE_US_ITEMS } from '../../data/chairProductsData';
+const STATIC_PILLARS = [
+  {
+    id: 'ergonomics',
+    icon: <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-emerald-700" />,
+    title: 'Spinal Orthopedic Design',
+    desc: 'Co-developed with UK spine biomechanists to ensure healthy posture and pressure distribution.',
+    image: 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?auto=format&fit=crop&w=800&q=80',
+    fallback: 'https://images.unsplash.com/photo-1589384267710-7a170981ca78?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'materials',
+    icon: <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-emerald-700" />,
+    title: 'English Grain & Velvet',
+    desc: 'Ethically sourced top-grain leathers, English plush velvets, and sustainable FSC-certified solid oak.',
+    image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80',
+    fallback: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'warranty',
+    icon: <Award className="w-7 h-7 sm:w-8 sm:h-8 text-emerald-700" />,
+    title: '10-Year Master Warranty',
+    desc: 'Uncompromising confidence. Full frame, gas lift, and mechanical component coverage guaranteed.',
+    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80',
+    fallback: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'delivery',
+    icon: <Truck className="w-7 h-7 sm:w-8 sm:h-8 text-emerald-700" />,
+    title: 'Free Express Delivery',
+    desc: 'Delivered directly to your doorstep with zero-hassle safe packaging and fast transit.',
+    image: 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?auto=format&fit=crop&w=800&q=80',
+    fallback: 'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?auto=format&fit=crop&w=800&q=80',
+  },
+];
 
 export default function WhyChooseUs() {
   const { reviews } = useStore();
@@ -18,6 +51,11 @@ export default function WhyChooseUs() {
   const reviewsScrollRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Mobile Pillars Auto-scroll state (2s interval, same as Moments of Comfort)
+  const [pillarIndex, setPillarIndex] = useState(0);
+  const [isPillarPaused, setIsPillarPaused] = useState(false);
+  const pillarsScrollRef = useRef(null);
 
   // Synchronize with storage updates from Admin
   useEffect(() => {
@@ -30,21 +68,36 @@ export default function WhyChooseUs() {
     };
   }, []);
 
-  // 1. Dynamic Pillars from Admin
-  const activePillars = useMemo(() => {
-    try {
-      const saved = localStorage.getItem('royal_admin_why_pillars');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {
-      // fallback
-    }
-    return WHY_CHOOSE_US_ITEMS;
-  }, [storageTick]);
+  // Auto-scroll pillars on mobile every 2 seconds
+  useEffect(() => {
+    if (isPillarPaused) return;
 
-  // 2. Dynamic Craftsmanship Story Banner from Admin
+    const timer = setInterval(() => {
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setPillarIndex((prev) => (prev + 1) % STATIC_PILLARS.length);
+      }
+    }, 2000);
+
+    return () => clearInterval(timer);
+  }, [isPillarPaused]);
+
+  // Sync scroll position on mobile
+  useEffect(() => {
+    if (pillarsScrollRef.current && typeof window !== 'undefined' && window.innerWidth < 768) {
+      const container = pillarsScrollRef.current;
+      const card = container.firstElementChild;
+      if (card) {
+        const cardWidth = card.offsetWidth;
+        const gap = 16;
+        container.scrollTo({
+          left: pillarIndex * (cardWidth + gap),
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, [pillarIndex]);
+
+  // Craftsmanship Story Banner from Admin / default
   const craftBanner = useMemo(() => {
     try {
       const saved = localStorage.getItem('royal_admin_craft_banner');
@@ -112,13 +165,6 @@ export default function WhyChooseUs() {
     }
   };
 
-  const iconMap = {
-    ShieldCheck: <ShieldCheck className="w-8 h-8 text-emerald-700" />,
-    Sparkles: <Sparkles className="w-8 h-8 text-emerald-700" />,
-    Award: <Award className="w-8 h-8 text-emerald-700" />,
-    Truck: <Truck className="w-8 h-8 text-emerald-700" />,
-  };
-
   return (
     <section id="why-choose-us" className="py-20 bg-white border-t border-gray-100">
       <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
@@ -129,33 +175,77 @@ export default function WhyChooseUs() {
           </h2>
         </div>
 
-        {/* 2. 4 Pillars */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-20">
-          {activePillars.map((item, idx) => (
-            <div
-              key={item.id || idx}
-              className="bg-cream-soft rounded-2xl p-6 border border-emerald-900/10 hover:border-emerald-700/40 hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
-            >
-              <div>
-                <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-md mb-6 group-hover:scale-110 transition">
-                  {iconMap[item.iconName] || <ShieldCheck className="w-8 h-8 text-emerald-700" />}
+        {/* 2. 4 Pillars with Images & Mobile 2s Auto-Scroll Carousel */}
+        <div
+          onMouseEnter={() => setIsPillarPaused(true)}
+          onMouseLeave={() => setIsPillarPaused(false)}
+          onTouchStart={() => setIsPillarPaused(true)}
+          onTouchEnd={() => setIsPillarPaused(false)}
+          className="relative group mb-8 md:mb-20"
+        >
+          {/* Cards container: Horizontal scroll on mobile (shows 1 card + peek of 2nd), Grid on desktop */}
+          <div
+            ref={pillarsScrollRef}
+            className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-2 scroll-smooth"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {STATIC_PILLARS.map((item, idx) => (
+              <div
+                key={item.id || idx}
+                onClick={() => setPillarIndex(idx)}
+                className="w-[82vw] sm:w-[84vw] md:w-auto shrink-0 snap-start bg-cream-soft rounded-2xl p-5 sm:p-6 border border-emerald-900/10 hover:border-emerald-700/40 hover:shadow-xl transition-all duration-300 flex flex-col justify-between group cursor-pointer"
+              >
+                <div>
+                  {/* Top Row: Icon Badge (left) + Image (right) */}
+                  <div className="flex items-center justify-between gap-3 mb-5">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white flex items-center justify-center shadow-md shrink-0 group-hover:scale-105 transition-transform duration-300">
+                      {item.icon}
+                    </div>
+                    <div className="flex-1 h-14 sm:h-16 rounded-xl overflow-hidden shadow-xs border border-emerald-900/10 bg-slate-100 shrink-0">
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        loading="lazy"
+                        onError={(e) => {
+                          if (item.fallback && e.target.src !== item.fallback) {
+                            e.target.src = item.fallback;
+                          }
+                        }}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                      />
+                    </div>
+                  </div>
+
+                  <h3 className="text-base sm:text-lg font-extrabold text-emerald-950 font-serif mb-2">
+                    {item.title}
+                  </h3>
+
+                  <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
+                    {item.desc}
+                  </p>
                 </div>
 
-                <h3 className="text-lg font-extrabold text-emerald-950 font-serif mb-2">
-                  {item.title}
-                </h3>
-
-                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
-                  {item.desc}
-                </p>
+                <div className="mt-5 pt-3 border-t border-gray-200/60 flex items-center text-xs font-bold text-emerald-800">
+                  <CheckCircle2 className="w-4 h-4 mr-1 text-emerald-600 shrink-0" />
+                  <span>Verified Royal Standard</span>
+                </div>
               </div>
+            ))}
+          </div>
 
-              <div className="mt-6 pt-3 border-t border-gray-200/60 flex items-center text-xs font-bold text-emerald-800">
-                <CheckCircle2 className="w-4 h-4 mr-1 text-emerald-600" />
-                <span>Verified Royal Standard</span>
-              </div>
-            </div>
-          ))}
+          {/* Mobile Dot Indicators */}
+          <div className="flex md:hidden justify-center items-center gap-2 mt-4">
+            {STATIC_PILLARS.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setPillarIndex(idx)}
+                className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                  pillarIndex === idx ? 'w-6 bg-emerald-700' : 'w-2 bg-emerald-200'
+                }`}
+                aria-label={`Go to pillar ${idx + 1}`}
+              />
+            ))}
+          </div>
         </div>
 
         {/* 3. Craftsmanship & Material Story */}

@@ -8,38 +8,59 @@ export const createOrder = async (req, res) => {
   try {
     const { customer, items, totalAmount, paymentMethod, paymentStatus } = req.body;
 
-    if (!customer || !items || !Array.isArray(items) || items.length === 0) {
+    if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Customer information and order items are required',
+        message: 'Order items are required',
       });
     }
 
-    // Deduct stock from products
-    for (const item of items) {
-      if (item.product) {
-        await Product.findByIdAndUpdate(item.product, {
-          $inc: { stock: -Math.max(1, Number(item.quantity) || 1) },
-        });
+    const safeCustomer = {
+      name: customer?.name || (req.user?.name || 'Valued Client'),
+      email: customer?.email || (req.user?.email || 'client@royalchairs.com'),
+      phone: customer?.phone || '+91 98765 43210',
+      address: customer?.address || 'Royal Villa, Mayfair Estate',
+      city: customer?.city || 'London',
+      state: customer?.state || 'Greater London',
+      pincode: customer?.pincode || 'SW1A 1AA',
+    };
+
+    const orderData = {
+      user: req.user ? req.user._id : null,
+      customer: safeCustomer,
+      items,
+      totalAmount: Number(totalAmount) || 0,
+      paymentMethod: paymentMethod || 'online',
+      paymentStatus: paymentStatus || 'paid',
+      orderStatus: req.body.orderStatus || 'confirmed',
+    };
+
+    if (req.body.orderNumber) {
+      orderData.orderNumber = req.body.orderNumber;
+    }
+
+    let order;
+    if (req.body.orderNumber) {
+      order = await Order.findOne({ orderNumber: req.body.orderNumber });
+      if (order) {
+        Object.assign(order, orderData);
+        await order.save();
       }
     }
 
-    const order = await Order.create({
-      user: req.user ? req.user._id : null,
-      customer,
-      items,
-      totalAmount: Number(totalAmount),
-      paymentMethod: paymentMethod || 'cod',
-      paymentStatus: paymentStatus || 'pending',
-      orderStatus: 'placed',
-    });
+    if (!order) {
+      order = await Order.create(orderData);
+    }
+
+    const obj = order.toObject();
 
     res.status(201).json({
       success: true,
       message: 'Your luxury chair order has been placed successfully!',
       data: {
-        ...order.toObject(),
-        id: order._id.toString(),
+        ...obj,
+        id: obj.orderNumber || obj._id.toString(),
+        _id: obj._id.toString(),
       },
     });
   } catch (error) {
@@ -60,7 +81,13 @@ export const getOrders = async (req, res) => {
     const query = {};
 
     if (status && status !== 'All') {
-      query.orderStatus = status.toLowerCase();
+      const s = status.toLowerCase();
+      if (s === 'pending' || s === 'placed') query.orderStatus = { $in: ['placed', 'pending'] };
+      else if (s === 'in production' || s === 'confirmed') query.orderStatus = { $in: ['confirmed', 'in production'] };
+      else if (s === 'dispatched' || s === 'shipped') query.orderStatus = { $in: ['shipped', 'dispatched'] };
+      else if (s === 'delivered') query.orderStatus = 'delivered';
+      else if (s === 'cancelled') query.orderStatus = 'cancelled';
+      else query.orderStatus = s;
     }
 
     if (search && search.trim()) {
@@ -79,10 +106,31 @@ export const getOrders = async (req, res) => {
     res.status(200).json({
       success: true,
       count: orders.length,
-      data: orders.map((o) => ({
-        ...o.toObject(),
-        id: o._id.toString(),
-      })),
+      data: orders.map((o) => {
+        const obj = o.toObject();
+        return {
+          ...obj,
+          id: obj.orderNumber || obj._id.toString(),
+          _id: obj._id.toString(),
+          date: obj.createdAt,
+          total: obj.totalAmount,
+          subtotal: obj.totalAmount,
+          discount: 0,
+          carrier: 'Royal Express Logistics',
+          fulfillmentStatus:
+            obj.orderStatus === 'placed' || obj.orderStatus === 'pending'
+              ? 'Pending'
+              : obj.orderStatus === 'confirmed' || obj.orderStatus === 'in production'
+              ? 'In Production'
+              : obj.orderStatus === 'shipped' || obj.orderStatus === 'dispatched'
+              ? 'Dispatched'
+              : obj.orderStatus === 'delivered'
+              ? 'Delivered'
+              : obj.orderStatus === 'cancelled'
+              ? 'Cancelled'
+              : 'Pending',
+        };
+      }),
     });
   } catch (error) {
     res.status(500).json({
@@ -144,7 +192,13 @@ export const updateOrderStatus = async (req, res) => {
     if (paymentStatus) updates.paymentStatus = paymentStatus.toLowerCase();
     if (trackingNumber) updates.trackingNumber = trackingNumber;
 
-    const order = await Order.findByIdAndUpdate(id, updates, { new: true });
+    let order = null;
+    if (/^[0-9a-fA-F]{24}$/.test(id)) {
+      order = await Order.findByIdAndUpdate(id, updates, { new: true });
+    }
+    if (!order) {
+      order = await Order.findOneAndUpdate({ orderNumber: id }, updates, { new: true });
+    }
 
     if (!order) {
       return res.status(404).json({
@@ -158,7 +212,8 @@ export const updateOrderStatus = async (req, res) => {
       message: 'Order updated successfully',
       data: {
         ...order.toObject(),
-        id: order._id.toString(),
+        id: order.orderNumber || order._id.toString(),
+        _id: order._id.toString(),
       },
     });
   } catch (error) {

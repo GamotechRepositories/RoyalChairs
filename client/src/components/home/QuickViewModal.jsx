@@ -42,8 +42,10 @@ export default function QuickViewModal({ product, onClose }) {
   if (!product) return null;
 
   const inWishlist = product.id ? isInWishlist(product.id) : false;
+  const isAvailable = product.isAvailable !== false && product.inStock !== false && (product.stock === undefined || product.stock > 0);
 
   const handleAdd = () => {
+    if (!isAvailable) return;
     addToCart(product, selectedColor, quantity);
     onClose();
   };
@@ -229,11 +231,22 @@ export default function QuickViewModal({ product, onClose }) {
 
                 <button
                   onClick={handleAdd}
-                  className="flex-1 py-3.5 bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold rounded-xl shadow-lg flex items-center justify-center space-x-2 transition text-sm cursor-pointer"
+                  disabled={!isAvailable}
+                  className={`flex-1 py-3.5 font-extrabold rounded-xl shadow-lg flex items-center justify-center space-x-2 transition text-sm ${
+                    !isAvailable
+                      ? 'bg-slate-200 text-slate-400 border border-slate-300 shadow-none cursor-not-allowed'
+                      : 'bg-emerald-900 hover:bg-emerald-800 text-white cursor-pointer'
+                  }`}
                 >
-                  <ShoppingBag className="w-4 h-4 flex-shrink-0" />
-                  <span className="hidden sm:inline">Add to Shopping Bag • ₹{(product.price * quantity).toLocaleString()}</span>
-                  <span className="sm:hidden">Add • ₹{(product.price * quantity).toLocaleString()}</span>
+                  {!isAvailable ? (
+                    <span>Currently Out of Stock</span>
+                  ) : (
+                    <>
+                      <ShoppingBag className="w-4 h-4 flex-shrink-0" />
+                      <span className="hidden sm:inline">Add to Shopping Bag • ₹{(product.price * quantity).toLocaleString()}</span>
+                      <span className="sm:hidden">Add • ₹{(product.price * quantity).toLocaleString()}</span>
+                    </>
+                  )}
                 </button>
 
                 <button

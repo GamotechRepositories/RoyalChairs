@@ -24,14 +24,29 @@ export default function OrdersManager() {
 
   const STATUS_TABS = ['All', 'Pending', 'In Production', 'Dispatched', 'Delivered', 'Cancelled'];
 
-  const filteredOrders = orders.filter((o) => {
-    const matchesSearch =
-      o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (o.trackingNumber && o.trackingNumber.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredOrders = (Array.isArray(orders) ? orders : []).filter((o) => {
+    const orderIdStr = (o.orderNumber || o.id || o._id || '').toLowerCase();
+    const customerName = (o.customer?.name || '').toLowerCase();
+    const customerEmail = (o.customer?.email || '').toLowerCase();
+    const tracking = (o.trackingNumber || '').toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
 
-    const matchesStatus = activeFilter === 'All' || o.fulfillmentStatus.toLowerCase() === activeFilter.toLowerCase();
+    const matchesSearch =
+      !q ||
+      orderIdStr.includes(q) ||
+      customerName.includes(q) ||
+      customerEmail.includes(q) ||
+      tracking.includes(q);
+
+    const currentStatus = (o.fulfillmentStatus || o.orderStatus || 'Pending').toLowerCase();
+    const matchesStatus =
+      activeFilter === 'All' ||
+      currentStatus === activeFilter.toLowerCase() ||
+      (activeFilter === 'Pending' && (currentStatus === 'placed' || currentStatus === 'pending')) ||
+      (activeFilter === 'In Production' && (currentStatus === 'confirmed' || currentStatus === 'in production')) ||
+      (activeFilter === 'Dispatched' && (currentStatus === 'shipped' || currentStatus === 'dispatched')) ||
+      (activeFilter === 'Delivered' && currentStatus === 'delivered') ||
+      (activeFilter === 'Cancelled' && currentStatus === 'cancelled');
 
     return matchesSearch && matchesStatus;
   });
@@ -125,91 +140,100 @@ export default function OrdersManager() {
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-slate-50/80 transition group">
-                    {/* Order ID & Date */}
-                    <td className="py-4 px-4">
-                      <div className="font-mono font-black text-slate-900 text-sm">
-                        {order.id}
-                      </div>
-                      <span className="text-[10px] text-slate-500 font-medium">
-                        {new Date(order.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </span>
-                    </td>
+                filteredOrders.map((order, orderIdx) => {
+                  const safeItems = Array.isArray(order.items) ? order.items : [];
+                  const orderDate = order.createdAt || order.date || new Date().toISOString();
+                  const orderTotal = Number(order.totalAmount !== undefined ? order.totalAmount : (order.total || 0));
 
-                    {/* Customer */}
-                    <td className="py-4 px-4">
-                      <p className="font-bold text-slate-900 group-hover:text-emerald-800 transition">
-                        {order.customer.name}
-                      </p>
-                      <p className="text-[10px] text-slate-500 truncate max-w-[140px]">
-                        {order.customer.email}
-                      </p>
-                    </td>
-
-                    {/* Items */}
-                    <td className="py-4 px-4">
-                      <div className="flex items-center space-x-2">
-                        <div className="flex -space-x-2">
-                          {order.items.map((item, idx) => (
-                            <img
-                              key={idx}
-                              src={item.image}
-                              alt={item.name}
-                              className="w-8 h-8 rounded-xl object-cover border-2 border-white shadow-xs"
-                            />
-                          ))}
+                  return (
+                    <tr key={order._id || order.id || orderIdx} className="hover:bg-slate-50/80 transition group">
+                      {/* Order ID & Date */}
+                      <td className="py-4 px-4">
+                        <div className="font-mono font-black text-slate-900 text-sm">
+                          {order.orderNumber || order.id || `ORD-${orderIdx}`}
                         </div>
-                        <span className="text-xs font-bold text-slate-700">
-                          {order.items.reduce((s, i) => s + i.quantity, 0)} Seats
+                        <span className="text-[10px] text-slate-500 font-medium">
+                          {new Date(orderDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </span>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Total Amount */}
-                    <td className="py-4 px-4 font-mono">
-                      <p className="font-black text-emerald-800 text-sm">
-                        ₹{order.total.toLocaleString()}
-                      </p>
-                      <span className="text-[10px] text-emerald-700 font-sans font-bold">
-                        {order.paymentStatus}
-                      </span>
-                    </td>
+                      {/* Customer */}
+                      <td className="py-4 px-4">
+                        <p className="font-bold text-slate-900 group-hover:text-emerald-800 transition">
+                          {order.customer?.name || 'Valued Client'}
+                        </p>
+                        <p className="text-[10px] text-slate-500 truncate max-w-[140px]">
+                          {order.customer?.email || 'client@royalchairs.com'}
+                        </p>
+                      </td>
 
-                    {/* Fulfillment Status */}
-                    <td className="py-4 px-4">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-extrabold ${
-                          order.fulfillmentStatus === 'Delivered'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : order.fulfillmentStatus === 'Dispatched'
-                            ? 'bg-blue-100 text-blue-800'
-                            : order.fulfillmentStatus === 'In Production'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-purple-100 text-purple-800'
-                        }`}
-                      >
-                        {order.fulfillmentStatus}
-                      </span>
-                    </td>
+                      {/* Items */}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="flex -space-x-2">
+                            {safeItems.slice(0, 3).map((item, idx) => (
+                              <img
+                                key={idx}
+                                src={item.image || item.mainImage || 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=85'}
+                                alt={item.name || 'Chair'}
+                                onError={(e) => {
+                                  e.target.src = 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80';
+                                }}
+                                className="w-8 h-8 rounded-xl object-cover border-2 border-white shadow-xs"
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs font-bold text-slate-700">
+                            {safeItems.reduce((s, i) => s + (Number(i.quantity) || 1), 0)} Seats
+                          </span>
+                        </div>
+                      </td>
 
-                    {/* Tracking Code */}
-                    <td className="py-4 px-4 font-mono text-[11px] text-slate-600 font-medium">
-                      {order.trackingNumber || 'Awaiting assignment'}
-                    </td>
+                      {/* Total Amount */}
+                      <td className="py-4 px-4 font-mono">
+                        <p className="font-black text-emerald-800 text-sm">
+                          ₹{orderTotal.toLocaleString()}
+                        </p>
+                        <span className="text-[10px] text-emerald-700 font-sans font-bold">
+                          {order.paymentStatus || 'PAID'}
+                        </span>
+                      </td>
 
-                    {/* Actions */}
-                    <td className="py-4 px-4 text-right">
-                      <button
-                        onClick={() => setSelectedOrder(order)}
-                        className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 text-xs font-bold transition flex items-center space-x-1.5 ml-auto cursor-pointer shadow-2xs"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Inspect</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      {/* Fulfillment Status */}
+                      <td className="py-4 px-4">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-extrabold ${
+                            order.fulfillmentStatus === 'Delivered'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : order.fulfillmentStatus === 'Dispatched'
+                              ? 'bg-blue-100 text-blue-800'
+                              : order.fulfillmentStatus === 'In Production'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-purple-100 text-purple-800'
+                          }`}
+                        >
+                          {order.fulfillmentStatus || 'Pending'}
+                        </span>
+                      </td>
+
+                      {/* Tracking Code */}
+                      <td className="py-4 px-4 font-mono text-[11px] text-slate-600 font-medium">
+                        {order.trackingNumber || 'Awaiting assignment'}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-4 px-4 text-right">
+                        <button
+                          onClick={() => setSelectedOrder(order)}
+                          className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 text-xs font-bold transition flex items-center space-x-1.5 ml-auto cursor-pointer shadow-2xs"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Inspect</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

@@ -86,8 +86,28 @@ export default function ProductCard({ product, onQuickView }) {
 
   const currentQty = getItemQuantity(product._id || product.id, selectedColor);
 
+  const isAvailable = useMemo(() => {
+    if (activeVariant && activeVariant.isAvailable !== undefined) {
+      return Boolean(activeVariant.isAvailable);
+    }
+    if (activeVariant && activeVariant.stock !== undefined && activeVariant.stock !== null) {
+      return Number(activeVariant.stock) > 0;
+    }
+    if (product.isAvailable !== undefined) {
+      return Boolean(product.isAvailable);
+    }
+    if (product.inStock !== undefined) {
+      return Boolean(product.inStock);
+    }
+    if (product.stock !== undefined) {
+      return Number(product.stock) > 0;
+    }
+    return true;
+  }, [activeVariant, product]);
+
   const handleAddToCart = (e) => {
     e.stopPropagation();
+    if (!isAvailable) return;
     const itemToAdd = {
       ...product,
       price: currentPrice,
@@ -263,6 +283,13 @@ export default function ProductCard({ product, onQuickView }) {
                   <Plus className="w-4 h-4 stroke-[3]" />
                 </button>
               </div>
+            ) : !isAvailable ? (
+              <button
+                disabled
+                className="w-full h-10 sm:h-11 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center space-x-1.5 bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed"
+              >
+                <span>Out of Stock</span>
+              </button>
             ) : (
               <button
                 onClick={handleAddToCart}

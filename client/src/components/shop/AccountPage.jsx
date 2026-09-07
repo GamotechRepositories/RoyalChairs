@@ -2,46 +2,33 @@ import { useState, useEffect } from 'react';
 import {
   User,
   Mail,
-  ShieldCheck,
-  ShoppingBag,
-  Heart,
   Package,
   LogOut,
   ArrowLeft,
-  ArrowRight,
-  Clock,
-  CheckCircle2,
   MapPin,
   Phone,
-  Sparkles,
-  ExternalLink,
-  ChevronRight,
   Star,
-  MessageSquare,
   X,
   Send,
   Check,
+  CheckCircle2,
+  Calendar,
+  Copy,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useCart } from '../../context/CartContext';
-import { useWishlist } from '../../context/WishlistContext';
 import { useStore } from '../../context/StoreContext';
 import api from '../../services/api';
 
 export default function AccountPage({
   onBackToHome,
-  onNavigateCart,
-  onNavigateWishlist,
   onNavigateShop,
-  onOpenTrackOrder,
 }) {
   const { user, logout } = useAuth();
-  const { cartCount } = useCart();
-  const { wishlistCount } = useWishlist();
   const { products } = useStore();
 
-  const [activeTab, setActiveTab] = useState('orders'); // default to 'orders' or 'profile'
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'profile', 'address'
   const [orders, setOrders] = useState([]);
+  const [copiedOrderNumber, setCopiedOrderNumber] = useState('');
   const [reviewedProductIds, setReviewedProductIds] = useState(() => {
     try {
       const saved = localStorage.getItem('royal_reviewed_items');
@@ -58,6 +45,62 @@ export default function AccountPage({
   const [reviewLocation, setReviewLocation] = useState('India');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewSuccessToast, setReviewSuccessToast] = useState('');
+
+  // Robust product image resolver matching live store items & variants
+  const resolveItemImage = (item) => {
+    if (!item) return 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80';
+
+    const itemCleanName = (item.name || item.title || '').toLowerCase().trim();
+    const itemId = (item.productId || item.product || item.id || item._id || '').toString();
+
+    // 1. Try matching with live products from MongoDB store
+    const matchedProduct = (products || []).find((p) => {
+      const pId = (p._id || p.id || '').toString();
+      if (pId && itemId && pId === itemId) return true;
+      if (p.name && itemCleanName) {
+        const pName = p.name.toLowerCase().trim();
+        if (pName === itemCleanName || itemCleanName.startsWith(pName) || pName.startsWith(itemCleanName)) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (matchedProduct) {
+      // If item has a selected variant/color finish, look for matching variant image
+      if (Array.isArray(matchedProduct.variants) && matchedProduct.variants.length > 0) {
+        const variantName = (item.selectedVariantName || item.variant || item.colorName || '').toLowerCase().trim();
+        const variantHex = (item.color || '').toLowerCase().trim();
+
+        const matchedVariant = matchedProduct.variants.find((v) => {
+          const vName = (v.colorName || v.name || '').toLowerCase().trim();
+          const vHex = (v.colorHex || '').toLowerCase().trim();
+          return (
+            (variantName && (vName === variantName || vName.includes(variantName) || variantName.includes(vName))) ||
+            (variantHex && vHex === variantHex)
+          );
+        });
+
+        if (matchedVariant?.mainImage || matchedVariant?.image) {
+          return matchedVariant.mainImage || matchedVariant.image;
+        }
+      }
+
+      // Return the product's real mainImage from DB
+      if (matchedProduct.mainImage) {
+        return matchedProduct.mainImage;
+      }
+    }
+
+    // 2. Direct stored images on item
+    if (item.mainImage) return item.mainImage;
+    if (item.image && !item.image.includes('photo-1598300042247-d088f8ab3a91') && !item.image.includes('photo-1580481072645-022f9a6d8310')) {
+      return item.image;
+    }
+    if (item.image) return item.image;
+
+    return 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80';
+  };
 
   // Fetch and auto-sync user orders with backend database
   const fetchOrders = async () => {
@@ -155,25 +198,20 @@ export default function AccountPage({
     if (onBackToHome) onBackToHome();
   };
 
+  const handleCopyOrder = (orderNum) => {
+    if (!orderNum) return;
+    navigator.clipboard?.writeText(orderNum);
+    setCopiedOrderNumber(orderNum);
+    setTimeout(() => setCopiedOrderNumber(''), 2000);
+  };
+
   const handleOpenReviewModal = (item, order) => {
-    const matchedProduct = (products || []).find(
-      (p) =>
-        (p._id && (p._id === item.productId || p._id === item.product)) ||
-        (p.id && (p.id === item.productId || p.id === item.product)) ||
-        (p.name && item.name && p.name.toLowerCase().trim() === item.name.toLowerCase().trim())
-    );
-
-    const itemImg =
-      (item.image && !item.image.includes('photo-1598300042247-d088f8ab3a91') ? item.image : null) ||
-      matchedProduct?.mainImage ||
-      item.image ||
-      'https://images.unsplash.com/photo-1580481072645-022f9a6d8310?auto=format&fit=crop&w=800&q=80';
-
+    const itemImg = resolveItemImage(item);
     setSelectedItemForReview({
       ...item,
-      productId: matchedProduct?._id || matchedProduct?.id || item.productId || item.product,
-      productName: item.name || matchedProduct?.name,
-      orderNumber: order.orderNumber,
+      productId: item.productId || item.product || item.id || item._id,
+      productName: item.name || item.title,
+      orderNumber: order.orderNumber || order.id,
       image: itemImg,
     });
     setReviewRating(5);
@@ -229,9 +267,9 @@ export default function AccountPage({
         window.dispatchEvent(new Event('royal_storage_update'));
         window.dispatchEvent(new Event('storage'));
 
-        setReviewSuccessToast(`Thank you! Your verified review has been published.`);
+        setReviewSuccessToast(`Thank you! Your verified review has been submitted.`);
         handleCloseReviewModal();
-        setTimeout(() => setReviewSuccessToast(''), 5000);
+        setTimeout(() => setReviewSuccessToast(''), 4000);
       }
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to submit review. Please try again.');
@@ -242,25 +280,21 @@ export default function AccountPage({
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-cream-soft pt-10 pb-20">
-        <div className="w-full max-w-xl mx-auto px-4 text-center">
-          <div className="bg-white rounded-3xl p-10 border border-emerald-900/10 shadow-xl">
-            <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-5 text-amber-600 border border-amber-200">
-              <User className="w-8 h-8 text-emerald-800" />
-            </div>
-            <h2 className="text-2xl font-black text-emerald-950 font-serif mb-2">
-              Sign In Required
-            </h2>
-            <p className="text-gray-600 text-sm mb-6">
-              Please sign in to access your account profile, order history, and verified product reviews.
-            </p>
-            <button
-              onClick={onBackToHome}
-              className="px-6 py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
-            >
-              Return to Homepage
-            </button>
+      <div className="min-h-screen bg-[#faf8f5] flex items-center justify-center p-4">
+        <div className="w-full max-w-md text-center bg-white rounded-3xl p-8 sm:p-10 border border-slate-200 shadow-sm space-y-4">
+          <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto text-emerald-800">
+            <User className="w-7 h-7" />
           </div>
+          <h2 className="text-xl font-bold text-slate-900 font-serif">Sign in Required</h2>
+          <p className="text-slate-600 text-xs sm:text-sm">
+            Please sign in to view your orders, delivery address, and account details.
+          </p>
+          <button
+            onClick={onBackToHome}
+            className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+          >
+            Return to Homepage
+          </button>
         </div>
       </div>
     );
@@ -269,560 +303,343 @@ export default function AccountPage({
   const userInitial = user.name ? user.name.charAt(0).toUpperCase() : 'U';
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] pt-6 pb-24">
+    <div className="min-h-screen bg-[#faf8f5] py-6 sm:py-10 px-3 sm:px-6 lg:px-8">
       {/* Toast Notification */}
       {reviewSuccessToast && (
-        <div className="fixed top-6 right-6 z-50 bg-emerald-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-amber-300/40 flex items-center space-x-3 animate-bounce">
-          <CheckCircle2 className="w-5 h-5 text-amber-300 shrink-0" />
-          <span className="text-xs font-black">{reviewSuccessToast}</span>
+        <div className="fixed top-5 right-5 z-50 bg-emerald-950 text-white px-4 py-3 rounded-xl shadow-xl border border-emerald-700 flex items-center space-x-2.5 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span className="text-xs font-bold">{reviewSuccessToast}</span>
         </div>
       )}
 
-      <div className="w-full max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
-        {/* Breadcrumb Navigation */}
-        <div className="flex items-center space-x-2 text-xs font-bold text-gray-500 mb-6">
-          <button
-            onClick={onBackToHome}
-            className="hover:text-emerald-900 transition flex items-center cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-            <span>Home</span>
-          </button>
-          <span>/</span>
-          <span className="text-emerald-950 font-extrabold">My Member Account</span>
-        </div>
+      <div className="w-full max-w-[1200px] mx-auto space-y-6">
 
-        {/* Hero Profile Banner */}
-        <div className="relative rounded-3xl bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 text-white p-6 sm:p-10 shadow-2xl overflow-hidden mb-8 border border-emerald-700/40">
-          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-amber-400/10 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center space-x-5">
-              {/* Luxury Avatar */}
-              <div className="relative">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 text-emerald-950 flex items-center justify-center font-serif text-3xl sm:text-4xl font-black shadow-xl border-4 border-emerald-950/60 flex-shrink-0">
-                  {userInitial}
-                </div>
-                <div className="absolute -bottom-2 -right-2 bg-emerald-700 text-amber-300 p-1.5 rounded-xl border border-amber-300/40 shadow-md">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center space-x-2 mb-1">
-                  <span className="text-[10px] font-black tracking-widest uppercase px-2.5 py-0.5 rounded-full bg-amber-400 text-emerald-950 border border-amber-300">
-                    VIP VERIFIED CLIENT
-                  </span>
-                  <span className="text-xs text-emerald-300 flex items-center">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block mr-1.5 animate-pulse" />
-                    Active Session
-                  </span>
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-black font-serif tracking-tight">
-                  {user.name}
-                </h1>
-                <p className="text-xs sm:text-sm text-emerald-200/80 font-medium flex items-center mt-0.5">
-                  <Mail className="w-3.5 h-3.5 mr-1.5 opacity-70" />
-                  <span>{user.email}</span>
-                </p>
-              </div>
+        {/* 1. SIMPLE CLEAN HEADER */}
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center space-x-4">
+            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-emerald-800 text-white flex items-center justify-center font-bold text-xl sm:text-2xl shadow-xs shrink-0">
+              {userInitial}
             </div>
-
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={handleLogout}
-                className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs rounded-xl border border-white/20 transition flex items-center space-x-1.5 backdrop-blur-md cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Sign Out</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Stats Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {/* Cart Highlights */}
-          <div
-            onClick={onNavigateCart}
-            className="bg-white p-5 rounded-3xl border border-gray-200/80 hover:border-emerald-600/40 shadow-sm hover:shadow-md transition cursor-pointer group"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center group-hover:scale-110 transition">
-                <ShoppingBag className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-bold text-gray-400 group-hover:text-emerald-800 flex items-center">
-                View <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-              </span>
-            </div>
-            <div className="text-2xl font-black text-emerald-950 font-serif">{cartCount}</div>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-0.5">Items in Cart</div>
-          </div>
-
-          {/* Wishlist Highlights */}
-          <div
-            onClick={onNavigateWishlist}
-            className="bg-white p-5 rounded-3xl border border-gray-200/80 hover:border-rose-300 shadow-sm hover:shadow-md transition cursor-pointer group"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-11 h-11 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center group-hover:scale-110 transition">
-                <Heart className="w-5 h-5 fill-current" />
-              </div>
-              <span className="text-xs font-bold text-gray-400 group-hover:text-rose-600 flex items-center">
-                View <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-              </span>
-            </div>
-            <div className="text-2xl font-black text-emerald-950 font-serif">{wishlistCount}</div>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-0.5">Saved Favorites</div>
-          </div>
-
-          {/* Membership Tier */}
-          <div className="bg-white p-5 rounded-3xl border border-gray-200/80 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                Gold
-              </span>
-            </div>
-            <div className="text-2xl font-black text-emerald-950 font-serif">Royal Patron</div>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-0.5">Tier Benefits Active</div>
-          </div>
-
-          {/* Order Tracker Shortcut */}
-          <div
-            onClick={onOpenTrackOrder}
-            className="bg-white p-5 rounded-3xl border border-gray-200/80 hover:border-emerald-600/40 shadow-sm hover:shadow-md transition cursor-pointer group"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center group-hover:scale-110 transition">
-                <Package className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-bold text-gray-400 group-hover:text-blue-700 flex items-center">
-                Track <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-              </span>
-            </div>
-            <div className="text-2xl font-black text-emerald-950 font-serif">Live Tracking</div>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-0.5">Check Order Status</div>
-          </div>
-        </div>
-
-        {/* Content Tabs & Main Panel */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Navigation Sidebar */}
-          <div className="lg:col-span-4 space-y-4">
-            <div className="bg-white rounded-3xl p-4 border border-gray-200/80 shadow-sm space-y-1">
-              <button
-                onClick={() => setActiveTab('orders')}
-                className={`w-full flex items-center justify-between p-3.5 rounded-2xl font-extrabold text-xs transition cursor-pointer ${
-                  activeTab === 'orders'
-                    ? 'bg-emerald-900 text-white shadow-md'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <Package className="w-4 h-4" />
-                  <span>Orders & Verified Reviews</span>
-                </div>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={() => setActiveTab('profile')}
-                className={`w-full flex items-center justify-between p-3.5 rounded-2xl font-extrabold text-xs transition cursor-pointer ${
-                  activeTab === 'profile'
-                    ? 'bg-emerald-900 text-white shadow-md'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <User className="w-4 h-4" />
-                  <span>Personal Details</span>
-                </div>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={() => setActiveTab('address')}
-                className={`w-full flex items-center justify-between p-3.5 rounded-2xl font-extrabold text-xs transition cursor-pointer ${
-                  activeTab === 'address'
-                    ? 'bg-emerald-900 text-white shadow-md'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <MapPin className="w-4 h-4" />
-                  <span>Delivery & Contact</span>
-                </div>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Concierge Card */}
-            <div className="bg-gradient-to-br from-amber-100/70 via-amber-50 to-orange-50/50 rounded-3xl p-6 border border-amber-200 shadow-sm relative overflow-hidden">
-              <Sparkles className="w-8 h-8 text-amber-500/40 absolute -top-1 -right-1" />
-              <h4 className="text-sm font-black font-serif text-amber-950 mb-1">
-                Verified Purchaser Policy
-              </h4>
-              <p className="text-xs text-amber-900/80 leading-relaxed mb-4">
-                Reviews are strictly restricted to customers who have purchased the chair, guaranteeing 100% authentic feedback.
+            <div>
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 font-serif">
+                {user.name}
+              </h1>
+              <p className="text-xs text-slate-500 font-medium flex items-center mt-0.5">
+                <Mail className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+                {user.email}
               </p>
-              <button
-                onClick={onNavigateShop}
-                className="px-4 py-2 bg-emerald-900 hover:bg-emerald-800 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer inline-flex items-center space-x-1.5"
-              >
-                <span>Browse Catalog</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
             </div>
           </div>
 
-          {/* Tab Content Display */}
-          <div className="lg:col-span-8">
-            {/* ORDERS & VERIFIED REVIEWS TAB */}
-            {activeTab === 'orders' && (
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200/80 shadow-sm space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-3">
-                  <div>
-                    <h3 className="text-xl font-black font-serif text-emerald-950">
-                      Orders & Purchase History ({orders.length})
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Review products from your confirmed orders below. Only verified purchasers can review.
-                    </p>
-                  </div>
-                  <button
-                    onClick={onOpenTrackOrder}
-                    className="px-4 py-2 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition flex items-center space-x-1.5 cursor-pointer self-start sm:self-auto"
-                  >
-                    <Package className="w-4 h-4" />
-                    <span>Track Live Shipments</span>
-                  </button>
-                </div>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-slate-50 hover:bg-rose-50 text-slate-700 hover:text-rose-700 font-bold text-xs rounded-xl border border-slate-200 hover:border-rose-200 transition flex items-center space-x-1.5 cursor-pointer self-start sm:self-center"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out</span>
+          </button>
+        </div>
 
-                {orders.length === 0 ? (
-                  <div className="p-8 text-center rounded-2xl bg-gray-50 border border-gray-200/80 space-y-3">
-                    <Package className="w-10 h-10 text-gray-300 mx-auto" />
-                    <h4 className="text-sm font-black text-gray-800">No Orders Found</h4>
-                    <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                      You haven't placed any chair orders yet. Once you make a purchase, you can track it and write verified reviews here.
-                    </p>
-                    <button
-                      onClick={onNavigateShop}
-                      className="px-5 py-2.5 bg-emerald-900 text-white font-black text-xs rounded-xl shadow cursor-pointer inline-flex items-center space-x-1.5"
+        {/* 2. NAVIGATION TABS */}
+        <div className="flex items-center space-x-2 border-b border-slate-200/80 pb-1 overflow-x-auto no-scrollbar">
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 transition cursor-pointer shrink-0 ${
+              activeTab === 'orders'
+                ? 'bg-emerald-800 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            <span>Orders &amp; History ({orders.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 transition cursor-pointer shrink-0 ${
+              activeTab === 'profile'
+                ? 'bg-emerald-800 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+            }`}
+          >
+            <User className="w-4 h-4" />
+            <span>Personal Details</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('address')}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 transition cursor-pointer shrink-0 ${
+              activeTab === 'address'
+                ? 'bg-emerald-800 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+            }`}
+          >
+            <MapPin className="w-4 h-4" />
+            <span>Delivery Address</span>
+          </button>
+        </div>
+
+        {/* 3. TAB CONTENTS */}
+
+        {/* TAB 1: ORDERS & HISTORY */}
+        {activeTab === 'orders' && (
+          <div className="space-y-4">
+            {orders.length === 0 ? (
+              <div className="bg-white rounded-2xl p-10 text-center border border-slate-200/80 space-y-3">
+                <Package className="w-12 h-12 text-slate-300 mx-auto" />
+                <h3 className="text-base font-bold text-slate-800">No Orders Placed Yet</h3>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                  When you purchase chairs, your orders and review options will appear here.
+                </p>
+                <button
+                  onClick={onNavigateShop}
+                  className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                >
+                  Browse Products
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {orders.map((order) => {
+                  const orderNum = order.orderNumber || order.id || 'RC-ORDER';
+                  const orderDate = order.createdAt
+                    ? new Date(order.createdAt).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })
+                    : 'Recent Order';
+
+                  return (
+                    <div
+                      key={order._id || order.id || orderNum}
+                      className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs"
                     >
-                      <span>Explore Luxury Chairs</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {orders.map((order) => (
-                      <div
-                        key={order.id || order._id || order.orderNumber}
-                        className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-xs"
-                      >
-                        {/* Order Card Header */}
-                        <div className="bg-slate-50/80 p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-                          <div className="flex items-center space-x-3">
-                            <span className="font-black text-slate-900 font-mono">
-                              #{order.orderNumber || order.id}
-                            </span>
-                            <span className="text-slate-400">•</span>
-                            <span className="text-slate-500">
-                              {order.createdAt
-                                ? new Date(order.createdAt).toLocaleDateString('en-IN', {
-                                    day: 'numeric',
-                                    month: 'short',
-                                    year: 'numeric',
-                                  })
-                                : 'Recent Order'}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center space-x-3">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase">
-                              <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
-                              {order.orderStatus || 'Delivered'}
-                            </span>
-                            <span className="font-black text-slate-900">
-                              ₹{(order.totalAmount || 0).toLocaleString('en-IN')}
-                            </span>
-                          </div>
+                      {/* Order Summary Top Bar */}
+                      <div className="bg-slate-50/80 px-4 sm:px-6 py-3 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => handleCopyOrder(orderNum)}
+                            className="font-mono font-bold text-slate-900 flex items-center space-x-1 hover:text-emerald-800 transition cursor-pointer"
+                            title="Copy Order ID"
+                          >
+                            <span>#{orderNum}</span>
+                            {copiedOrderNumber === orderNum ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3 h-3 text-slate-400" />
+                            )}
+                          </button>
+                          <span className="text-slate-300">•</span>
+                          <span className="text-slate-500 flex items-center">
+                            <Calendar className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                            {orderDate}
+                          </span>
                         </div>
 
-                        {/* Order Items List */}
-                        <div className="p-4 sm:p-5 divide-y divide-slate-100">
-                          {(order.items || []).map((item, itemIdx) => {
-                            const matchedProduct = (products || []).find(
-                              (p) =>
-                                (p._id && (p._id === item.productId || p._id === item.product)) ||
-                                (p.id && (p.id === item.productId || p.id === item.product)) ||
-                                (p.name && item.name && p.name.toLowerCase().trim() === item.name.toLowerCase().trim())
-                            );
-
-                            const itemImg =
-                              (item.image && !item.image.includes('photo-1598300042247-d088f8ab3a91') ? item.image : null) ||
-                              matchedProduct?.mainImage ||
-                              item.image ||
-                              'https://images.unsplash.com/photo-1580481072645-022f9a6d8310?auto=format&fit=crop&w=800&q=80';
-
-                            const isReviewed =
-                              reviewedProductIds[item.productId] ||
-                              reviewedProductIds[item.product] ||
-                              reviewedProductIds[item.name] ||
-                              (matchedProduct && (reviewedProductIds[matchedProduct._id] || reviewedProductIds[matchedProduct.id] || reviewedProductIds[matchedProduct.name])) ||
-                              false;
-
-                            return (
-                              <div
-                                key={itemIdx}
-                                className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                              >
-                                <div className="flex items-center space-x-4">
-                                  <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
-                                    <img
-                                      src={itemImg}
-                                      alt={item.name}
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        if (matchedProduct?.mainImage) e.target.src = matchedProduct.mainImage;
-                                      }}
-                                    />
-                                  </div>
-                                  <div>
-                                    <h4 className="text-sm font-black text-slate-900 font-serif">
-                                      {item.name}
-                                    </h4>
-                                    <p className="text-xs text-slate-500 mt-0.5">
-                                      Finish: <strong className="text-slate-700">{item.selectedVariantName || 'Standard'}</strong> • Qty: {item.quantity || 1}
-                                    </p>
-                                    <p className="text-xs font-black text-emerald-900 mt-1">
-                                      ₹{(item.price || 0).toLocaleString('en-IN')}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {/* Review Action Button */}
-                                <div>
-                                  {isReviewed ? (
-                                    <div className="inline-flex items-center space-x-1.5 px-4 py-2 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs font-black">
-                                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                      <span>Reviewed</span>
-                                    </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => handleOpenReviewModal(item, order)}
-                                      className="px-4 py-2 bg-gradient-to-r from-emerald-800 to-emerald-700 hover:from-emerald-700 hover:to-emerald-600 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
-                                    >
-                                      <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
-                                      <span>Write Review</span>
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
+                        <div className="flex items-center space-x-3">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200 uppercase">
+                            {order.orderStatus || 'Confirmed'}
+                          </span>
+                          <span className="font-mono font-black text-slate-900 text-sm">
+                            ₹{(order.totalAmount || 0).toLocaleString('en-IN')}
+                          </span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
 
-            {/* PROFILE DETAILS TAB */}
-            {activeTab === 'profile' && (
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200/80 shadow-sm space-y-6">
-                <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                  <div>
-                    <h3 className="text-xl font-black font-serif text-emerald-950">
-                      Profile Information
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Your registered account credentials and membership status
-                    </p>
-                  </div>
-                  <span className="bg-emerald-50 text-emerald-800 font-extrabold text-xs px-3 py-1 rounded-xl border border-emerald-200 flex items-center">
-                    <ShieldCheck className="w-4 h-4 mr-1 text-emerald-600" />
-                    Verified Client
-                  </span>
-                </div>
+                      {/* Items */}
+                      <div className="p-4 sm:p-5 divide-y divide-slate-100">
+                        {(order.items || []).map((item, itemIdx) => {
+                          const resolvedImage = resolveItemImage(item);
+                          const isReviewed =
+                            reviewedProductIds[item.productId] ||
+                            reviewedProductIds[item.product] ||
+                            reviewedProductIds[item.name] ||
+                            reviewedProductIds[item.id] ||
+                            false;
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div className="p-4 rounded-2xl bg-gray-50/80 border border-gray-200/60">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1">
-                      Full Name
-                    </span>
-                    <span className="text-sm font-black text-gray-900 flex items-center">
-                      <User className="w-4 h-4 mr-2 text-emerald-700" />
-                      {user.name}
-                    </span>
-                  </div>
+                          return (
+                            <div
+                              key={itemIdx}
+                              className="py-3.5 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                            >
+                              <div className="flex items-center space-x-4">
+                                <img
+                                  src={resolvedImage}
+                                  alt={item.name}
+                                  className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0 bg-slate-50"
+                                  onError={(e) => {
+                                    e.target.src = 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80';
+                                  }}
+                                />
+                                <div>
+                                  <h4 className="text-sm font-bold text-slate-900 font-serif">
+                                    {item.name}
+                                  </h4>
+                                  <p className="text-xs text-slate-500 mt-0.5">
+                                    Finish: <span className="text-slate-800 font-medium">{item.selectedVariantName || item.colorName || 'Standard'}</span> • Qty: {item.quantity || 1}
+                                  </p>
+                                  <p className="text-xs font-bold text-emerald-900 mt-1 font-mono">
+                                    ₹{(item.price || 0).toLocaleString('en-IN')}
+                                  </p>
+                                </div>
+                              </div>
 
-                  <div className="p-4 rounded-2xl bg-gray-50/80 border border-gray-200/60">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1">
-                      Email Address
-                    </span>
-                    <span className="text-sm font-bold text-gray-900 flex items-center break-all">
-                      <Mail className="w-4 h-4 mr-2 text-emerald-700 flex-shrink-0" />
-                      {user.email}
-                    </span>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-gray-50/80 border border-gray-200/60">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1">
-                      Client Role
-                    </span>
-                    <span className="text-sm font-bold text-emerald-900 flex items-center">
-                      <ShieldCheck className="w-4 h-4 mr-2 text-emerald-700" />
-                      {user.role ? user.role.toUpperCase() : 'REGISTERED CLIENT'}
-                    </span>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-gray-50/80 border border-gray-200/60">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1">
-                      Security Status
-                    </span>
-                    <span className="text-sm font-bold text-emerald-700 flex items-center">
-                      <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-600" />
-                      Encrypted JWT Authentication
-                    </span>
-                  </div>
-                </div>
-
-                {/* Account Actions Box */}
-                <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-4">
-                  <p className="text-xs text-gray-500">
-                    Manage your active sessions or sign out safely.
-                  </p>
-                  <button
-                    onClick={handleLogout}
-                    className="px-6 py-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold text-xs rounded-xl border border-rose-200 transition flex items-center space-x-2 cursor-pointer"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Sign Out of Account</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ADDRESS TAB */}
-            {activeTab === 'address' && (
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200/80 shadow-sm space-y-6">
-                <div className="pb-4 border-b border-gray-100">
-                  <h3 className="text-xl font-black font-serif text-emerald-950">
-                    Delivery & Contact Information
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Primary shipping address on file for luxury courier delivery
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="p-5 rounded-2xl bg-gray-50/80 border border-gray-200/60 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black uppercase tracking-wider text-emerald-900 bg-emerald-100/70 px-2.5 py-0.5 rounded-md">
-                        Primary Residence
-                      </span>
-                      <span className="text-xs font-bold text-gray-400">Verified Address</span>
+                              <div className="self-start sm:self-center">
+                                {isReviewed ? (
+                                  <span className="inline-flex items-center space-x-1 px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-bold border border-emerald-200">
+                                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Reviewed</span>
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => handleOpenReviewModal(item, order)}
+                                    className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
+                                  >
+                                    <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+                                    <span>Write Review</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-
-                    <p className="text-xs text-gray-700 leading-relaxed">
-                      {user.address || 'Suite 402, Mayfair Royal Residencies, Off MG Road'}
-                      <br />
-                      {user.city || 'Bangalore, Karnataka'} - {user.pincode || '560001'}
-                      <br />
-                      India
-                    </p>
-
-                    <div className="pt-2 border-t border-gray-200/40 flex items-center space-x-4 text-xs text-gray-500">
-                      <span className="flex items-center">
-                        <Phone className="w-3.5 h-3.5 mr-1 text-emerald-700" />
-                        {user.phone || '+91 98765 43210'}
-                      </span>
-                      <span className="flex items-center">
-                        <Mail className="w-3.5 h-3.5 mr-1 text-emerald-700" />
-                        {user.email}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })}
               </div>
             )}
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* WRITE REVIEW MODAL (FOR VERIFIED PURCHASES) */}
-      {selectedItemForReview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
-          {/* Backdrop */}
-          <div
-            onClick={handleCloseReviewModal}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-          />
+        {/* TAB 2: PERSONAL DETAILS */}
+        {activeTab === 'profile' && (
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-5">
+            <h3 className="text-base font-bold text-slate-900 font-serif pb-3 border-b border-slate-100">
+              Personal Information
+            </h3>
 
-          {/* Modal Container */}
-          <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col z-10">
-            {/* Header */}
-            <div className="p-5 bg-gradient-to-r from-emerald-900 to-emerald-950 text-white flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center border border-white/10">
-                  <Star className="w-5 h-5 text-amber-300 fill-amber-300" />
-                </div>
-                <div>
-                  <div className="flex items-center space-x-1.5 text-[10px] font-black uppercase tracking-wider text-amber-300">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>VERIFIED PURCHASE REVIEW</span>
-                  </div>
-                  <h3 className="text-base font-black font-serif truncate max-w-sm">
-                    {selectedItemForReview.name}
-                  </h3>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Full Name
+                </span>
+                <span className="text-sm font-bold text-slate-900">{user.name}</span>
               </div>
 
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Email Address
+                </span>
+                <span className="text-sm font-bold text-slate-900">{user.email}</span>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Phone
+                </span>
+                <span className="text-sm font-bold text-slate-900">{user.phone || '+91 98765 43210'}</span>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Account Status
+                </span>
+                <span className="text-sm font-bold text-emerald-800">Active Member</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: DELIVERY ADDRESS */}
+        {activeTab === 'address' && (
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-5">
+            <h3 className="text-base font-bold text-slate-900 font-serif pb-3 border-b border-slate-100">
+              Delivery Address
+            </h3>
+
+            <div className="p-5 rounded-xl bg-slate-50 border border-slate-200/70 space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded-md">
+                Primary Shipping Address
+              </span>
+              <p className="text-sm text-slate-800 leading-relaxed pt-1">
+                {user.address || 'Suite 402, Mayfair Royal Residencies, Off MG Road'}
+                <br />
+                {user.city || 'Bangalore, Karnataka'} - {user.pincode || '560001'}
+                <br />
+                India
+              </p>
+              <div className="pt-2 flex items-center space-x-4 text-xs text-slate-500">
+                <span className="flex items-center">
+                  <Phone className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                  {user.phone || '+91 98765 43210'}
+                </span>
+                <span className="flex items-center">
+                  <Mail className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                  {user.email}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* 4. WRITE REVIEW MODAL */}
+      {selectedItemForReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div
+            onClick={handleCloseReviewModal}
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs"
+          />
+
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10">
+            {/* Header */}
+            <div className="px-5 py-4 bg-emerald-900 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Star className="w-4 h-4 text-amber-300 fill-amber-300" />
+                <h3 className="text-sm font-bold">Write Product Review</h3>
+              </div>
               <button
                 onClick={handleCloseReviewModal}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+                className="text-white/80 hover:text-white p-1 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmitReview} className="p-6 space-y-4">
-              {/* Product mini summary */}
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center space-x-3">
+            <form onSubmit={handleSubmitReview} className="p-5 space-y-4">
+              <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-xl border border-slate-200/70">
                 <img
-                  src={selectedItemForReview.image || 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=85'}
+                  src={selectedItemForReview.image}
                   alt={selectedItemForReview.name}
-                  className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0"
+                  className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0"
                 />
                 <div className="text-xs">
-                  <h4 className="font-black text-slate-900">{selectedItemForReview.name}</h4>
-                  <p className="text-slate-500 font-medium">
-                    Order #{selectedItemForReview.orderNumber} • {selectedItemForReview.selectedVariantName || 'Standard'}
+                  <h4 className="font-bold text-slate-900">{selectedItemForReview.name}</h4>
+                  <p className="text-slate-500">
+                    {selectedItemForReview.selectedVariantName || 'Standard Finish'}
                   </p>
                 </div>
               </div>
 
-              {/* Rating Selector */}
+              {/* Star Rating */}
               <div>
-                <label className="text-xs font-black text-slate-800 block mb-1.5">
-                  Overall Rating *
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Rating
                 </label>
-                <div className="flex items-center space-x-1.5">
+                <div className="flex items-center space-x-1">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
                       type="button"
                       onClick={() => setReviewRating(star)}
-                      className="p-1 text-amber-500 hover:scale-125 transition cursor-pointer"
+                      className="p-1 cursor-pointer"
                     >
                       <Star
-                        className={`w-7 h-7 ${
+                        className={`w-6 h-6 ${
                           star <= reviewRating
                             ? 'fill-current text-amber-500'
                             : 'text-slate-200'
@@ -830,56 +647,56 @@ export default function AccountPage({
                       />
                     </button>
                   ))}
-                  <span className="text-xs font-bold text-slate-600 ml-2">
-                    ({reviewRating} out of 5 Stars)
+                  <span className="text-xs font-semibold text-slate-500 ml-2">
+                    {reviewRating} of 5
                   </span>
                 </div>
               </div>
 
-              {/* City / Location */}
+              {/* City */}
               <div>
-                <label className="text-xs font-black text-slate-800 block mb-1">
-                  Your City / Location
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  City / Location
                 </label>
                 <input
                   type="text"
                   value={reviewLocation}
                   onChange={(e) => setReviewLocation(e.target.value)}
-                  placeholder="e.g. Mumbai, Maharashtra"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-700"
+                  placeholder="e.g. Mumbai"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:border-emerald-700"
                 />
               </div>
 
-              {/* Review Comment */}
+              {/* Comment */}
               <div>
-                <label className="text-xs font-black text-slate-800 block mb-1">
-                  Your Review / Experience *
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Your Review
                 </label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   required
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
-                  placeholder="Tell us about the ergonomic comfort, lumbar support, build quality, and delivery experience..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:border-emerald-700"
+                  placeholder="Share your feedback on the comfort, material, and build quality..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:border-emerald-700 resize-none"
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end space-x-3">
+              <div className="flex items-center justify-end space-x-2 pt-2">
                 <button
                   type="button"
                   onClick={handleCloseReviewModal}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-200 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingReview}
-                  className="px-6 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md transition flex items-center space-x-2 cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>{isSubmittingReview ? 'Publishing...' : 'Submit Verified Review'}</span>
+                  <span>{isSubmittingReview ? 'Submitting...' : 'Submit Review'}</span>
                 </button>
               </div>
             </form>

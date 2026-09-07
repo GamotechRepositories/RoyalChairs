@@ -238,14 +238,112 @@ export default function ProductFormPage({ productToEdit, onBack }) {
     }
   }, [productToEdit]);
 
-  const handlePriceChange = (val) => {
-    const p = Number(val);
+  const handleOriginalPriceChange = (val) => {
+    const orig = val === '' ? '' : Math.max(0, Number(val) || 0);
     setFormData((prev) => {
-      if (prev.isOffer && prev.discountPercent > 0) {
-        const orig = Math.round(p / (1 - prev.discountPercent / 100));
-        return { ...prev, price: p, originalPrice: orig };
+      const numOrig = Number(orig) || 0;
+      const numDisc = Number(prev.discountPercent) || 0;
+      if (numOrig > 0 && numDisc > 0) {
+        const newSellingPrice = Math.round(numOrig * (1 - numDisc / 100));
+        let updatedVariants = prev.variants;
+        if (prev.variantType === 'multi' && prev.variants.length > 0) {
+          updatedVariants = prev.variants.map((v, i) =>
+            i === 0 ? { ...v, price: newSellingPrice } : v
+          );
+        }
+        return {
+          ...prev,
+          originalPrice: orig,
+          price: newSellingPrice,
+          isOffer: true,
+          variants: updatedVariants,
+        };
+      } else {
+        const currentPrice = Number(prev.price) || 0;
+        let newDisc = 0;
+        let hasOffer = false;
+        if (numOrig > currentPrice && currentPrice > 0) {
+          newDisc = Math.round(((numOrig - currentPrice) / numOrig) * 100);
+          hasOffer = newDisc > 0;
+        }
+        return {
+          ...prev,
+          originalPrice: orig,
+          discountPercent: newDisc,
+          isOffer: hasOffer,
+        };
       }
-      return { ...prev, price: p, originalPrice: p };
+    });
+  };
+
+  const handlePriceChange = (val) => {
+    const p = val === '' ? '' : Math.max(0, Number(val) || 0);
+    setFormData((prev) => {
+      const numP = Number(p) || 0;
+      let updatedVariants = prev.variants;
+      if (prev.variantType === 'multi' && prev.variants.length > 0) {
+        updatedVariants = prev.variants.map((v, i) =>
+          i === 0 ? { ...v, price: p } : v
+        );
+      }
+
+      const orig = Number(prev.originalPrice) || 0;
+      if (orig > 0 && numP > 0 && numP < orig) {
+        const calculatedPercent = Math.round(((orig - numP) / orig) * 100);
+        return {
+          ...prev,
+          price: p,
+          discountPercent: calculatedPercent,
+          isOffer: calculatedPercent > 0,
+          variants: updatedVariants,
+        };
+      } else if (numP >= orig && orig > 0) {
+        return {
+          ...prev,
+          price: p,
+          originalPrice: p,
+          discountPercent: 0,
+          isOffer: false,
+          variants: updatedVariants,
+        };
+      }
+
+      return {
+        ...prev,
+        price: p,
+        originalPrice: prev.originalPrice || p,
+        variants: updatedVariants,
+      };
+    });
+  };
+
+  const handleDiscountPercentChange = (percent) => {
+    const disc = percent === '' ? '' : Math.min(99, Math.max(0, Number(percent) || 0));
+    setFormData((prev) => {
+      const numDisc = Number(disc) || 0;
+      let orig = Number(prev.originalPrice) || 0;
+      if (orig <= 0) {
+        orig = Number(prev.price) || 1000;
+      }
+
+      const isDiscountActive = numDisc > 0;
+      const newSellingPrice = isDiscountActive ? Math.round(orig * (1 - numDisc / 100)) : orig;
+
+      let updatedVariants = prev.variants;
+      if (prev.variantType === 'multi' && prev.variants.length > 0) {
+        updatedVariants = prev.variants.map((v, i) =>
+          i === 0 ? { ...v, price: newSellingPrice } : v
+        );
+      }
+
+      return {
+        ...prev,
+        originalPrice: orig,
+        discountPercent: isDiscountActive ? disc : 0,
+        price: newSellingPrice,
+        isOffer: isDiscountActive,
+        variants: updatedVariants,
+      };
     });
   };
 
@@ -253,34 +351,46 @@ export default function ProductFormPage({ productToEdit, onBack }) {
     setFormData((prev) => {
       const nextOffer = !prev.isOffer;
       if (nextOffer) {
-        const defaultDiscount = prev.discountPercent > 0 ? prev.discountPercent : 30;
-        const orig = Math.round(prev.price / (1 - defaultDiscount / 100));
+        const currentPrice = Number(prev.price) || 1000;
+        let orig = Number(prev.originalPrice) || 0;
+        if (orig <= 0 || orig <= currentPrice) {
+          orig = currentPrice;
+        }
+        const defaultDiscount = Number(prev.discountPercent) > 0 ? Number(prev.discountPercent) : 20;
+        const newSellingPrice = Math.round(orig * (1 - defaultDiscount / 100));
+
+        let updatedVariants = prev.variants;
+        if (prev.variantType === 'multi' && prev.variants.length > 0) {
+          updatedVariants = prev.variants.map((v, i) =>
+            i === 0 ? { ...v, price: newSellingPrice } : v
+          );
+        }
+
         return {
           ...prev,
           isOffer: true,
-          discountPercent: defaultDiscount,
           originalPrice: orig,
+          discountPercent: defaultDiscount,
+          price: newSellingPrice,
+          variants: updatedVariants,
         };
       } else {
+        const origPrice = Number(prev.originalPrice) || Number(prev.price) || 1000;
+        let updatedVariants = prev.variants;
+        if (prev.variantType === 'multi' && prev.variants.length > 0) {
+          updatedVariants = prev.variants.map((v, i) =>
+            i === 0 ? { ...v, price: origPrice } : v
+          );
+        }
+
         return {
           ...prev,
           isOffer: false,
           discountPercent: 0,
-          originalPrice: prev.price,
+          price: origPrice,
+          variants: updatedVariants,
         };
       }
-    });
-  };
-
-  const handleDiscountPercentChange = (percent) => {
-    const disc = Math.min(95, Math.max(1, Number(percent)));
-    setFormData((prev) => {
-      const orig = Math.round(prev.price / (1 - disc / 100));
-      return {
-        ...prev,
-        discountPercent: disc,
-        originalPrice: orig,
-      };
     });
   };
 
@@ -549,55 +659,76 @@ export default function ProductFormPage({ productToEdit, onBack }) {
 
     setIsSubmitting(true);
 
-    const mainImgToUse = formData.variantType === 'multi'
-      ? (formData.variants[0]?.mainImage || formData.mainImage || 'https://images.unsplash.com/photo-1580481072645-022f9a6d8310?auto=format&fit=crop&w=800&q=80')
-      : formData.mainImage;
+    const defaultPlaceholder =
+      'https://images.unsplash.com/photo-1580481072645-022f9a6d8310?auto=format&fit=crop&w=800&q=80';
 
-    const hoverImgToUse = formData.variantType === 'multi'
-      ? (formData.variants[0]?.hoverImage || formData.hoverImage || mainImgToUse)
-      : (formData.hoverImage || mainImgToUse);
+    const mainImgToUse =
+      formData.variantType === 'multi'
+        ? (formData.variants[0]?.mainImage || formData.mainImage || defaultPlaceholder)
+        : (formData.mainImage || defaultPlaceholder);
 
-    const finalColors = formData.variantType === 'multi'
-      ? formData.variants.map((v) => ({
-        hex: v.colorHex,
-        name: v.colorName || getDefaultColorName(v.colorHex),
-        image: v.mainImage || '',
-      }))
-      : formData.colors;
+    const hoverImgToUse =
+      formData.variantType === 'multi'
+        ? (formData.variants[0]?.hoverImage || formData.hoverImage || mainImgToUse)
+        : (formData.hoverImage || mainImgToUse);
 
-    const finalVariants = formData.variantType === 'multi'
-      ? formData.variants.map((v) => ({
-        name: `${formData.name} - ${v.colorName || getDefaultColorName(v.colorHex)}`,
-        colorHex: v.colorHex,
-        colorName: v.colorName || getDefaultColorName(v.colorHex),
-        price: Number(v.price) || Number(formData.price),
-        isAvailable: v.isAvailable !== false,
-        stock: v.isAvailable !== false ? 20 : 0,
-        image: v.mainImage || '',
-        mainImage: v.mainImage || '',
-        hoverImage: v.hoverImage || '',
-        galleryImages: Array.isArray(v.galleryImages) ? v.galleryImages.filter(Boolean) : [],
-      }))
-      : [];
+    const finalColors =
+      formData.variantType === 'multi'
+        ? formData.variants.map((v) => ({
+            hex: v.colorHex,
+            name: v.colorName || getDefaultColorName(v.colorHex),
+            image: v.mainImage || '',
+          }))
+        : formData.colors;
 
-    const isOverallAvailable = formData.variantType === 'multi'
-      ? finalVariants.some((v) => v.isAvailable !== false)
-      : formData.isAvailable !== false;
+    const rawPrice =
+      formData.variantType === 'multi' && formData.variants.length > 0
+        ? Number(formData.variants[0].price)
+        : Number(formData.price);
+    const firstVariantPrice = Number(rawPrice) > 0 ? Number(rawPrice) : 450;
+
+    const finalVariants =
+      formData.variantType === 'multi'
+        ? formData.variants.map((v) => ({
+            name: `${formData.name} - ${v.colorName || getDefaultColorName(v.colorHex)}`,
+            colorHex: v.colorHex,
+            colorName: v.colorName || getDefaultColorName(v.colorHex),
+            price: Number(v.price) > 0 ? Number(v.price) : firstVariantPrice,
+            isAvailable: v.isAvailable !== false,
+            stock: v.isAvailable !== false ? 20 : 0,
+            image: v.mainImage || mainImgToUse,
+            mainImage: v.mainImage || mainImgToUse,
+            hoverImage: v.hoverImage || hoverImgToUse,
+            galleryImages: Array.isArray(v.galleryImages) ? v.galleryImages.filter(Boolean) : [],
+          }))
+        : [];
+
+    const isOverallAvailable =
+      formData.variantType === 'multi'
+        ? finalVariants.some((v) => v.isAvailable !== false)
+        : formData.isAvailable !== false;
 
     const calculatedStock = isOverallAvailable ? 20 : 0;
 
-    const firstVariantPrice = formData.variantType === 'multi' && formData.variants.length > 0
-      ? Number(formData.variants[0].price)
-      : Number(formData.price);
+    const finalFullDesc =
+      formData.fullDescription ||
+      formData.description ||
+      'Masterfully engineered luxury seating handcrafted from sustainably harvested timbers and bespoke European upholstery.';
+    const finalDesc =
+      formData.description ||
+      (formData.fullDescription ? formData.fullDescription.slice(0, 180) + '...' : 'Masterfully engineered luxury seating.');
 
     const submissionData = {
       ...formData,
       mainImage: mainImgToUse,
       hoverImage: hoverImgToUse,
-      galleryImages: formData.variantType === 'multi'
-        ? (formData.variants[0]?.galleryImages || formData.galleryImages || []).filter(Boolean)
-        : (formData.galleryImages || []).filter(Boolean),
+      galleryImages:
+        formData.variantType === 'multi'
+          ? (formData.variants[0]?.galleryImages || formData.galleryImages || []).filter(Boolean)
+          : (formData.galleryImages || []).filter(Boolean),
       price: firstVariantPrice,
+      description: finalDesc,
+      fullDescription: finalFullDesc,
       categorySlug: formData.category,
       subCategory: customSubcategory.trim() || formData.subCategory || 'All',
       variantType: formData.variantType,
@@ -608,9 +739,10 @@ export default function ProductFormPage({ productToEdit, onBack }) {
       inStock: isOverallAvailable,
       stock: calculatedStock,
       discountPercent: formData.isOffer ? Number(formData.discountPercent) : 0,
-      originalPrice: formData.isOffer && formData.discountPercent > 0
-        ? Number(formData.originalPrice)
-        : Number(firstVariantPrice),
+      originalPrice:
+        formData.isOffer && formData.discountPercent > 0
+          ? Number(formData.originalPrice)
+          : Number(firstVariantPrice),
       customSpecs: (formData.customSpecs || []).filter((s) => s.label && s.value),
     };
 
@@ -620,13 +752,14 @@ export default function ProductFormPage({ productToEdit, onBack }) {
       } else {
         await addProduct(submissionData);
       }
-      setSaveToast(`Chair "${formData.name}" saved to database successfully!`);
+      setSaveToast(`Chair "${formData.name}" published successfully!`);
       setTimeout(() => {
         onBack();
       }, 900);
     } catch (err) {
-      console.error(err);
-      alert('Failed to save product. Check console logs.');
+      console.error('Save product error:', err);
+      const errMsg = err.response?.data?.message || err.message || 'Failed to save product to database.';
+      alert(`Publishing Error: ${errMsg}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -930,24 +1063,75 @@ export default function ProductFormPage({ productToEdit, onBack }) {
                 )}
               </div>
 
-              {/* Single Price, Stock, Color */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-slate-200/60">
-                {/* Selling Price */}
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-xs">
-                    Selling Price (₹) *
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    required={formData.variantType === 'single'}
-                    value={formData.price}
-                    onChange={(e) => handlePriceChange(e.target.value)}
-                    placeholder="1299"
-                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-emerald-900 font-black font-mono focus:border-emerald-600 focus:outline-hidden text-sm"
-                  />
+              {/* Single Price & Discount Setup (Synchronized MRP, % & Selling Price) */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                    <span>Pricing &amp; Discount Setup</span>
+                  </span>
+                  {Number(formData.discountPercent) > 0 && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black uppercase tracking-wider">
+                      {formData.discountPercent}% Discount Applied
+                    </span>
+                  )}
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+                  {/* Original MRP Price */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[11px]">
+                      Original Price (MRP ₹)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.originalPrice || ''}
+                      onChange={(e) => handleOriginalPriceChange(e.target.value)}
+                      placeholder="e.g. 1275"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 font-bold font-mono focus:bg-white focus:border-emerald-600 focus:outline-hidden text-xs"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">Regular strike-through MRP</p>
+                  </div>
+
+                  {/* Discount Percentage */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[11px]">
+                      Discount Percentage (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="99"
+                      value={formData.discountPercent || ''}
+                      onChange={(e) => handleDiscountPercentChange(e.target.value)}
+                      placeholder="e.g. 20"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-amber-50/50 border border-amber-400 text-amber-900 font-bold font-mono focus:bg-white focus:border-emerald-600 focus:outline-hidden text-xs"
+                    />
+                    <p className="text-[10px] text-amber-700 mt-1">Changes auto-deduct Selling Price</p>
+                  </div>
+
+                  {/* Final Selling Price */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[11px]">
+                      Selling Price (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      required={formData.variantType === 'single'}
+                      value={formData.price || ''}
+                      onChange={(e) => handlePriceChange(e.target.value)}
+                      placeholder="e.g. 1020"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-emerald-50/40 border border-emerald-500 text-emerald-950 font-black font-mono focus:bg-white focus:border-emerald-600 focus:outline-hidden text-sm"
+                    />
+                    <p className="text-[10px] text-emerald-700 mt-1">Changes auto-calculate Discount %</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Single Stock & Color Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 {/* Product Availability Toggle */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-xs">
@@ -1312,84 +1496,144 @@ export default function ProductFormPage({ productToEdit, onBack }) {
             </div>
           </div>
 
-          {/* Promotional Offer Toggle & Discount */}
-          <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Percent className="w-4 h-4 text-amber-700" />
-                <span className="text-xs font-extrabold text-slate-800">
-                  Feature in "Royal Offers &amp; Discounts" Section
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={formData.isOffer}
-                onChange={handleToggleOffer}
-                className="w-5 h-5 rounded-md text-emerald-800 focus:ring-emerald-600 cursor-pointer"
-              />
+          {/* Storefront Badges & Promotional Placement */}
+          <div className="space-y-4">
+            <label className="block font-bold text-slate-700 uppercase tracking-wider text-xs">
+              Storefront Badges &amp; Promotional Visibility
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* 1. Royal Offers & Discounts Badge */}
+              <label className={`flex items-center space-x-2.5 p-3 rounded-xl border transition cursor-pointer ${
+                formData.isOffer ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-400/30' : 'border-slate-200 hover:bg-slate-50'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={formData.isOffer}
+                  onChange={handleToggleOffer}
+                  className="w-4 h-4 text-amber-700 rounded-sm focus:ring-amber-600 cursor-pointer"
+                />
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">Royal Offers &amp; Discounts</span>
+                  <span className="text-[10px] text-slate-400 block">Feature in Discount slider</span>
+                </div>
+              </label>
+
+              {/* 2. Best Seller Badge */}
+              <label className={`flex items-center space-x-2.5 p-3 rounded-xl border transition cursor-pointer ${
+                formData.isBestSeller ? 'bg-emerald-50 border-emerald-300 ring-1 ring-emerald-400/30' : 'border-slate-200 hover:bg-slate-50'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={formData.isBestSeller}
+                  onChange={(e) => setFormData({ ...formData, isBestSeller: e.target.checked })}
+                  className="w-4 h-4 text-emerald-800 rounded-sm focus:ring-emerald-600 cursor-pointer"
+                />
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">Best Seller Badge</span>
+                  <span className="text-[10px] text-slate-400 block">Feature in Best Sellers</span>
+                </div>
+              </label>
+
+              {/* 3. New Collection Badge */}
+              <label className={`flex items-center space-x-2.5 p-3 rounded-xl border transition cursor-pointer ${
+                formData.isNew ? 'bg-blue-50 border-blue-300 ring-1 ring-blue-400/30' : 'border-slate-200 hover:bg-slate-50'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={formData.isNew}
+                  onChange={(e) => setFormData({ ...formData, isNew: e.target.checked })}
+                  className="w-4 h-4 text-blue-800 rounded-sm focus:ring-blue-600 cursor-pointer"
+                />
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">New Arrival Badge</span>
+                  <span className="text-[10px] text-slate-400 block">Feature in New Arrivals</span>
+                </div>
+              </label>
+
+              {/* 4. Published / Active */}
+              <label className={`flex items-center space-x-2.5 p-3 rounded-xl border transition cursor-pointer ${
+                formData.isActive ? 'bg-emerald-50 border-emerald-300 ring-1 ring-emerald-400/30' : 'border-slate-200 hover:bg-slate-50'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={formData.isActive}
+                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                  className="w-4 h-4 text-emerald-800 rounded-sm focus:ring-emerald-600 cursor-pointer"
+                />
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">Published / Live</span>
+                  <span className="text-[10px] text-slate-400 block">Visible to customers</span>
+                </div>
+              </label>
             </div>
 
+            {/* Offer Pricing Details (Synced with Section 2) */}
             {formData.isOffer && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-amber-200/60 animate-fadeIn">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1 text-xs">
-                    Discount Percentage (%)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="90"
-                    value={formData.discountPercent}
-                    onChange={(e) => handleDiscountPercentChange(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-white border border-amber-300 rounded-xl text-xs font-bold text-amber-900 font-mono focus:outline-hidden focus:border-emerald-600"
-                  />
+              <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-3 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Percent className="w-4 h-4 text-amber-700" />
+                    <span className="text-xs font-extrabold text-slate-800">
+                      Royal Offer Pricing <span className="text-slate-400 font-normal">(Synchronized with Section 2 Pricing)</span>
+                    </span>
+                  </div>
+                  {Number(formData.discountPercent) > 0 && (
+                    <span className="text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                      {formData.discountPercent}% OFF
+                    </span>
+                  )}
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1 text-xs">
-                    Calculated Original Strike-Through Price (₹)
-                  </label>
-                  <input
-                    type="number"
-                    readOnly
-                    value={formData.originalPrice}
-                    className="w-full px-3.5 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 font-mono cursor-not-allowed"
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1 border-t border-amber-200/60">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1 text-xs">
+                      Original Price (MRP ₹) *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.originalPrice || ''}
+                      onChange={(e) => handleOriginalPriceChange(e.target.value)}
+                      placeholder="e.g. 1275"
+                      className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 font-mono focus:outline-hidden focus:border-emerald-600"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-0.5">Regular non-discounted MRP</p>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1 text-xs">
+                      Discount Percentage (%) *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="99"
+                      value={formData.discountPercent || ''}
+                      onChange={(e) => handleDiscountPercentChange(e.target.value)}
+                      placeholder="e.g. 20"
+                      className="w-full px-3.5 py-2 bg-white border border-amber-400 rounded-xl text-xs font-bold text-amber-900 font-mono focus:outline-hidden focus:border-emerald-600"
+                    />
+                    <p className="text-[10px] text-amber-700 mt-0.5">Changes auto-deduct Selling Price</p>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1 text-xs">
+                      Selling Price (Offer Price ₹) *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.price || ''}
+                      onChange={(e) => handlePriceChange(e.target.value)}
+                      placeholder="e.g. 1020"
+                      className="w-full px-3.5 py-2 bg-white border border-emerald-500 rounded-xl text-xs font-black text-emerald-950 font-mono focus:outline-hidden focus:border-emerald-600"
+                    />
+                    <p className="text-[10px] text-emerald-700 mt-0.5">Changes auto-calculate Discount %</p>
+                  </div>
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Storefront Badges */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-            <label className="flex items-center space-x-2.5 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.isBestSeller}
-                onChange={(e) => setFormData({ ...formData, isBestSeller: e.target.checked })}
-                className="w-4 h-4 text-emerald-800 rounded-sm focus:ring-emerald-600"
-              />
-              <span className="text-xs font-bold text-slate-800">Best Seller Badge</span>
-            </label>
-
-            <label className="flex items-center space-x-2.5 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.isNew}
-                onChange={(e) => setFormData({ ...formData, isNew: e.target.checked })}
-                className="w-4 h-4 text-emerald-800 rounded-sm focus:ring-emerald-600"
-              />
-              <span className="text-xs font-bold text-slate-800">New Collection Badge</span>
-            </label>
-
-            <label className="flex items-center space-x-2.5 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.isActive}
-                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                className="w-4 h-4 text-emerald-800 rounded-sm focus:ring-emerald-600"
-              />
-              <span className="text-xs font-bold text-slate-800">Published / Active</span>
-            </label>
           </div>
         </div>
 

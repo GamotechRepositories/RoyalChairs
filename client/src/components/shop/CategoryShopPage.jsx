@@ -75,27 +75,6 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
   return (
     <div className="min-h-screen bg-cream-soft py-6 px-3 sm:px-6 lg:px-8">
       <div className="w-full max-w-[1600px] mx-auto">
-        {/* Top Breadcrumb Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-white p-4 rounded-2xl border border-emerald-100 shadow-xs">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={onBackToHome}
-              className="flex items-center space-x-2 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl transition border border-emerald-200 cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Dashboard</span>
-            </button>
-            <span className="text-gray-300 text-sm">/</span>
-            <span className="text-xs font-semibold text-gray-500">Shop Categories</span>
-            <span className="text-gray-300 text-sm">/</span>
-            <span className="text-xs font-bold text-emerald-900 capitalize">{activeCategoryObj.name}</span>
-          </div>
-
-          <div className="text-xs font-extrabold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
-            Showing {categoryProducts.length} Premium Chairs
-          </div>
-        </div>
-
         {/* Main Two-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* LEFT SIDEBAR: Categories List with Real Chair Photo Thumbnails */}
@@ -158,7 +137,7 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
           {/* RIGHT MAIN AREA: Products Grid & Subcategories Filter */}
           <div className="lg:col-span-3 space-y-6">
             {/* Category Header Banner */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-emerald-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center space-x-4">
                 <img
                   src={activeCategoryObj.image || 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80'}
@@ -169,10 +148,17 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
                   <h1 className="text-2xl sm:text-3xl font-black text-emerald-950 font-serif">
                     {activeCategoryObj.name}
                   </h1>
-                  <p className="text-gray-600 text-xs sm:text-sm mt-1 leading-relaxed max-w-xl">
+                  <p className="text-gray-600 text-xs sm:text-sm mt-0.5 leading-relaxed max-w-xl">
                     {activeCategoryObj.description || activeCategoryObj.desc || 'Handcrafted seating collection calibrated for anatomical alignment and timeless luxury.'}
                   </p>
                 </div>
+              </div>
+
+              {/* Total Number of Chairs Badge */}
+              <div className="flex items-center self-start sm:self-center">
+                <span className="px-4 py-2 bg-emerald-50 text-emerald-900 border border-emerald-200/80 rounded-2xl text-xs sm:text-sm font-extrabold shadow-2xs whitespace-nowrap">
+                  Showing {categoryProducts.length} {categoryProducts.length === 1 ? 'Premium Chair' : 'Premium Chairs'}
+                </span>
               </div>
             </div>
 

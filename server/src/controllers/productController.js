@@ -173,6 +173,13 @@ export const createProduct = async (req, res) => {
       fullDescription,
       features,
       specifications,
+      customSpecs,
+      anatomyHeading,
+      showAnatomySection,
+      showPillarsSection,
+      customPillars,
+      showCareGuide,
+      careInstructions,
       colors,
       mainImage,
       hoverImage,
@@ -182,12 +189,24 @@ export const createProduct = async (req, res) => {
       isOffer,
     } = req.body;
 
-    if (!name || !price || !mainImage) {
+    if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Name, price, and main image are required',
+        message: 'Product name is required',
       });
     }
+
+    const finalMainImage =
+      mainImage ||
+      (Array.isArray(req.body.variants) && req.body.variants[0]?.mainImage) ||
+      'https://images.unsplash.com/photo-1580481072645-022f9a6d8310?auto=format&fit=crop&w=800&q=80';
+
+    const numPrice =
+      Number(price) > 0
+        ? Number(price)
+        : Array.isArray(req.body.variants) && Number(req.body.variants[0]?.price) > 0
+        ? Number(req.body.variants[0].price)
+        : 450;
 
     // Resolve category reference
     let catDoc = null;
@@ -220,7 +239,6 @@ export const createProduct = async (req, res) => {
         Date.now().toString().slice(-4);
 
     const calcDiscount = Number(discountPercent) || 0;
-    const numPrice = Number(price);
     const numOriginalPrice =
       Number(originalPrice) > numPrice
         ? Number(originalPrice)
@@ -243,13 +261,20 @@ export const createProduct = async (req, res) => {
       discountPercent: calcDiscount,
       isAvailable: req.body.isAvailable !== undefined ? Boolean(req.body.isAvailable) : true,
       stock: req.body.isAvailable === false ? 0 : (stock !== undefined ? Number(stock) : 20),
-      description: description || '',
+      description: description || (fullDescription ? fullDescription.slice(0, 180) + '...' : ''),
       fullDescription: fullDescription || description || '',
+      anatomyHeading: anatomyHeading || 'Built for Generations of Unmatched Comfort',
+      showAnatomySection: showAnatomySection !== undefined ? Boolean(showAnatomySection) : true,
+      showPillarsSection: showPillarsSection !== undefined ? Boolean(showPillarsSection) : true,
+      customPillars: Array.isArray(customPillars) ? customPillars : undefined,
+      showCareGuide: showCareGuide !== undefined ? Boolean(showCareGuide) : true,
+      careInstructions: careInstructions || '',
+      customSpecs: Array.isArray(customSpecs) ? customSpecs : [],
       features: Array.isArray(features) ? features : [],
       specifications: specifications || {},
       colors: Array.isArray(colors) && colors.length > 0 ? colors : undefined,
-      mainImage,
-      hoverImage: hoverImage || mainImage,
+      mainImage: finalMainImage,
+      hoverImage: hoverImage || finalMainImage,
       galleryImages: Array.isArray(galleryImages) ? galleryImages : [],
       isBestSeller: Boolean(isBestSeller),
       isNew: isNew !== undefined ? Boolean(isNew) : true,

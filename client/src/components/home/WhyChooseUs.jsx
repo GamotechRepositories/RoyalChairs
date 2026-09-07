@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  ShieldCheck,
+  Activity,
   Sparkles,
   Award,
   Truck,
@@ -10,38 +10,31 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
+
 const STATIC_PILLARS = [
   {
     id: 'ergonomics',
-    icon: <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-emerald-700" />,
+    icon: <Activity className="w-7 h-7 text-emerald-800" />,
     title: 'Spinal Orthopedic Design',
     desc: 'Co-developed with UK spine biomechanists to ensure healthy posture and pressure distribution.',
-    image: 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?auto=format&fit=crop&w=800&q=80',
-    fallback: 'https://images.unsplash.com/photo-1589384267710-7a170981ca78?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'materials',
-    icon: <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-emerald-700" />,
+    icon: <Sparkles className="w-7 h-7 text-emerald-800" />,
     title: 'English Grain & Velvet',
     desc: 'Ethically sourced top-grain leathers, English plush velvets, and sustainable FSC-certified solid oak.',
-    image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80',
-    fallback: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'warranty',
-    icon: <Award className="w-7 h-7 sm:w-8 sm:h-8 text-emerald-700" />,
+    icon: <Award className="w-7 h-7 text-emerald-800" />,
     title: '10-Year Master Warranty',
     desc: 'Uncompromising confidence. Full frame, gas lift, and mechanical component coverage guaranteed.',
-    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80',
-    fallback: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'delivery',
-    icon: <Truck className="w-7 h-7 sm:w-8 sm:h-8 text-emerald-700" />,
+    icon: <Truck className="w-7 h-7 text-emerald-800" />,
     title: 'Free Express Delivery',
     desc: 'Delivered directly to your doorstep with zero-hassle safe packaging and fast transit.',
-    image: 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?auto=format&fit=crop&w=800&q=80',
-    fallback: 'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?auto=format&fit=crop&w=800&q=80',
   },
 ];
 
@@ -196,30 +189,17 @@ export default function WhyChooseUs() {
                 className="w-[82vw] sm:w-[84vw] md:w-auto shrink-0 snap-start bg-cream-soft rounded-2xl p-5 sm:p-6 border border-emerald-900/10 hover:border-emerald-700/40 hover:shadow-xl transition-all duration-300 flex flex-col justify-between group cursor-pointer"
               >
                 <div>
-                  {/* Top Row: Icon Badge (left) + Image (right) */}
-                  <div className="flex items-center justify-between gap-3 mb-5">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white flex items-center justify-center shadow-md shrink-0 group-hover:scale-105 transition-transform duration-300">
+                  {/* Top Row: Icon Badge (left) + Title (right) */}
+                  <div className="flex items-center gap-3.5 sm:gap-4 mb-4">
+                    <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-white flex items-center justify-center shadow-md shrink-0 group-hover:scale-105 group-hover:bg-emerald-50 transition-all duration-300 border border-emerald-900/5">
                       {item.icon}
                     </div>
-                    <div className="flex-1 h-14 sm:h-16 rounded-xl overflow-hidden shadow-xs border border-emerald-900/10 bg-slate-100 shrink-0">
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        loading="lazy"
-                        onError={(e) => {
-                          if (item.fallback && e.target.src !== item.fallback) {
-                            e.target.src = item.fallback;
-                          }
-                        }}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-                      />
-                    </div>
+                    <h3 className="text-base sm:text-lg font-extrabold text-emerald-950 font-serif leading-snug">
+                      {item.title}
+                    </h3>
                   </div>
 
-                  <h3 className="text-base sm:text-lg font-extrabold text-emerald-950 font-serif mb-2">
-                    {item.title}
-                  </h3>
-
+                  {/* Description underneath */}
                   <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
                     {item.desc}
                   </p>

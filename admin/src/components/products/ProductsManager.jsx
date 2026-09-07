@@ -14,7 +14,7 @@ import { useAdminData } from '../../context/AdminDataContext';
 import ProductFormPage from './ProductFormPage';
 
 export default function ProductsManager() {
-  const { products, categories, deleteProduct, toggleAvailability } = useAdminData();
+  const { products, categories, deleteProduct, toggleAvailability, reviews } = useAdminData();
 
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'form'
   const [editingProduct, setEditingProduct] = useState(null);
@@ -324,11 +324,25 @@ export default function ProductsManager() {
 
                       {/* Rating */}
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center space-x-1 text-amber-500 font-bold text-xs">
-                          <Star className="w-3.5 h-3.5 fill-current" />
-                          <span>{product.rating || 5}</span>
-                          <span className="text-slate-400 text-[10px]">({product.reviewCount || 0})</span>
-                        </div>
+                        {(() => {
+                          const matchingReviews = (reviews || []).filter(
+                            (r) =>
+                              (r.product && (r.product === product._id || r.product === product.id || r.product === product.name)) ||
+                              (r.productName && product.name && r.productName.toLowerCase().trim() === product.name.toLowerCase().trim())
+                          );
+                          const count = matchingReviews.length > 0 ? matchingReviews.length : (product.reviewCount || 0);
+                          const avg = matchingReviews.length > 0
+                            ? Number((matchingReviews.reduce((sum, r) => sum + (Number(r.rating) || 5), 0) / matchingReviews.length).toFixed(1))
+                            : (product.rating || 5);
+
+                          return (
+                            <div className="flex items-center space-x-1 text-amber-500 font-bold text-xs">
+                              <Star className="w-3.5 h-3.5 fill-current" />
+                              <span>{avg}</span>
+                              <span className="text-slate-400 text-[10px]">({count})</span>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Actions */}

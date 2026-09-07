@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { NEW_COLLECTION_SLIDES } from '../../data/chairProductsData';
@@ -11,6 +11,11 @@ export default function NewCollection({ onQuickView }) {
   const [isPaused, setIsPaused] = useState(false);
   const [storageTick, setStorageTick] = useState(0);
   const [apiBanners, setApiBanners] = useState([]);
+
+  // Horizontal product scroll state
+  const scrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   // Synchronize with storage updates from Admin
   useEffect(() => {
@@ -81,6 +86,41 @@ export default function NewCollection({ onQuickView }) {
   };
 
   const newProducts = (products || []).filter((p) => p.isNew);
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 5);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 5);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const timeout = setTimeout(checkScroll, 100);
+    const el = scrollRef.current;
+    if (el) {
+      el.addEventListener('scroll', checkScroll);
+      window.addEventListener('resize', checkScroll);
+      return () => {
+        clearTimeout(timeout);
+        el.removeEventListener('scroll', checkScroll);
+        window.removeEventListener('resize', checkScroll);
+      };
+    }
+    return () => clearTimeout(timeout);
+  }, [newProducts]);
+
+  const scroll = (direction) => {
+    if (scrollRef.current) {
+      const { scrollLeft, clientWidth } = scrollRef.current;
+      const scrollAmount = clientWidth * 0.8;
+      scrollRef.current.scrollTo({
+        left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   if (newProducts.length === 0) {
     return null; // Only show when New Arrival chairs are added in Database
@@ -173,21 +213,54 @@ export default function NewCollection({ onQuickView }) {
         )}
 
         {/* 3. Section Header */}
-        <div className="text-left sm:text-center mb-6 sm:mb-8">
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
-            Explore New Arrival Chairs
-          </h2>
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+          <div className="flex-1 text-left sm:text-center">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
+              Explore New Arrival Chairs
+            </h2>
+          </div>
         </div>
 
-        {/* 4. Products Grid (4 on desktop, 2 on mobile) */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-          {newProducts.map((product) => (
-            <ProductCard
-              key={product.id || product._id}
-              product={product}
-              onQuickView={onQuickView}
-            />
-          ))}
+        {/* 4. Products Horizontal Scroll (4 on desktop, 3 on tablet, 2 on mobile) */}
+        <div className="relative group/slider">
+          {/* Left Arrow Button */}
+          {canScrollLeft && (
+            <button
+              onClick={() => scroll('left')}
+              className="absolute -left-3 sm:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/95 hover:bg-white shadow-xl border border-slate-200 flex items-center justify-center text-slate-800 hover:text-emerald-900 transition-all hover:scale-105 cursor-pointer backdrop-blur-xs"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          )}
+
+          {/* Right Arrow Button */}
+          {canScrollRight && (
+            <button
+              onClick={() => scroll('right')}
+              className="absolute -right-3 sm:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/95 hover:bg-white shadow-xl border border-slate-200 flex items-center justify-center text-slate-800 hover:text-emerald-900 transition-all hover:scale-105 cursor-pointer backdrop-blur-xs"
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          )}
+
+          <div
+            ref={scrollRef}
+            className="grid grid-flow-col auto-cols-[calc((100%-12px)/2)] sm:auto-cols-[calc((100%-32px)/3)] lg:auto-cols-[calc((100%-72px)/4)] gap-3 sm:gap-4 lg:gap-6 overflow-x-auto no-scrollbar py-2 px-0.5 scroll-smooth snap-x snap-mandatory"
+          >
+            {newProducts.map((product) => (
+              <div
+                key={product.id || product._id}
+                className="snap-start h-full"
+              >
+                <ProductCard
+                  product={product}
+                  onQuickView={onQuickView}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>

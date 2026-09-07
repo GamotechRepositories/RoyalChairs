@@ -14,7 +14,28 @@ export const getReviews = async (req, res) => {
     }
 
     if (productId) {
-      query.product = productId;
+      let matchedProd = null;
+      if (productId.match(/^[0-9a-fA-F]{24}$/)) {
+        matchedProd = await Product.findById(productId);
+      } else {
+        matchedProd = await Product.findOne({
+          $or: [
+            { slug: productId.toLowerCase() },
+            { name: new RegExp('^' + productId.trim() + '$', 'i') },
+          ],
+        });
+      }
+
+      if (matchedProd) {
+        query.$or = [
+          { product: matchedProd._id },
+          { productName: new RegExp('^' + matchedProd.name.trim() + '$', 'i') },
+        ];
+      } else if (productId.match(/^[0-9a-fA-F]{24}$/)) {
+        query.$or = [{ product: productId }, { productName: productId }];
+      } else {
+        query.productName = new RegExp(productId.trim(), 'i');
+      }
     }
 
     const reviews = await Review.find(query).sort({ createdAt: -1 });
@@ -75,18 +96,20 @@ export const createReview = async (req, res) => {
     }
 
     let productDoc = null;
-    let finalProductName = productName || 'Royal Handcrafted Seating';
-
-    if (productId) {
-      try {
-        productDoc = await Product.findById(productId);
-        if (productDoc) {
-          finalProductName = productDoc.name;
-        }
-      } catch {
-        // Not a valid ObjectId, keep productName as string
-      }
+    if (productId && productId.match(/^[0-9a-fA-F]{24}$/)) {
+      productDoc = await Product.findById(productId);
     }
+    if (!productDoc && (productName || productId)) {
+      const searchKey = productName || productId;
+      productDoc = await Product.findOne({
+        $or: [
+          { name: new RegExp('^' + searchKey.trim() + '$', 'i') },
+          { slug: searchKey.toLowerCase() },
+        ],
+      });
+    }
+
+    const finalProductName = productDoc ? productDoc.name : (productName || 'Royal Handcrafted Seating');
 
     const review = await Review.create({
       product: productDoc ? productDoc._id : undefined,
@@ -99,18 +122,24 @@ export const createReview = async (req, res) => {
       location: location || 'India',
       avatar:
         avatar ||
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(finalName)}&background=2E6B4D&color=fff`,
       status: status || 'approved',
     });
 
-    // Update product review count and average rating if linked
+    // Update product review count and average rating
     if (productDoc) {
-      const allProductReviews = await Review.find({ product: productDoc._id, status: 'approved' });
+      const allProductReviews = await Review.find({
+        $or: [{ product: productDoc._id }, { productName: productDoc.name }],
+        status: 'approved',
+      });
+      const count = allProductReviews.length;
       const avgRating =
-        allProductReviews.reduce((acc, item) => item.rating + acc, 0) / (allProductReviews.length || 1);
+        count > 0
+          ? Number((allProductReviews.reduce((acc, item) => item.rating + acc, 0) / count).toFixed(1))
+          : 5.0;
 
-      productDoc.reviewCount = allProductReviews.length;
-      productDoc.rating = Number(avgRating.toFixed(1));
+      productDoc.reviewCount = count;
+      productDoc.rating = avgRating;
       await productDoc.save();
     }
 

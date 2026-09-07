@@ -25,6 +25,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
+import { useStore } from '../../context/StoreContext';
 import api from '../../services/api';
 
 export default function AccountPage({
@@ -37,6 +38,7 @@ export default function AccountPage({
   const { user, logout } = useAuth();
   const { cartCount } = useCart();
   const { wishlistCount } = useWishlist();
+  const { products } = useStore();
 
   const [activeTab, setActiveTab] = useState('orders'); // default to 'orders' or 'profile'
   const [orders, setOrders] = useState([]);
@@ -154,7 +156,26 @@ export default function AccountPage({
   };
 
   const handleOpenReviewModal = (item, order) => {
-    setSelectedItemForReview({ ...item, orderNumber: order.orderNumber });
+    const matchedProduct = (products || []).find(
+      (p) =>
+        (p._id && (p._id === item.productId || p._id === item.product)) ||
+        (p.id && (p.id === item.productId || p.id === item.product)) ||
+        (p.name && item.name && p.name.toLowerCase().trim() === item.name.toLowerCase().trim())
+    );
+
+    const itemImg =
+      (item.image && !item.image.includes('photo-1598300042247-d088f8ab3a91') ? item.image : null) ||
+      matchedProduct?.mainImage ||
+      item.image ||
+      'https://images.unsplash.com/photo-1580481072645-022f9a6d8310?auto=format&fit=crop&w=800&q=80';
+
+    setSelectedItemForReview({
+      ...item,
+      productId: matchedProduct?._id || matchedProduct?.id || item.productId || item.product,
+      productName: item.name || matchedProduct?.name,
+      orderNumber: order.orderNumber,
+      image: itemImg,
+    });
     setReviewRating(5);
     setReviewComment('');
     setReviewLocation(user?.city || 'Mumbai, India');
@@ -176,7 +197,7 @@ export default function AccountPage({
     try {
       const payload = {
         productId: selectedItemForReview.productId || selectedItemForReview.product || selectedItemForReview.id,
-        productName: selectedItemForReview.name || selectedItemForReview.title,
+        productName: selectedItemForReview.productName || selectedItemForReview.name || selectedItemForReview.title,
         userName: user?.name || 'Verified Buyer',
         name: user?.name || 'Verified Buyer',
         userRole: 'Verified Buyer',
@@ -185,22 +206,30 @@ export default function AccountPage({
         rating: Number(reviewRating) || 5,
         comment: reviewComment.trim(),
         finish: selectedItemForReview.selectedVariantName || selectedItemForReview.variant || 'Artisan Selected Finish',
-        avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80`,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Verified Buyer')}&background=2E6B4D&color=fff`,
         status: 'approved',
       };
 
       const res = await api.post('/reviews', payload);
       if (res.data?.success) {
         // Record that this product has been reviewed by user
-        const key = selectedItemForReview.productId || selectedItemForReview.name;
-        const updatedReviews = { ...reviewedProductIds, [key]: true };
+        const key1 = selectedItemForReview.productId;
+        const key2 = selectedItemForReview.name;
+        const key3 = selectedItemForReview.productName;
+        const updatedReviews = {
+          ...reviewedProductIds,
+          ...(key1 ? { [key1]: true } : {}),
+          ...(key2 ? { [key2]: true } : {}),
+          ...(key3 ? { [key3]: true } : {}),
+        };
         setReviewedProductIds(updatedReviews);
         localStorage.setItem('royal_reviewed_items', JSON.stringify(updatedReviews));
 
-        // Dispatch storage update so product pages refresh reviews
+        // Dispatch storage update so product pages refresh reviews and ratings immediately
         window.dispatchEvent(new Event('royal_storage_update'));
+        window.dispatchEvent(new Event('storage'));
 
-        setReviewSuccessToast(`Thank you! Your review for ${selectedItemForReview.name} has been verified and published.`);
+        setReviewSuccessToast(`Thank you! Your verified review has been published.`);
         handleCloseReviewModal();
         setTimeout(() => setReviewSuccessToast(''), 5000);
       }
@@ -526,8 +555,25 @@ export default function AccountPage({
                         {/* Order Items List */}
                         <div className="p-4 sm:p-5 divide-y divide-slate-100">
                           {(order.items || []).map((item, itemIdx) => {
+                            const matchedProduct = (products || []).find(
+                              (p) =>
+                                (p._id && (p._id === item.productId || p._id === item.product)) ||
+                                (p.id && (p.id === item.productId || p.id === item.product)) ||
+                                (p.name && item.name && p.name.toLowerCase().trim() === item.name.toLowerCase().trim())
+                            );
+
+                            const itemImg =
+                              (item.image && !item.image.includes('photo-1598300042247-d088f8ab3a91') ? item.image : null) ||
+                              matchedProduct?.mainImage ||
+                              item.image ||
+                              'https://images.unsplash.com/photo-1580481072645-022f9a6d8310?auto=format&fit=crop&w=800&q=80';
+
                             const isReviewed =
-                              reviewedProductIds[item.productId || item.name] || false;
+                              reviewedProductIds[item.productId] ||
+                              reviewedProductIds[item.product] ||
+                              reviewedProductIds[item.name] ||
+                              (matchedProduct && (reviewedProductIds[matchedProduct._id] || reviewedProductIds[matchedProduct.id] || reviewedProductIds[matchedProduct.name])) ||
+                              false;
 
                             return (
                               <div
@@ -537,9 +583,12 @@ export default function AccountPage({
                                 <div className="flex items-center space-x-4">
                                   <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
                                     <img
-                                      src={item.image || 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=85'}
+                                      src={itemImg}
                                       alt={item.name}
                                       className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        if (matchedProduct?.mainImage) e.target.src = matchedProduct.mainImage;
+                                      }}
                                     />
                                   </div>
                                   <div>

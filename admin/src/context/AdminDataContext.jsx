@@ -276,20 +276,18 @@ export function AdminDataProvider({ children }) {
       const res = await api.post('/products', prodData);
       if (res.data?.success && res.data.data) {
         setProducts((prev) => [res.data.data, ...prev]);
+        try {
+          const currentStored = localStorage.getItem('royal_admin_products');
+          const parsed = currentStored ? JSON.parse(currentStored) : [];
+          localStorage.setItem('royal_admin_products', JSON.stringify([res.data.data, ...parsed]));
+        } catch {}
         return res.data.data;
       }
+      throw new Error(res.data?.message || 'Failed to create product');
     } catch (err) {
       console.error('API product create error:', err);
+      throw err;
     }
-    const fallback = {
-      ...prodData,
-      id: `rc-${Date.now().toString().slice(-4)}`,
-      sku: prodData.sku || `RC-${(prodData.category || 'GEN').toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`,
-      rating: 5.0,
-      reviewCount: 0,
-    };
-    setProducts((prev) => [fallback, ...prev]);
-    return fallback;
   };
 
   const updateProduct = async (id, updatedFields) => {
@@ -299,14 +297,19 @@ export function AdminDataProvider({ children }) {
         setProducts((prev) =>
           prev.map((p) => (p._id === id || p.id === id ? res.data.data : p))
         );
+        try {
+          const currentStored = localStorage.getItem('royal_admin_products');
+          const parsed = currentStored ? JSON.parse(currentStored) : [];
+          const updated = parsed.map((p) => (p._id === id || p.id === id ? res.data.data : p));
+          localStorage.setItem('royal_admin_products', JSON.stringify(updated));
+        } catch {}
         return res.data.data;
       }
+      throw new Error(res.data?.message || 'Failed to update product');
     } catch (err) {
       console.error('API product update error:', err);
+      throw err;
     }
-    setProducts((prev) =>
-      prev.map((p) => (p._id === id || p.id === id ? { ...p, ...updatedFields } : p))
-    );
   };
 
   const toggleAvailability = async (id, currentStatus) => {
@@ -395,10 +398,18 @@ export function AdminDataProvider({ children }) {
     setReviews((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const moderateReview = (id, status, featured) => {
+  const moderateReview = async (id, status, featured) => {
+    try {
+      await api.put(`/reviews/${id}`, {
+        status: status ? status.toLowerCase() : undefined,
+        featured,
+      });
+    } catch (err) {
+      console.error('API review moderate error:', err);
+    }
     setReviews((prev) =>
       prev.map((r) =>
-        r.id === id
+        r.id === id || r._id === id
           ? {
               ...r,
               status: status !== undefined ? status : r.status,

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import ProductCard from '../ui/ProductCard';
 
@@ -6,11 +7,12 @@ export default function BestSellers({ onQuickView }) {
   const { products, categories } = useStore();
   const [activeTab, setActiveTab] = useState('all');
 
-  const bestSellersList = (products || []).filter((p) => p.isBestSeller);
+  // Horizontal product scroll state
+  const scrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
-  if (bestSellersList.length === 0) {
-    return null; // Only show when Best Seller chairs exist in Database
-  }
+  const bestSellersList = (products || []).filter((p) => p.isBestSeller);
 
   const filteredProducts =
     activeTab === 'all'
@@ -18,6 +20,45 @@ export default function BestSellers({ onQuickView }) {
       : bestSellersList.filter(
           (p) => (p.categorySlug || p.category || '').toLowerCase() === activeTab.toLowerCase()
         );
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 5);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 5);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const timeout = setTimeout(checkScroll, 100);
+    const el = scrollRef.current;
+    if (el) {
+      el.addEventListener('scroll', checkScroll);
+      window.addEventListener('resize', checkScroll);
+      return () => {
+        clearTimeout(timeout);
+        el.removeEventListener('scroll', checkScroll);
+        window.removeEventListener('resize', checkScroll);
+      };
+    }
+    return () => clearTimeout(timeout);
+  }, [filteredProducts]);
+
+  const scroll = (direction) => {
+    if (scrollRef.current) {
+      const { scrollLeft, clientWidth } = scrollRef.current;
+      const scrollAmount = clientWidth * 0.8;
+      scrollRef.current.scrollTo({
+        left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  if (bestSellersList.length === 0) {
+    return null; // Only show when Best Seller chairs exist in Database
+  }
 
   const dynamicTabs = [
     { id: 'all', label: 'All Best Sellers' },
@@ -56,15 +97,46 @@ export default function BestSellers({ onQuickView }) {
           )}
         </div>
 
-        {/* Products Grid (4 on desktop, 2 on mobile) */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-          {filteredProducts.map((product) => (
-            <ProductCard
-              key={product._id || product.id}
-              product={product}
-              onQuickView={onQuickView}
-            />
-          ))}
+        {/* Products Horizontal Scroll (4 on desktop, 3 on tablet, 2 on mobile) */}
+        <div className="relative group/slider">
+          {/* Left Arrow Button */}
+          {canScrollLeft && (
+            <button
+              onClick={() => scroll('left')}
+              className="absolute -left-3 sm:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/95 hover:bg-white shadow-xl border border-slate-200 flex items-center justify-center text-slate-800 hover:text-emerald-900 transition-all hover:scale-105 cursor-pointer backdrop-blur-xs"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          )}
+
+          {/* Right Arrow Button */}
+          {canScrollRight && (
+            <button
+              onClick={() => scroll('right')}
+              className="absolute -right-3 sm:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/95 hover:bg-white shadow-xl border border-slate-200 flex items-center justify-center text-slate-800 hover:text-emerald-900 transition-all hover:scale-105 cursor-pointer backdrop-blur-xs"
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          )}
+
+          <div
+            ref={scrollRef}
+            className="grid grid-flow-col auto-cols-[calc((100%-12px)/2)] sm:auto-cols-[calc((100%-32px)/3)] lg:auto-cols-[calc((100%-72px)/4)] gap-3 sm:gap-4 lg:gap-6 overflow-x-auto no-scrollbar py-2 px-0.5 scroll-smooth snap-x snap-mandatory"
+          >
+            {filteredProducts.map((product) => (
+              <div
+                key={product._id || product.id}
+                className="snap-start h-full"
+              >
+                <ProductCard
+                  product={product}
+                  onQuickView={onQuickView}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>

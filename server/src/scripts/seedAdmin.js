@@ -1,34 +1,52 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import Admin from '../models/Admin.js';
+import User from '../models/User.js';
 import connectDB from '../config/db.js';
 
 export const seedDefaultAdmin = async () => {
   try {
     const adminEmail = 'admin@royalchairs.com';
+    
+    // 1. Seed in Admin collection
     const existingAdmin = await Admin.findOne({ email: adminEmail.toLowerCase() }).select('+password');
-
     if (!existingAdmin) {
-      const newAdmin = await Admin.create({
+      await Admin.create({
         name: 'Admin',
         email: adminEmail.toLowerCase(),
-        password: 'admin@2026', // Bcrypt hook in Admin model will securely hash this password
+        password: 'admin@2026',
         role: 'superadmin',
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
       });
-
-      console.log(`[Admin Seed] Created default admin user: ${newAdmin.email} with bcrypt-hashed password.`);
-      return newAdmin;
+      console.log(`[Admin Seed] Created default admin in Admin collection: ${adminEmail}`);
     } else {
-
-      // Ensure password is reset to admin@2026 if it was altered or needs sync
       const isMatch = await existingAdmin.matchPassword('admin@2026');
       if (!isMatch) {
         existingAdmin.password = 'admin@2026';
         await existingAdmin.save();
-        console.log(`[Admin Seed] Updated password for default admin: ${existingAdmin.email}`);
+        console.log(`[Admin Seed] Updated password in Admin collection: ${adminEmail}`);
       }
-      return existingAdmin;
+    }
+
+    // 2. Seed in User collection as admin role (for fallback compatibility)
+    const existingUser = await User.findOne({ email: adminEmail.toLowerCase() }).select('+password');
+    if (!existingUser) {
+      await User.create({
+        name: 'Admin',
+        email: adminEmail.toLowerCase(),
+        password: 'admin@2026',
+        role: 'admin',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      });
+      console.log(`[Admin Seed] Created default admin in User collection: ${adminEmail}`);
+    } else {
+      const isMatch = await existingUser.matchPassword('admin@2026');
+      if (!isMatch || existingUser.role !== 'admin') {
+        existingUser.password = 'admin@2026';
+        existingUser.role = 'admin';
+        await existingUser.save();
+        console.log(`[Admin Seed] Updated password/role in User collection: ${adminEmail}`);
+      }
     }
   } catch (error) {
     console.error('[Admin Seed] Error seeding default admin:', error.message);

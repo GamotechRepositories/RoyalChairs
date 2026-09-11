@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import Admin from '../models/Admin.js';
+import User from '../models/User.js';
 
 // Helper function to generate Admin JWT Token
 const generateAdminToken = (admin) => {
@@ -31,44 +32,68 @@ export const adminLogin = async (req, res) => {
       });
     }
 
-    // Find admin user in database (including password hash)
+    // 1. Find in Admin collection (including password hash)
     const admin = await Admin.findOne({ email: email.toLowerCase() }).select('+password');
 
-    if (!admin) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid admin credentials. Account not found.',
+    if (admin) {
+      const isMatch = await admin.matchPassword(password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid password. Please check your credentials.',
+        });
+      }
+
+      admin.lastLogin = new Date();
+      await admin.save({ validateBeforeSave: false });
+
+      const token = generateAdminToken(admin);
+
+      return res.status(200).json({
+        success: true,
+        message: `Welcome back, ${admin.name}!`,
+        token,
+        user: {
+          id: admin._id,
+          name: admin.name,
+          email: admin.email,
+          role: admin.role === 'superadmin' ? 'Super Administrator' : 'Administrator',
+          avatar: admin.avatar,
+          lastLogin: admin.lastLogin,
+        },
       });
     }
 
-    // Verify password against bcrypt hash in database
-    const isMatch = await admin.matchPassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid password. Please check your credentials.',
+    // 2. Fallback: Find in User collection (if admin role)
+    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    if (user && user.role === 'admin') {
+      const isUserMatch = await user.matchPassword(password);
+      if (!isUserMatch) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid password. Please check your credentials.',
+        });
+      }
+
+      const token = generateAdminToken(user);
+
+      return res.status(200).json({
+        success: true,
+        message: `Welcome back, ${user.name}!`,
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: 'Administrator',
+          avatar: user.avatar,
+        },
       });
     }
 
-    // Update last login timestamp
-    admin.lastLogin = new Date();
-    await admin.save({ validateBeforeSave: false });
-
-    // Generate JWT token
-    const token = generateAdminToken(admin);
-
-    return res.status(200).json({
-      success: true,
-      message: `Welcome back, ${admin.name}!`,
-      token,
-      user: {
-        id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        role: admin.role === 'superadmin' ? 'Super Administrator' : 'Administrator',
-        avatar: admin.avatar,
-        lastLogin: admin.lastLogin,
-      },
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid admin credentials. Account not found.',
     });
   } catch (error) {
     console.error('Admin Login Error:', error);

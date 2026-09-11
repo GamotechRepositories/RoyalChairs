@@ -1,16 +1,19 @@
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
+import Admin from '../models/Admin.js';
 
 const getOAuthClient = () => {
   return new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 };
 
 // Helper function to generate JWT Token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'royalchairs_secret_key', {
-    expiresIn: '30d',
-  });
+const generateToken = (id, role = 'user') => {
+  return jwt.sign(
+    { id, role, isAdmin: role === 'admin' || role === 'superadmin' },
+    process.env.JWT_SECRET || 'royalchairs_secret_key',
+    { expiresIn: '30d' }
+  );
 };
 
 // @desc    Register new user
@@ -83,37 +86,63 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // Check for user (include password field)
+    // Check for user in User collection
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email address or password',
+    if (user) {
+      const isMatch = await user.matchPassword(password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email address or password',
+        });
+      }
+
+      const token = generateToken(user._id, user.role);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Login successful! Welcome back.',
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
       });
     }
 
-    // Check if password matches
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email address or password',
+    // Fallback: Check for user in Admin collection
+    const admin = await Admin.findOne({ email: email.toLowerCase() }).select('+password');
+    if (admin) {
+      const isAdminMatch = await admin.matchPassword(password);
+      if (!isAdminMatch) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email address or password',
+        });
+      }
+
+      const token = generateToken(admin._id, admin.role || 'admin');
+
+      return res.status(200).json({
+        success: true,
+        message: `Welcome back, ${admin.name}!`,
+        token,
+        user: {
+          id: admin._id,
+          name: admin.name,
+          email: admin.email,
+          role: admin.role === 'superadmin' ? 'Super Administrator' : 'Administrator',
+          avatar: admin.avatar,
+        },
       });
     }
 
-    const token = generateToken(user._id);
-
-    res.status(200).json({
-      success: true,
-      message: 'Login successful! Welcome back.',
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid email address or password',
     });
   } catch (error) {
     console.error('Login Error:', error);

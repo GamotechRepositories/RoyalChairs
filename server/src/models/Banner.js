@@ -30,9 +30,17 @@ const bannerSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    badge: {
+      type: String,
+      default: '',
+    },
+    caption: {
+      type: String,
+      default: '',
+    },
     type: {
       type: String,
-      enum: ['hero', 'new_collection', 'spotlight', 'instagram'],
+      enum: ['hero', 'new_collection', 'spotlight', 'craft', 'instagram'],
       default: 'hero',
       index: true,
     },

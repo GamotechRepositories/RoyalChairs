@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { ArrowLeft, SlidersHorizontal, ArrowUpDown, Tag } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import ProductCard from '../ui/ProductCard';
+import { ProductGridSkeleton } from '../ui/Skeletons';
 
 export default function CategoryShopPage({ initialCategory, onBackToHome, onQuickView }) {
-  const { categories, products } = useStore();
+  const { categories, products, isLoading } = useStore();
   const [activeCategoryId, setActiveCategoryId] = useState(
     initialCategory || (categories[0]?.slug || categories[0]?.id || 'wooden')
   );
@@ -208,7 +209,9 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
             </div>
 
             {/* Products Grid */}
-            {categoryProducts.length === 0 ? (
+            {isLoading ? (
+              <ProductGridSkeleton count={6} />
+            ) : categoryProducts.length === 0 ? (
               <div className="bg-white rounded-3xl p-12 text-center border border-emerald-100 shadow-xs space-y-3">
                 <p className="text-base font-bold text-gray-800">
                   No chair models found in this category / subcategory.

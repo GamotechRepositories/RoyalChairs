@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
-import { NEW_COLLECTION_SLIDES } from '../../data/chairProductsData';
 import ProductCard from '../ui/ProductCard';
+import { ProductCardSkeleton } from '../ui/Skeletons';
 import api from '../../services/api';
 
 export default function NewCollection({ onQuickView }) {
-  const { products } = useStore();
+  const { products, isLoading } = useStore();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [storageTick, setStorageTick] = useState(0);
@@ -37,29 +37,15 @@ export default function NewCollection({ onQuickView }) {
           setApiBanners(res.data.data);
         }
       } catch (err) {
-        console.log('Error loading new collection banners from API:', err.message);
+        console.log('Error loading new collection banners from MongoDB API:', err.message);
       }
     };
     fetchBanners();
   }, [storageTick]);
 
-  // Load slides from MongoDB API (if available), or localStorage, or fallback
   const activeSlides = useMemo(() => {
-    if (apiBanners.length > 0) {
-      return apiBanners.filter((s) => s.active !== false);
-    }
-    try {
-      const saved = localStorage.getItem('royal_newcoll_slides');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const filtered = parsed.filter((s) => s.active !== false);
-        if (filtered.length > 0) return filtered;
-      }
-    } catch {
-      // Fallback
-    }
-    return NEW_COLLECTION_SLIDES || [];
-  }, [apiBanners, storageTick]);
+    return (apiBanners || []).filter((s) => s.active !== false);
+  }, [apiBanners]);
 
   // Slideshow auto-rotation timer
   useEffect(() => {
@@ -109,7 +95,7 @@ export default function NewCollection({ onQuickView }) {
       };
     }
     return () => clearTimeout(timeout);
-  }, [newProducts]);
+  }, [newProducts, isLoading]);
 
   const scroll = (direction) => {
     if (scrollRef.current) {
@@ -121,6 +107,29 @@ export default function NewCollection({ onQuickView }) {
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <section id="new-collection" className="py-16 bg-white border-t border-emerald-100 animate-fadeIn">
+        <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 space-y-6">
+          <div className="h-44 sm:h-64 w-full bg-slate-200/80 rounded-3xl animate-pulse" />
+          <div className="flex justify-between items-center">
+            <div className="space-y-1">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-serif">
+                New Arrivals
+              </h2>
+              <div className="h-3 w-40 bg-slate-200 rounded" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (newProducts.length === 0) {
     return null; // Only show when New Arrival chairs are added in Database

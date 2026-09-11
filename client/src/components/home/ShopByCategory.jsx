@@ -1,10 +1,10 @@
 import { useRef, useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
-import { CATEGORIES as DEFAULT_CATEGORIES } from '../../data/chairProductsData';
+import { CategoryCardSkeleton } from '../ui/Skeletons';
 
 export default function ShopByCategory({ onSelectCategory }) {
-  const { categories: apiCategories } = useStore();
+  const { categories: apiCategories, isLoading } = useStore();
   const scrollRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -12,7 +12,7 @@ export default function ShopByCategory({ onSelectCategory }) {
   const defaultFallbackImage =
     'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=600&q=80';
 
-  const categories = apiCategories && apiCategories.length > 0 ? apiCategories : DEFAULT_CATEGORIES;
+  const categories = Array.isArray(apiCategories) ? apiCategories : [];
 
   const checkScroll = () => {
     if (scrollRef.current) {
@@ -33,7 +33,7 @@ export default function ShopByCategory({ onSelectCategory }) {
         window.removeEventListener('resize', checkScroll);
       };
     }
-  }, [categories]);
+  }, [categories, isLoading]);
 
   const scroll = (direction) => {
     if (scrollRef.current) {
@@ -45,6 +45,26 @@ export default function ShopByCategory({ onSelectCategory }) {
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <section id="shop-by-category" className="py-8 sm:py-14 bg-white animate-fadeIn">
+        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-left sm:text-center mb-6 sm:mb-8 space-y-2">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
+              Shop By Category
+            </h2>
+            <div className="h-4 w-40 bg-slate-200 rounded mx-auto animate-pulse" />
+          </div>
+          <div className="flex items-center justify-between gap-4 overflow-hidden py-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex-1 aspect-square bg-slate-200/70 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (!categories || categories.length === 0) {
     return null;

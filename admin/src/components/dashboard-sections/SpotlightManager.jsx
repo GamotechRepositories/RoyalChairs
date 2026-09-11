@@ -31,17 +31,7 @@ const DEFAULT_SPOTLIGHT = {
 
 export default function SpotlightManager() {
   const { categories } = useAdminData();
-  const [spotlight, setSpotlight] = useState(() => {
-    try {
-      const saved = localStorage.getItem('royal_admin_spotlight');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') return parsed;
-      }
-    } catch {}
-    return DEFAULT_SPOTLIGHT;
-  });
-
+  const [spotlight, setSpotlight] = useState(DEFAULT_SPOTLIGHT);
   const [toastMessage, setToastMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
@@ -51,18 +41,22 @@ export default function SpotlightManager() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  // Load live data from API
+  // Load live data directly from MongoDB API
   useEffect(() => {
     const loadSpotlightFromAPI = async () => {
       try {
         const res = await api.get('/banners?type=spotlight&status=all');
         if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
           const item = res.data.data[0];
-          setSpotlight(item);
-          localStorage.setItem('royal_admin_spotlight', JSON.stringify(item));
+          setSpotlight((prev) => ({
+            ...prev,
+            ...item,
+            categorySlug: item.categorySlug || prev.categorySlug || 'gaming',
+            link: item.link || `#category-${item.categorySlug || 'gaming'}`,
+          }));
         }
       } catch (err) {
-        console.log('Using local spotlight cache:', err.message);
+        console.log('Error loading spotlight from MongoDB API:', err.message);
       }
     };
     loadSpotlightFromAPI();
@@ -93,14 +87,8 @@ export default function SpotlightManager() {
     }
 
     setIsSaving(true);
-    localStorage.setItem('royal_admin_spotlight', JSON.stringify(spotlight));
-
     try {
-      window.dispatchEvent(new Event('royal_storage_update'));
-    } catch {}
-
-    try {
-      await api.post('/banners', {
+      const res = await api.post('/banners', {
         type: 'spotlight',
         banners: [
           {
@@ -110,10 +98,13 @@ export default function SpotlightManager() {
           },
         ],
       });
+      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+        setSpotlight(res.data.data[0]);
+      }
       showToast('Category Spotlight saved & synced to live store!');
     } catch (err) {
-      console.log('Spotlight save note:', err.message);
-      showToast('Saved locally & synced!');
+      console.error('Error saving spotlight to MongoDB:', err);
+      showToast('Error saving to database. Please try again.');
     } finally {
       setIsSaving(false);
     }

@@ -14,9 +14,15 @@ import {
   CheckCircle2,
   Calendar,
   Copy,
+  Truck,
+  Tag,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStore } from '../../context/StoreContext';
+import TrackOrderModal from '../layout/TrackOrderModal';
+import { OrderCardSkeleton } from '../ui/Skeletons';
 import api from '../../services/api';
 
 export default function AccountPage({
@@ -28,7 +34,9 @@ export default function AccountPage({
 
   const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'profile', 'address'
   const [orders, setOrders] = useState([]);
+  const [isOrdersLoading, setIsOrdersLoading] = useState(true);
   const [copiedOrderNumber, setCopiedOrderNumber] = useState('');
+  const [trackingModalOrderId, setTrackingModalOrderId] = useState('');
   const [reviewedProductIds, setReviewedProductIds] = useState(() => {
     try {
       const saved = localStorage.getItem('royal_reviewed_items');
@@ -159,6 +167,7 @@ export default function AccountPage({
         );
         if (userOrders.length > 0) {
           setOrders(userOrders);
+          setIsOrdersLoading(false);
           return;
         }
       }
@@ -169,13 +178,16 @@ export default function AccountPage({
       const localSaved = localStorage.getItem('royal_user_orders');
       if (localSaved) {
         const parsed = JSON.parse(localSaved);
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           setOrders(parsed);
+          setIsOrdersLoading(false);
           return;
         }
       }
     } catch {}
+
     setOrders([]);
+    setIsOrdersLoading(false);
   };
 
   useEffect(() => {
@@ -383,13 +395,18 @@ export default function AccountPage({
 
         {/* TAB 1: ORDERS & HISTORY */}
         {activeTab === 'orders' && (
-          <div className="space-y-4">
-            {orders.length === 0 ? (
+          <div className="space-y-5">
+            {isOrdersLoading ? (
+              <div className="space-y-4">
+                <OrderCardSkeleton />
+                <OrderCardSkeleton />
+              </div>
+            ) : orders.length === 0 ? (
               <div className="bg-white rounded-2xl p-10 text-center border border-slate-200/80 space-y-3">
                 <Package className="w-12 h-12 text-slate-300 mx-auto" />
                 <h3 className="text-base font-bold text-slate-800">No Orders Placed Yet</h3>
                 <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                  When you purchase chairs, your orders and review options will appear here.
+                  When you purchase chairs, your live order progress, tracking codes, and review options will appear here.
                 </p>
                 <button
                   onClick={onNavigateShop}
@@ -399,57 +416,164 @@ export default function AccountPage({
                 </button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {orders.map((order) => {
                   const orderNum = order.orderNumber || order.id || 'RC-ORDER';
-                  const orderDate = order.createdAt
-                    ? new Date(order.createdAt).toLocaleDateString('en-IN', {
+                  const orderDate = order.createdAt || order.date
+                    ? new Date(order.createdAt || order.date).toLocaleDateString('en-IN', {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
                       })
                     : 'Recent Order';
 
+                  const rawFulfillment = (order.fulfillmentStatus || order.orderStatus || 'Pending').toLowerCase();
+                  let displayStatus = 'Pending Assignment';
+                  let badgeStyle = 'bg-amber-100 text-amber-900 border-amber-300';
+                  let stepIndex = 0; // 0: Placed, 1: Production, 2: Dispatched, 3: Delivered
+
+                  if (rawFulfillment.includes('production') || rawFulfillment === 'confirmed') {
+                    displayStatus = 'In Production (Benchcrafting)';
+                    badgeStyle = 'bg-sky-100 text-sky-900 border-sky-300';
+                    stepIndex = 1;
+                  } else if (rawFulfillment.includes('dispatch') || rawFulfillment === 'shipped') {
+                    displayStatus = 'Dispatched (Express Courier)';
+                    badgeStyle = 'bg-indigo-100 text-indigo-900 border-indigo-300';
+                    stepIndex = 2;
+                  } else if (rawFulfillment.includes('deliver')) {
+                    displayStatus = 'Delivered & Assembled';
+                    badgeStyle = 'bg-emerald-100 text-emerald-900 border-emerald-300';
+                    stepIndex = 3;
+                  } else if (rawFulfillment.includes('cancel')) {
+                    displayStatus = 'Order Cancelled';
+                    badgeStyle = 'bg-rose-100 text-rose-900 border-rose-300';
+                    stepIndex = -1;
+                  }
+
+                  const safeItems = Array.isArray(order.items) ? order.items : [];
+                  const itemsSubtotal = safeItems.reduce(
+                    (sum, i) => sum + (Number(i.price) || 0) * (Number(i.quantity) || 1),
+                    0
+                  );
+                  const totalPaid = Number(
+                    order.totalAmount !== undefined ? order.totalAmount : (order.total || 0)
+                  );
+                  const discountAmount = Number(
+                    order.discountAmount !== undefined
+                      ? order.discountAmount
+                      : (order.discount || 0)
+                  );
+                  const grossSubtotal = Number(
+                    order.subtotal && order.subtotal > totalPaid
+                      ? order.subtotal
+                      : (itemsSubtotal > 0 ? itemsSubtotal : (totalPaid + discountAmount))
+                  );
+
+                  const trackingCode = order.trackingNumber || `TRK-${(order._id || order.id || '').toString().slice(-8).toUpperCase()}`;
+
                   return (
                     <div
                       key={order._id || order.id || orderNum}
-                      className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs"
+                      className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs space-y-0"
                     >
-                      {/* Order Summary Top Bar */}
-                      <div className="bg-slate-50/80 px-4 sm:px-6 py-3 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-                        <div className="flex items-center space-x-3">
+                      {/* Top Bar Header */}
+                      <div className="bg-slate-50 px-5 sm:px-6 py-4 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                           <button
                             onClick={() => handleCopyOrder(orderNum)}
-                            className="font-mono font-bold text-slate-900 flex items-center space-x-1 hover:text-emerald-800 transition cursor-pointer"
+                            className="font-mono font-bold text-slate-900 flex items-center space-x-1.5 hover:text-emerald-800 transition cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-slate-200"
                             title="Copy Order ID"
                           >
                             <span>#{orderNum}</span>
                             {copiedOrderNumber === orderNum ? (
                               <Check className="w-3.5 h-3.5 text-emerald-600" />
                             ) : (
-                              <Copy className="w-3 h-3 text-slate-400" />
+                              <Copy className="w-3.5 h-3.5 text-slate-400" />
                             )}
                           </button>
-                          <span className="text-slate-300">•</span>
+                          <span className="text-slate-400">•</span>
                           <span className="text-slate-500 flex items-center">
                             <Calendar className="w-3.5 h-3.5 mr-1 text-slate-400" />
                             {orderDate}
                           </span>
                         </div>
 
-                        <div className="flex items-center space-x-3">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200 uppercase">
-                            {order.orderStatus || 'Confirmed'}
+                        <div className="flex items-center space-x-2.5">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black border uppercase tracking-wider ${badgeStyle}`}>
+                            {displayStatus}
                           </span>
-                          <span className="font-mono font-black text-slate-900 text-sm">
-                            ₹{(order.totalAmount || 0).toLocaleString('en-IN')}
+                          <span className="text-[11px] bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-full font-bold uppercase">
+                            {order.paymentMethod || 'Online'} ({order.paymentStatus || 'PAID'})
                           </span>
                         </div>
                       </div>
 
-                      {/* Items */}
+                      {/* Live Logistics & Progress Stepper Bar */}
+                      <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-50/90 to-emerald-50/40 border-b border-slate-200/70 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center space-x-2">
+                            <Truck className="w-4 h-4 text-emerald-800 shrink-0" />
+                            <span className="text-slate-600 font-medium">Carrier:</span>
+                            <span className="font-bold text-slate-900">{order.carrier || 'Royal Express Logistics'}</span>
+                            <span className="text-slate-300">|</span>
+                            <span className="text-slate-600 font-medium">Tracking:</span>
+                            <span className="font-mono font-bold text-emerald-900 bg-white px-2 py-0.5 rounded border border-emerald-200">
+                              {trackingCode}
+                            </span>
+                            <button
+                              onClick={() => handleCopyOrder(trackingCode)}
+                              className="text-slate-400 hover:text-emerald-800 cursor-pointer"
+                              title="Copy Tracking Number"
+                            >
+                              {copiedOrderNumber === trackingCode ? (
+                                <Check className="w-3 h-3 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </button>
+                          </div>
+
+                          <button
+                            onClick={() => setTrackingModalOrderId(orderNum)}
+                            className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center space-x-1 cursor-pointer"
+                          >
+                            <Truck className="w-3.5 h-3.5 mr-1" />
+                            <span>Track Live</span>
+                          </button>
+                        </div>
+
+                        {/* 4-Step Visual Progress Stepper */}
+                        {stepIndex >= 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-[11px]">
+                            {[
+                              { label: '1. Order Placed', active: stepIndex >= 0 },
+                              { label: '2. In Production', active: stepIndex >= 1 },
+                              { label: '3. Dispatched', active: stepIndex >= 2 },
+                              { label: '4. Delivered', active: stepIndex >= 3 },
+                            ].map((step, sIdx) => (
+                              <div
+                                key={sIdx}
+                                className={`p-2 rounded-xl flex items-center space-x-2 border transition ${
+                                  step.active
+                                    ? 'bg-emerald-800 text-white border-emerald-700 shadow-xs font-bold'
+                                    : 'bg-white/80 text-slate-400 border-slate-200 font-medium'
+                                }`}
+                              >
+                                {step.active ? (
+                                  <Check className="w-3.5 h-3.5 shrink-0" />
+                                ) : (
+                                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                                )}
+                                <span className="truncate">{step.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Purchased Item List */}
                       <div className="p-4 sm:p-5 divide-y divide-slate-100">
-                        {(order.items || []).map((item, itemIdx) => {
+                        {safeItems.map((item, itemIdx) => {
                           const resolvedImage = resolveItemImage(item);
                           const isReviewed =
                             reviewedProductIds[item.productId] ||
@@ -480,7 +604,7 @@ export default function AccountPage({
                                     Finish: <span className="text-slate-800 font-medium">{item.selectedVariantName || item.colorName || 'Standard'}</span> • Qty: {item.quantity || 1}
                                   </p>
                                   <p className="text-xs font-bold text-emerald-900 mt-1 font-mono">
-                                    ₹{(item.price || 0).toLocaleString('en-IN')}
+                                    ₹{(item.price || 0).toLocaleString('en-IN')} each
                                   </p>
                                 </div>
                               </div>
@@ -504,6 +628,32 @@ export default function AccountPage({
                             </div>
                           );
                         })}
+                      </div>
+
+                      {/* Financial Breakdown Footer */}
+                      <div className="bg-slate-50/70 p-4 sm:p-5 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="space-y-1 text-slate-600 font-medium">
+                          <div className="flex items-center space-x-2">
+                            <span>Subtotal:</span>
+                            <span className="font-mono font-bold text-slate-900">₹{grossSubtotal.toLocaleString('en-IN')}</span>
+                            {discountAmount > 0 && (
+                              <span className="inline-flex items-center space-x-1 bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded font-bold">
+                                <Tag className="w-3 h-3" />
+                                <span>Discount {order.couponCode ? `(${order.couponCode})` : ''}: -₹{discountAmount.toLocaleString('en-IN')}</span>
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500">
+                            White-Glove Delivery &amp; Transit: <strong className="text-emerald-800">Complimentary (Free)</strong>
+                          </p>
+                        </div>
+
+                        <div className="text-left sm:text-right">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Money Paid</span>
+                          <span className="font-mono font-black text-slate-900 text-base sm:text-lg">
+                            ₹{totalPaid.toLocaleString('en-IN')}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
@@ -703,6 +853,13 @@ export default function AccountPage({
           </div>
         </div>
       )}
+
+      {/* 5. LIVE TRACKING MODAL */}
+      <TrackOrderModal
+        isOpen={!!trackingModalOrderId}
+        onClose={() => setTrackingModalOrderId('')}
+        initialOrderId={trackingModalOrderId}
+      />
     </div>
   );
 }

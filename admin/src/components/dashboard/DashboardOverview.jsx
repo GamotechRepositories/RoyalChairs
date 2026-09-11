@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   TrendingUp,
   ShoppingBag,
@@ -18,51 +18,181 @@ import {
   Download,
 } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
+import { StatCardSkeleton, TableRowSkeleton } from '../ui/AdminSkeletons';
 
 export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal }) {
-  const { products, orders, customers, coupons, reviews } = useAdminData();
+  const { products, orders, customers, coupons, reviews, isLoading } = useAdminData();
 
   const [timeRange, setTimeRange] = useState('monthly'); // 'weekly' or 'monthly'
 
-  // Dynamic calculated metrics
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0) + 124500;
-  const activeOrdersCount = orders.length + 338;
-  const avgOrderValue = Math.round(totalRevenue / activeOrdersCount);
-  const outOfStockChairs = products.filter((p) => p.isAvailable === false || p.stock === 0);
-  const pendingOrders = orders.filter((o) => o.fulfillmentStatus === 'Pending' || o.fulfillmentStatus === 'In Production');
+  // 1. Core Dynamic Metrics Computed 100% from MongoDB Real Data
+  const totalRevenue = orders.reduce((sum, o) => {
+    const val = Number(o.totalAmount !== undefined ? o.totalAmount : (o.total || 0));
+    return sum + (isNaN(val) ? 0 : val);
+  }, 0);
 
-  // Chart Data Points
-  const monthlyData = [
-    { label: 'Jan', revenue: 68000, orders: 180 },
-    { label: 'Feb', revenue: 74500, orders: 205 },
-    { label: 'Mar', revenue: 89200, orders: 240 },
-    { label: 'Apr', revenue: 95400, orders: 260 },
-    { label: 'May', revenue: 112000, orders: 310 },
-    { label: 'Jun', revenue: 108400, orders: 295 },
-    { label: 'Jul', revenue: 121000, orders: 330 },
-    { label: 'Aug (Now)', revenue: 128450, orders: 342 },
-  ];
+  const activeOrdersCount = orders.length;
+  const avgOrderValue = activeOrdersCount > 0 ? Math.round(totalRevenue / activeOrdersCount) : 0;
+  const outOfStockChairs = products.filter((p) => p.isAvailable === false || Number(p.stock) === 0);
+  const pendingOrders = orders.filter((o) => {
+    const st = (o.fulfillmentStatus || o.orderStatus || '').toLowerCase();
+    return st === 'pending' || st === 'placed' || st === 'in production' || st === 'confirmed';
+  });
 
-  const maxRevenue = Math.max(...monthlyData.map((d) => d.revenue));
+  // 2. Dynamic Monthly Performance Chart (Last 8 Months ending in Current Month)
+  const monthlyData = useMemo(() => {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    const currentMonthIdx = now.getMonth();
+    const currentYear = now.getFullYear();
 
-  const categoryShare = [
-    { name: 'Ergonomic Task', percent: 34, color: 'bg-emerald-600', count: '142 Orders' },
-    { name: 'Executive Leather', percent: 26, color: 'bg-amber-500', count: '98 Orders' },
-    { name: 'Velvet Loungers', percent: 18, color: 'bg-purple-600', count: '64 Orders' },
-    { name: 'Wooden English Oak', percent: 14, color: 'bg-amber-700', count: '48 Orders' },
-    { name: 'Gaming Thrones & Others', percent: 8, color: 'bg-cyan-600', count: '28 Orders' },
-  ];
+    const months = [];
+    for (let i = 7; i >= 0; i--) {
+      const d = new Date(currentYear, currentMonthIdx - i, 1);
+      const mIdx = d.getMonth();
+      const yr = d.getFullYear();
+      const isCurrent = i === 0;
+      months.push({
+        label: isCurrent ? `${monthNames[mIdx]} (Now)` : monthNames[mIdx],
+        monthIndex: mIdx,
+        year: yr,
+        revenue: 0,
+        orders: 0,
+      });
+    }
+
+    // Aggregate real orders into their respective month
+    orders.forEach((o) => {
+      const oDate = new Date(o.createdAt || o.date || now);
+      if (isNaN(oDate.getTime())) return;
+      const oMonth = oDate.getMonth();
+      const oYear = oDate.getFullYear();
+      const match = months.find((m) => m.monthIndex === oMonth && m.year === oYear);
+      if (match) {
+        const amt = Number(o.totalAmount !== undefined ? o.totalAmount : (o.total || 0));
+        match.revenue += isNaN(amt) ? 0 : amt;
+        match.orders += 1;
+      }
+    });
+
+    return months;
+  }, [orders]);
+
+  // 3. Dynamic Weekly Performance Chart (Last 7 Days)
+  const weeklyData = useMemo(() => {
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const now = new Date();
+    const days = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const isToday = i === 0;
+      days.push({
+        label: isToday ? 'Today' : dayNames[d.getDay()],
+        dateStr: d.toDateString(),
+        revenue: 0,
+        orders: 0,
+      });
+    }
+
+    orders.forEach((o) => {
+      const oDate = new Date(o.createdAt || o.date || now);
+      if (isNaN(oDate.getTime())) return;
+      const match = days.find((d) => d.dateStr === oDate.toDateString());
+      if (match) {
+        const amt = Number(o.totalAmount !== undefined ? o.totalAmount : (o.total || 0));
+        match.revenue += isNaN(amt) ? 0 : amt;
+        match.orders += 1;
+      }
+    });
+
+    return days;
+  }, [orders]);
+
+  const activeChartData = timeRange === 'monthly' ? monthlyData : weeklyData;
+  const maxRevenue = Math.max(...activeChartData.map((d) => d.revenue), 0);
+  const currentTotalChartRevenue = activeChartData.reduce((s, d) => s + d.revenue, 0);
+
+  // Month-over-month growth calculations
+  const currentMonthRevenue = monthlyData[monthlyData.length - 1]?.revenue || 0;
+  const prevMonthRevenue = monthlyData[monthlyData.length - 2]?.revenue || 0;
+  const revenueGrowth = prevMonthRevenue > 0
+    ? Math.round(((currentMonthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100)
+    : null;
+
+  const currentMonthOrders = monthlyData[monthlyData.length - 1]?.orders || 0;
+  const prevMonthOrders = monthlyData[monthlyData.length - 2]?.orders || 0;
+  const ordersGrowth = prevMonthOrders > 0
+    ? Math.round(((currentMonthOrders - prevMonthOrders) / prevMonthOrders) * 100)
+    : null;
+
+  // 4. Dynamic Category Share (Computed from Real Orders or Catalog Distribution)
+  const categoryShare = useMemo(() => {
+    const catCounts = {};
+    const catColors = [
+      'bg-emerald-600',
+      'bg-amber-500',
+      'bg-purple-600',
+      'bg-cyan-600',
+      'bg-rose-500',
+      'bg-blue-600',
+    ];
+
+    // Check if orders exist with items
+    let hasOrderItems = false;
+    orders.forEach((o) => {
+      if (Array.isArray(o.items) && o.items.length > 0) {
+        hasOrderItems = true;
+        o.items.forEach((item) => {
+          const cat = item.categorySlug || item.category || 'Executive';
+          const qty = Number(item.quantity) || 1;
+          catCounts[cat] = (catCounts[cat] || 0) + qty;
+        });
+      }
+    });
+
+    // If no order items yet, calculate from active catalog products
+    if (!hasOrderItems) {
+      products.forEach((p) => {
+        const cat = p.categorySlug || p.category || 'General';
+        catCounts[cat] = (catCounts[cat] || 0) + 1;
+      });
+    }
+
+    const totalCount = Object.values(catCounts).reduce((s, v) => s + v, 0) || 1;
+    const entries = Object.entries(catCounts);
+
+    if (entries.length === 0) {
+      return [
+        { name: 'Executive Seating', percent: 100, count: `${products.length} Chairs`, color: 'bg-emerald-600' },
+      ];
+    }
+
+    return entries
+      .map(([name, count], idx) => ({
+        name: name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, ' '),
+        percent: Math.round((count / totalCount) * 100),
+        count: `${count} ${hasOrderItems ? 'Units Sold' : 'Catalog Models'}`,
+        color: catColors[idx % catColors.length],
+        rawCount: count,
+      }))
+      .sort((a, b) => b.percent - a.percent);
+  }, [orders, products]);
+
+  const leadingCategory = categoryShare.length > 0 ? categoryShare[0].name : 'Executive Leather';
 
   return (
     <div className="space-y-8 animate-fadeIn pb-12">
       {/* Top Banner: Executive Greeting & Quick Actions */}
       <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-emerald-900 via-emerald-800 to-emerald-950 border border-emerald-800 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2 relative z-10">
-
           <h2 className="text-2xl sm:text-3xl font-black text-white font-serif tracking-tight">
             RoyalChairs Executive Dashboard
           </h2>
-
+          <p className="text-emerald-200 text-xs sm:text-sm font-medium">
+            Live business intelligence & operational command center
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 relative z-10">
@@ -85,104 +215,137 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
       </div>
 
       {/* KPI Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Card 1: Gross Sales Revenue */}
-        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md hover:border-emerald-300 transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
-              Total Revenue
-            </span>
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shadow-xs">
-              <IndianRupee className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
-              ₹{totalRevenue.toLocaleString()}
-            </h3>
-            <div className="mt-2 flex items-center space-x-2 text-xs">
-              <span className="flex items-center font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                +18.4%
-              </span>
-              <span className="text-slate-500 font-medium">vs last month</span>
-            </div>
-          </div>
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
         </div>
-
-        {/* Card 2: Total Orders */}
-        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md hover:border-emerald-300 transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
-              Orders Processed
-            </span>
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shadow-xs">
-              <ShoppingBag className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
-              {activeOrdersCount}
-            </h3>
-            <div className="mt-2 flex items-center space-x-2 text-xs">
-              <span className="flex items-center font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                +12.1%
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* Card 1: Gross Sales Revenue */}
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md hover:border-emerald-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                Total Revenue
               </span>
-              <span className="text-slate-500 font-medium">{pendingOrders.length} pending dispatch</span>
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shadow-xs">
+                <IndianRupee className="w-5 h-5" />
+              </div>
             </div>
-          </div>
-        </div>
-
-        {/* Card 3: Average Order Value */}
-        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md hover:border-emerald-300 transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
-              Avg. Order Value
-            </span>
-            <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-xs">
-              <Crown className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
-              ₹{avgOrderValue}
-            </h3>
-            <div className="mt-2 flex items-center space-x-2 text-xs">
-              <span className="text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                High Basket Value
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Active Catalog */}
-        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md hover:border-emerald-300 transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
-              Active Catalog
-            </span>
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shadow-xs">
-              <Armchair className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
-              {products.length} Chairs
-            </h3>
-            <div className="mt-2 flex items-center space-x-2 text-xs">
-              {outOfStockChairs.length > 0 ? (
-                <span className="text-rose-800 font-bold bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 flex items-center">
-                  <AlertTriangle className="w-3 h-3 mr-1" />
-                  {outOfStockChairs.length} Out of Stock
+            <div className="mt-4">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
+                ₹{totalRevenue.toLocaleString()}
+              </h3>
+              <div className="mt-2 flex items-center space-x-2 text-xs">
+                {revenueGrowth !== null ? (
+                  <span className={`flex items-center font-bold px-2 py-0.5 rounded-full border ${
+                    revenueGrowth >= 0
+                      ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                      : 'text-rose-700 bg-rose-50 border-rose-200'
+                  }`}>
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    {revenueGrowth >= 0 ? `+${revenueGrowth}%` : `${revenueGrowth}%`}
+                  </span>
+                ) : (
+                  <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Live Real-time
+                  </span>
+                )}
+                <span className="text-slate-500 font-medium">
+                  {revenueGrowth !== null ? 'vs last month' : 'from database'}
                 </span>
-              ) : (
-                <span className="text-emerald-700 font-bold">100% Available</span>
-              )}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Total Orders */}
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md hover:border-emerald-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                Orders Processed
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shadow-xs">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
+                {activeOrdersCount}
+              </h3>
+              <div className="mt-2 flex items-center space-x-2 text-xs">
+                {ordersGrowth !== null ? (
+                  <span className={`flex items-center font-bold px-2 py-0.5 rounded-full border ${
+                    ordersGrowth >= 0
+                      ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                      : 'text-rose-700 bg-rose-50 border-rose-200'
+                  }`}>
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    {ordersGrowth >= 0 ? `+${ordersGrowth}%` : `${ordersGrowth}%`}
+                  </span>
+                ) : (
+                  <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    {pendingOrders.length} Pending
+                  </span>
+                )}
+                <span className="text-slate-500 font-medium">
+                  {pendingOrders.length} pending dispatch
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Average Order Value */}
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md hover:border-emerald-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                Avg. Order Value
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-xs">
+                <Crown className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
+                ₹{avgOrderValue.toLocaleString()}
+              </h3>
+              <div className="mt-2 flex items-center space-x-2 text-xs">
+                <span className="text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  {avgOrderValue > 10000 ? 'High Basket Value' : 'Standard Basket'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Active Catalog */}
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md hover:border-emerald-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                Active Catalog
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shadow-xs">
+                <Armchair className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
+                {products.length} Chairs
+              </h3>
+              <div className="mt-2 flex items-center space-x-2 text-xs">
+                {outOfStockChairs.length > 0 ? (
+                  <span className="text-rose-800 font-bold bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 flex items-center">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    {outOfStockChairs.length} Out of Stock
+                  </span>
+                ) : (
+                  <span className="text-emerald-700 font-bold">100% Available</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Analytics Section: Revenue Performance Chart & Category Share */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -191,9 +354,11 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-lg font-bold text-slate-900 font-serif">
-                Revenue & Sales Performance (2026)
+                Revenue & Sales Performance ({timeRange === 'monthly' ? new Date().getFullYear() : 'Last 7 Days'})
               </h3>
-              <p className="text-xs text-slate-500">Monthly gross sales from customer orders</p>
+              <p className="text-xs text-slate-500">
+                {timeRange === 'monthly' ? 'Monthly gross sales from customer orders' : 'Daily sales over the last 7 days'}
+              </p>
             </div>
 
             <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
@@ -221,9 +386,9 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
           {/* SVG Bar / Trend Chart — scrollable on mobile */}
           <div className="overflow-x-auto">
             <div className="h-64 flex items-end justify-between space-x-3 sm:space-x-4 pt-6 border-b border-slate-100 pb-4 min-w-[420px]">
-              {monthlyData.map((d, index) => {
-                const heightPercent = Math.round((d.revenue / maxRevenue) * 100);
-                const isCurrent = index === monthlyData.length - 1;
+              {activeChartData.map((d, index) => {
+                const heightPercent = maxRevenue > 0 ? Math.max(Math.round((d.revenue / maxRevenue) * 100), 4) : 4;
+                const isCurrent = index === activeChartData.length - 1;
                 return (
                   <div key={d.label} className="flex-1 flex flex-col items-center h-full justify-end group relative">
                     {/* Tooltip */}
@@ -303,7 +468,7 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
 
           <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs">
             <span className="text-slate-700 font-medium">Leading Category:</span>
-            <span className="text-emerald-900 font-black">Ergonomic Task Pro</span>
+            <span className="text-emerald-900 font-black">{leadingCategory}</span>
           </div>
         </div>
       </div>
@@ -338,39 +503,56 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {orders.slice(0, 4).map((order) => (
-                  <tr key={order.id} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3.5 px-3 font-mono font-bold text-slate-900">
-                      {order.id}
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <p className="font-bold text-slate-900">{order.customer.name}</p>
-                      <p className="text-[10px] text-slate-500 truncate max-w-[140px]">
-                        {order.customer.email}
-                      </p>
-                    </td>
-                    <td className="py-3.5 px-3 font-medium text-slate-600">
-                      {order.items.reduce((s, i) => s + i.quantity, 0)} Chairs
-                    </td>
-                    <td className="py-3.5 px-3 font-mono font-black text-emerald-800 text-sm">
-                      ₹{order.total.toLocaleString()}
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold ${order.fulfillmentStatus === 'Delivered'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : order.fulfillmentStatus === 'Dispatched'
-                            ? 'bg-blue-100 text-blue-800'
-                            : order.fulfillmentStatus === 'In Production'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-purple-100 text-purple-800'
-                          }`}
-                      >
-                        {order.fulfillmentStatus}
-                      </span>
+                {orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-slate-400 font-medium">
+                      No customer orders placed yet. Orders will appear here in real-time.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  orders.slice(0, 4).map((order) => {
+                    const safeItems = Array.isArray(order.items) ? order.items : [];
+                    const orderTotal = Number(order.totalAmount !== undefined ? order.totalAmount : (order.total || 0));
+                    const orderId = order.orderNumber || order.id || order._id || 'ORD';
+                    const customerName = order.customer?.name || order.shippingAddress?.fullName || 'Valued Client';
+                    const customerEmail = order.customer?.email || order.shippingAddress?.email || 'N/A';
+                    const status = order.fulfillmentStatus || 'Pending';
+
+                    return (
+                      <tr key={order._id || order.id || orderId} className="hover:bg-slate-50/80 transition">
+                        <td className="py-3.5 px-3 font-mono font-bold text-slate-900">
+                          {orderId}
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <p className="font-bold text-slate-900">{customerName}</p>
+                          <p className="text-[10px] text-slate-500 truncate max-w-[140px]">
+                            {customerEmail}
+                          </p>
+                        </td>
+                        <td className="py-3.5 px-3 font-medium text-slate-600">
+                          {safeItems.reduce((s, i) => s + (Number(i.quantity) || 1), 0)} Chairs
+                        </td>
+                        <td className="py-3.5 px-3 font-mono font-black text-emerald-800 text-sm">
+                          ₹{orderTotal.toLocaleString()}
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold ${status === 'Delivered'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : status === 'Dispatched'
+                                ? 'bg-blue-100 text-blue-800'
+                                : status === 'In Production'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-purple-100 text-purple-800'
+                              }`}
+                          >
+                            {status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

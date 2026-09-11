@@ -1,14 +1,20 @@
 import { useState } from 'react';
-import { ShoppingCart, Trash2, Plus, Minus, ArrowRight, ShieldCheck, Truck, Sparkles, Tag } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, ArrowRight, ShieldCheck, Truck, Sparkles, Tag, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
-export default function CartPage({ onBackToHome, onQuickView }) {
+export default function CartPage({
+  onBackToHome,
+  onQuickView,
+  onProceedToCheckout,
+  onRequireLogin,
+}) {
   const { cartItems = [], removeFromCart, updateQuantity, clearCart, cartTotal, cartSubtotal, cartCount = 0 } = useCart();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [promoCode, setPromoCode] = useState('');
-  const [appliedDiscount, setAppliedDiscount] = useState(0);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState(null); // Full coupon details object from database
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
 
@@ -23,91 +29,70 @@ export default function CartPage({ onBackToHome, onQuickView }) {
           return acc + p * q;
         }, 0);
 
+  const appliedDiscount = appliedCoupon ? Number(appliedCoupon.discountAmount || 0) : 0;
   const finalTotal = Math.max(0, subtotalAmount - appliedDiscount);
 
-  const handleApplyPromo = (e) => {
+  // Dynamic Coupon Validation from MongoDB Backend
+  const handleApplyPromo = async (e) => {
     e.preventDefault();
     setPromoError('');
     setPromoSuccess('');
-    if (promoCode.trim().toUpperCase() === 'ROYAL50' || promoCode.trim().toUpperCase() === 'ROYAL10') {
-      setAppliedDiscount(4000);
-      setPromoSuccess('ROYAL50 Applied: ₹4,000 Discount Unlocked!');
-    } else if (promoCode.trim().length > 0) {
-      setPromoError('Invalid Coupon Code. Try "ROYAL50"');
+
+    if (!promoCode.trim()) {
+      setPromoError('Please enter a voucher code');
+      return;
+    }
+
+    setPromoLoading(true);
+    try {
+      const res = await api.post('/coupons/validate', {
+        code: promoCode.trim(),
+        cartTotal: subtotalAmount,
+      });
+
+      if (res.data?.success && res.data.data) {
+        setAppliedCoupon(res.data.data);
+        setPromoSuccess(res.data.message || `Voucher '${res.data.data.code}' applied!`);
+        setPromoCode('');
+      } else {
+        throw new Error(res.data?.message || 'Invalid voucher code');
+      }
+    } catch (err) {
+      setAppliedCoupon(null);
+      setPromoError(err.response?.data?.message || err.message || 'Unable to apply promo code');
+    } finally {
+      setPromoLoading(false);
     }
   };
 
-  const handleProceedToCheckout = async () => {
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setPromoSuccess('');
+    setPromoError('');
+  };
+
+  const handleProceedToCheckout = () => {
     if (!cartItems || cartItems.length === 0) return;
 
-    const randomNum = Math.floor(10000 + Math.random() * 90000);
-    const orderNum = `RC-${randomNum}`;
-    const newOrder = {
-      id: `ORD-${randomNum}`,
-      orderNumber: orderNum,
-      createdAt: new Date().toISOString(),
-      orderStatus: 'confirmed',
-      paymentStatus: 'paid',
-      totalAmount: finalTotal,
-      customer: {
-        name: user?.name || 'Verified Client',
-        email: user?.email || 'customer@royalchairs.com',
-        phone: user?.phone || '+91 98765 43210',
-        address: 'Royal Villa, Luxury Estate, Mayfair',
-        city: 'London',
-        state: 'Greater London',
-        pincode: 'SW1A 1AA',
-      },
-      items: cartItems.map((item) => ({
-        productId: item._id || item.id,
-        product: item._id || item.id,
-        name: item.name || 'Royal Luxury Chair',
-        selectedVariantName: item.selectedVariantName || item.colorName || (typeof item.color === 'string' ? item.color : 'Standard Finish'),
-        color: typeof item.color === 'string' ? item.color : (item.color?.hex || '#1E3E2B'),
-        price: item.price || 0,
-        quantity: item.quantity || 1,
-        image: item.mainImage || item.image || 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=85',
-      })),
-    };
-
-    // Save to backend API database
-    try {
-      const res = await api.post('/orders', {
-        orderNumber: newOrder.orderNumber,
-        customer: newOrder.customer,
-        items: newOrder.items,
-        totalAmount: finalTotal,
-        paymentMethod: 'online',
-        paymentStatus: 'paid',
-        orderStatus: 'confirmed',
-      });
-      if (res.data?.success && res.data.data) {
-        newOrder.id = res.data.data.orderNumber || res.data.data.id;
-        newOrder._id = res.data.data._id;
+    // Check if user is logged in
+    if (!isAuthenticated) {
+      if (onRequireLogin) {
+        onRequireLogin(() => {
+          if (onProceedToCheckout) {
+            onProceedToCheckout(appliedCoupon);
+          }
+        });
       }
-    } catch (err) {
-      console.log('Order checkout API synced locally:', err.message);
+      return;
     }
 
-    // Save to localStorage immediately so Order History is instantly updated
-    try {
-      const existing = JSON.parse(localStorage.getItem('royal_user_orders') || '[]');
-      const updated = [newOrder, ...existing.filter((o) => (o.orderNumber || o.id) !== newOrder.orderNumber)];
-      localStorage.setItem('royal_user_orders', JSON.stringify(updated));
-    } catch {}
-
-    // Clear cart and notify components
-    clearCart();
-    window.dispatchEvent(new Event('royal_storage_update'));
-
-    // Alert & redirect to Dashboard
-    alert('Product purchased successfully! Thank you for ordering with Royal Chairs.');
-    if (onBackToHome) {
-      onBackToHome();
+    if (onProceedToCheckout) {
+      onProceedToCheckout(appliedCoupon);
     }
   };
 
   return (
+
     <div className="min-h-screen bg-cream-soft pt-6 pb-20">
       <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
 
@@ -135,118 +120,65 @@ export default function CartPage({ onBackToHome, onQuickView }) {
           </div>
         </div>
 
-        {!Array.isArray(cartItems) || cartItems.length === 0 ? (
-          /* EMPTY CART VIEW */
-          <div className="bg-white rounded-3xl p-12 text-center border border-emerald-900/10 shadow-lg max-w-2xl mx-auto my-12">
-            <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-800 border border-emerald-200">
+        {/* Empty State */}
+        {(!Array.isArray(cartItems) || cartItems.length === 0) ? (
+          <div className="bg-white rounded-3xl p-12 text-center max-w-lg mx-auto border border-emerald-900/10 shadow-sm space-y-5">
+            <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto text-emerald-800">
               <ShoppingCart className="w-10 h-10" />
             </div>
-
-            <h2 className="text-2xl font-bold text-emerald-950 font-serif mb-2">
-              Your Bag is Currently Empty
-            </h2>
-
-            <p className="text-gray-600 text-sm leading-relaxed max-w-md mx-auto mb-8">
-              Explore our handcrafted seating collection—from solid English oak dining chairs to spinal orthopedic executive leather thrones.
-            </p>
-
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 font-serif">Your Cart is Empty</h2>
+              <p className="text-slate-500 text-xs mt-1">
+                Explore our handcrafted British luxury chairs and elevate your living space.
+              </p>
+            </div>
             <button
               onClick={onBackToHome}
-              className="px-8 py-4 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg transition inline-flex items-center space-x-2 cursor-pointer"
+              className="inline-flex items-center space-x-2 px-6 py-3.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-2xl shadow-md transition cursor-pointer"
             >
-              <span>Explore Chair Collection</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>Explore Collection</span>
+              <ArrowRight className="w-4 h-4 text-amber-300" />
             </button>
           </div>
         ) : (
-          /* CART ITEMS & CHECKOUT GRID */
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            {/* Left 2 Columns: Items List */}
+            {/* Left Column: Product List */}
             <div className="lg:col-span-2 space-y-4">
-              {cartItems.map((item, index) => {
-                if (!item || typeof item !== 'object') return null;
-                const itemId = item._id || item.id || `cart-${index}`;
-                const rawColor = item.color || item.selectedColor;
-                const itemColorHex = typeof rawColor === 'string' && (rawColor.startsWith('#') || rawColor.startsWith('rgb'))
-                  ? rawColor
-                  : (typeof rawColor === 'object' && typeof rawColor?.hex === 'string' ? rawColor.hex : '#3D8B68');
-
-                const itemVariantName = typeof item.selectedVariantName === 'string'
-                  ? item.selectedVariantName
-                  : (typeof item.colorName === 'string'
-                    ? item.colorName
-                    : (typeof rawColor === 'object' && typeof rawColor?.name === 'string'
-                      ? rawColor.name
-                      : (typeof rawColor === 'string' && !rawColor.startsWith('#') ? rawColor : '')));
-
-                const categoryText = typeof item.category === 'object'
-                  ? (item.category?.name || item.categorySlug || '')
-                  : (typeof item.category === 'string' ? item.category : (item.categorySlug || ''));
-
-                const nameText = typeof item.name === 'string' ? item.name : 'Handcrafted Luxury Chair';
-
-                const itemPrice = typeof item.price === 'number' && !isNaN(item.price)
-                  ? item.price
-                  : Number(String(item.price || 0).replace(/[^0-9.-]+/g, '')) || 0;
-
-                const itemOriginalPrice = typeof item.originalPrice === 'number' && !isNaN(item.originalPrice)
-                  ? item.originalPrice
-                  : Number(String(item.originalPrice || itemPrice).replace(/[^0-9.-]+/g, '')) || itemPrice;
-
+              {cartItems.map((item, idx) => {
+                const itemId = item._id || item.id || `cart-item-${idx}`;
+                const itemPrice = typeof item.price === 'number' ? item.price : Number(String(item.price || 0).replace(/[^0-9.-]+/g, '')) || 0;
                 const itemQuantity = Math.max(1, Number(item.quantity) || 1);
                 const itemTotal = itemPrice * itemQuantity;
-
-                const itemImg = typeof item.mainImage === 'string' && item.mainImage
-                  ? item.mainImage
-                  : (typeof item.image === 'string' && item.image
-                    ? item.image
-                    : (Array.isArray(item.images) && typeof item.images[0] === 'string' ? item.images[0] : 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80'));
+                const itemColorHex = typeof item.color === 'string' ? item.color : (item.color?.hex || '#1E3E2B');
+                const itemVariantName = item.selectedVariantName || item.colorName || (typeof item.color === 'string' ? item.color : 'Standard Finish');
+                const itemImage = item.mainImage || item.image || 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=85';
 
                 return (
                   <div
-                    key={`cart-${itemId}-${index}`}
-                    className="bg-white rounded-2xl p-4 sm:p-6 border border-emerald-900/10 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 transition hover:border-emerald-700/30"
+                    key={`${itemId}-${idx}`}
+                    className="bg-white rounded-3xl p-4 sm:p-6 border border-emerald-900/10 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 transition hover:shadow-md"
                   >
+                    {/* Image & Title */}
                     <div className="flex items-center space-x-4 w-full sm:w-auto">
-                      {/* Thumbnail */}
                       <img
-                        src={itemImg}
-                        alt={nameText}
-                        onClick={() => onQuickView && onQuickView(item)}
-                        onError={(e) => {
-                          e.target.src = 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80';
-                        }}
-                        className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-xl border border-gray-100 shadow-2xs cursor-pointer hover:scale-105 transition flex-shrink-0 bg-slate-100"
+                        src={itemImage}
+                        alt={item.name || 'Chair'}
+                        className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-2xl bg-cream-soft border border-emerald-900/10 shrink-0"
                       />
-
-                      <div>
-                        {categoryText ? (
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 block">
-                            {categoryText}
-                          </span>
-                        ) : null}
-
-                        <h3
-                          onClick={() => onQuickView && onQuickView(item)}
-                          className="text-base font-bold text-gray-900 font-serif hover:text-emerald-800 transition cursor-pointer line-clamp-1"
-                        >
-                          {nameText}
+                      <div className="space-y-1">
+                        <h3 className="text-sm sm:text-base font-bold text-emerald-950 font-serif leading-tight">
+                          {item.name || 'Royal Luxury Chair'}
                         </h3>
+                        <p className="text-xs font-bold text-emerald-800 font-mono">
+                          ₹{itemPrice.toLocaleString('en-IN')} each
+                        </p>
 
-                        <div className="flex items-center space-x-2 mt-1">
-                          <span className="text-xs text-gray-500 font-medium">Unit Price:</span>
-                          <span className="text-xs font-bold text-emerald-950">₹{itemPrice.toLocaleString('en-IN')}</span>
-                          {itemOriginalPrice > itemPrice && (
-                            <span className="text-xs text-gray-400 line-through">₹{itemOriginalPrice.toLocaleString('en-IN')}</span>
-                          )}
-                        </div>
-
-                        {rawColor && (
-                          <div className="flex items-center space-x-1.5 mt-2">
-                            <span className="text-[11px] font-medium text-gray-500">Finish:</span>
+                        {/* Selected Color Badge */}
+                        {itemColorHex && (
+                          <div className="flex items-center space-x-1.5 pt-1">
                             <span
-                              className="w-3.5 h-3.5 rounded-full border border-gray-300 shadow-2xs shrink-0"
+                              className="w-3.5 h-3.5 rounded-full border border-gray-300 shadow-xs inline-block shrink-0"
                               style={{ backgroundColor: itemColorHex }}
                             />
                             {itemVariantName && (
@@ -320,7 +252,7 @@ export default function CartPage({ onBackToHome, onQuickView }) {
                 </div>
 
                 {appliedDiscount > 0 && (
-                  <div className="flex justify-between text-emerald-800 font-bold bg-emerald-50 p-2 rounded-lg">
+                  <div className="flex justify-between text-emerald-800 font-bold bg-emerald-50 p-2.5 rounded-xl border border-emerald-200/80">
                     <span>Voucher Discount:</span>
                     <span>-₹{appliedDiscount.toLocaleString('en-IN')}</span>
                   </div>
@@ -332,31 +264,84 @@ export default function CartPage({ onBackToHome, onQuickView }) {
                 </div>
               </div>
 
-              {/* Promo Coupon Input */}
-              <form onSubmit={handleApplyPromo} className="space-y-2 pt-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-emerald-950 block flex items-center">
-                  <Tag className="w-3.5 h-3.5 mr-1 text-emerald-700" />
-                  <span>Voucher / Promo Code</span>
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    placeholder="Enter 'ROYAL50'"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    className="flex-1 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold uppercase focus:outline-hidden focus:border-emerald-700"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
-                  >
-                    Apply
-                  </button>
-                </div>
+              {/* Promo Coupon Details or Input */}
+              {appliedCoupon ? (
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 border border-emerald-300 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-mono font-black text-xs text-emerald-900 bg-white px-2.5 py-1 rounded-lg border border-emerald-300 shadow-2xs">
+                        {appliedCoupon.code}
+                      </span>
+                      <span className="text-xs font-extrabold text-emerald-800">
+                        {appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}% OFF` : `₹${appliedCoupon.value} OFF`}
+                      </span>
+                    </div>
 
-                {promoError && <p className="text-[11px] font-bold text-rose-600">{promoError}</p>}
-                {promoSuccess && <p className="text-[11px] font-bold text-emerald-700">{promoSuccess}</p>}
-              </form>
+                    <button
+                      onClick={handleRemoveCoupon}
+                      className="text-xs text-slate-500 hover:text-rose-600 font-bold flex items-center space-x-1 cursor-pointer transition"
+                      title="Remove voucher"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Remove</span>
+                    </button>
+                  </div>
+
+                  {/* Coupon Details Specs */}
+                  <div className="text-[11px] text-emerald-900/80 space-y-1 pt-1 border-t border-emerald-200/60 font-medium">
+                    <p className="flex justify-between">
+                      <span>Minimum Required Order:</span>
+                      <span className="font-bold text-emerald-950 font-mono">₹{Number(appliedCoupon.minSpend || 0).toLocaleString()}</span>
+                    </p>
+                    {appliedCoupon.maxDiscount && (
+                      <p className="flex justify-between">
+                        <span>Maximum Discount Limit:</span>
+                        <span className="font-bold text-emerald-950 font-mono">₹{Number(appliedCoupon.maxDiscount).toLocaleString()}</span>
+                      </p>
+                    )}
+                    <p className="flex justify-between font-bold text-emerald-900 pt-0.5">
+                      <span>Total Savings Applied:</span>
+                      <span className="text-emerald-700 font-mono">-₹{appliedDiscount.toLocaleString('en-IN')}</span>
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleApplyPromo} className="space-y-2 pt-2">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-emerald-950 flex items-center">
+                    <Tag className="w-3.5 h-3.5 mr-1 text-emerald-700" />
+                    <span>Voucher / Promo Code</span>
+                  </label>
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      placeholder="Enter promo code (e.g. ROYAL50)"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value)}
+                      className="flex-1 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold uppercase focus:outline-hidden focus:border-emerald-700 font-mono"
+                    />
+                    <button
+                      type="submit"
+                      disabled={promoLoading}
+                      className="px-4 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50"
+                    >
+                      {promoLoading ? 'Checking...' : 'Apply'}
+                    </button>
+                  </div>
+
+                  {promoError && (
+                    <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-semibold flex items-start space-x-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                      <span>{promoError}</span>
+                    </div>
+                  )}
+                  {promoSuccess && (
+                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold flex items-center space-x-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>{promoSuccess}</span>
+                    </div>
+                  )}
+                </form>
+              )}
 
               {/* Checkout Action Button */}
               <button

@@ -61,6 +61,22 @@ const orderSchema = new mongoose.Schema(
       pincode: { type: String, default: 'SW1A 1AA' },
     },
     items: [orderItemSchema],
+    subtotal: {
+      type: Number,
+      default: 0,
+    },
+    couponCode: {
+      type: String,
+      default: null,
+    },
+    discountAmount: {
+      type: Number,
+      default: 0,
+    },
+    deliveryFee: {
+      type: Number,
+      default: 0,
+    },
     totalAmount: {
       type: Number,
       required: true,
@@ -78,6 +94,7 @@ const orderSchema = new mongoose.Schema(
       default: 'confirmed',
     },
     trackingNumber: {
+
       type: String,
       default: function () {
         return `TRK-${Date.now().toString().slice(-8)}`;

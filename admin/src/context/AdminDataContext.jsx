@@ -3,13 +3,6 @@ import api from '../services/api';
 
 const AdminDataContext = createContext();
 
-const INITIAL_COUPONS = [
-  { id: 'CPN-1', code: 'ROYAL50', type: 'percentage', value: 50, minSpend: 500, usageCount: 84, limit: 200, active: true, expiry: '2026-12-31' },
-  { id: 'CPN-2', code: 'WELCOME10', type: 'percentage', value: 10, minSpend: 100, usageCount: 312, limit: 1000, active: true, expiry: '2026-12-31' },
-  { id: 'CPN-3', code: 'LUXURY20', type: 'percentage', value: 20, minSpend: 800, usageCount: 65, limit: 150, active: true, expiry: '2026-09-30' },
-  { id: 'CPN-4', code: 'FREESHIP', type: 'fixed', value: 45, minSpend: 300, usageCount: 140, limit: 500, active: true, expiry: '2026-10-15' },
-];
-
 const normalizeOrder = (o) => {
   const totalVal = Number(o.totalAmount !== undefined ? o.totalAmount : (o.total || 0));
   const rawStatus = (o.fulfillmentStatus || o.orderStatus || 'Pending').toLowerCase();
@@ -19,6 +12,21 @@ const normalizeOrder = (o) => {
   else if (rawStatus === 'delivered') displayStatus = 'Delivered';
   else if (rawStatus === 'cancelled') displayStatus = 'Cancelled';
   else displayStatus = 'Pending';
+
+  const normalizedItems = Array.isArray(o.items)
+    ? o.items.map((i) => ({
+        productId: i.productId || i.product || i._id || i.id,
+        name: i.name || 'Royal Luxury Chair',
+        price: Number(i.price) || 0,
+        quantity: Number(i.quantity) || 1,
+        color: typeof i.color === 'string' ? i.color : (i.color?.hex || '#1E3E2B'),
+        image: i.image || i.mainImage || 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=85',
+      }))
+    : [];
+
+  const itemsSum = normalizedItems.reduce((acc, i) => acc + i.price * i.quantity, 0);
+  const discountVal = Number(o.discountAmount !== undefined ? o.discountAmount : (o.discount || 0));
+  const subtotalVal = Number(o.subtotal !== undefined && o.subtotal > 0 ? o.subtotal : (itemsSum > 0 ? itemsSum : (totalVal + discountVal)));
 
   return {
     _id: o._id || o.id,
@@ -35,27 +43,89 @@ const normalizeOrder = (o) => {
       state: o.customer?.state || 'Greater London',
       pincode: o.customer?.pincode || 'SW1A 1AA',
     },
-    items: Array.isArray(o.items)
-      ? o.items.map((i) => ({
-          name: i.name || 'Royal Luxury Chair',
-          price: Number(i.price) || 0,
-          quantity: Number(i.quantity) || 1,
-          color: typeof i.color === 'string' ? i.color : (i.color?.hex || '#1E3E2B'),
-          image: i.image || i.mainImage || 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=800&q=85',
-        }))
-      : [],
+    items: normalizedItems,
     total: totalVal,
     totalAmount: totalVal,
-    subtotal: Number(o.subtotal || totalVal),
-    discount: Number(o.discount || 0),
-    paymentMethod: (o.paymentMethod || 'ONLINE').toUpperCase(),
-    paymentStatus: (o.paymentStatus || 'PAID').toUpperCase(),
+    subtotal: subtotalVal,
+    discount: discountVal,
+    discountAmount: discountVal,
+    couponCode: o.couponCode || null,
+    paymentMethod: String(o.paymentMethod || 'ONLINE'),
+    paymentStatus: String(o.paymentStatus || 'PAID').toUpperCase(),
     fulfillmentStatus: displayStatus,
     orderStatus: o.orderStatus || (displayStatus === 'In Production' ? 'confirmed' : displayStatus.toLowerCase()),
     trackingNumber: o.trackingNumber || `TRK-UK-${Date.now().toString().slice(-6)}`,
     carrier: o.carrier || 'Royal Express Logistics',
   };
 };
+
+const INITIAL_COUPONS = [
+  {
+    id: 'cpn-1',
+    code: 'ROYAL50',
+    type: 'percentage',
+    value: 50,
+    minSpend: 500,
+    maxDiscount: 5000,
+    usageCount: 84,
+    limit: 200,
+    active: true,
+    expiry: '2026-12-31',
+    description: '50% Off Executive Selection (Capped at ₹5,000, min spend ₹500)',
+  },
+  {
+    id: 'cpn-2',
+    code: 'WELCOME10',
+    type: 'percentage',
+    value: 10,
+    minSpend: 100,
+    maxDiscount: 1500,
+    usageCount: 312,
+    limit: 1000,
+    active: true,
+    expiry: '2026-12-31',
+    description: '10% Welcome Discount (Capped at ₹1,500, min spend ₹100)',
+  },
+  {
+    id: 'cpn-3',
+    code: 'ROYAL20',
+    type: 'percentage',
+    value: 20,
+    minSpend: 1000,
+    maxDiscount: 5000,
+    usageCount: 42,
+    limit: 200,
+    active: true,
+    expiry: '2026-12-31',
+    description: 'Exclusive 20% privilege discount for premium clientele',
+  },
+  {
+    id: 'cpn-4',
+    code: 'LUXURY20',
+    type: 'percentage',
+    value: 20,
+    minSpend: 800,
+    maxDiscount: 4000,
+    usageCount: 65,
+    limit: 150,
+    active: true,
+    expiry: '2026-09-30',
+    description: '20% Luxury Lounge Promotion (Capped at ₹4,000, min spend ₹800)',
+  },
+  {
+    id: 'cpn-5',
+    code: 'FREESHIP',
+    type: 'fixed',
+    value: 45,
+    minSpend: 300,
+    maxDiscount: null,
+    usageCount: 140,
+    limit: 500,
+    active: true,
+    expiry: '2026-10-15',
+    description: 'Flat ₹45 / $45 Shipping Voucher (min spend ₹300)',
+  },
+];
 
 const INITIAL_SETTINGS = {
   storeName: 'RoyalChairs London Ltd.',
@@ -75,37 +145,25 @@ const INITIAL_SETTINGS = {
 export function AdminDataProvider({ children }) {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [orders, setOrders] = useState(() => {
-    try {
-      const savedAdmin = localStorage.getItem('royal_admin_orders');
-      if (savedAdmin) {
-        const parsed = JSON.parse(savedAdmin);
-        // Filter out any mock starter IDs
-        const realAdmin = Array.isArray(parsed) ? parsed.filter(p => !['RC-998241', 'RC-997120', 'RC-995408'].includes(p.id || p.orderNumber)) : [];
-        if (realAdmin.length > 0) return realAdmin.map(normalizeOrder);
-      }
-      const savedUser = localStorage.getItem('royal_user_orders');
-      if (savedUser) {
-        const parsed = JSON.parse(savedUser);
-        const realUser = Array.isArray(parsed) ? parsed.filter(p => !['RC-998241', 'RC-997120', 'RC-995408'].includes(p.id || p.orderNumber)) : [];
-        if (realUser.length > 0) return realUser.map(normalizeOrder);
-      }
-    } catch {}
-    return [];
-  });
-
+  const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [coupons, setCoupons] = useState(() => {
-    const saved = localStorage.getItem('royal_admin_coupons');
-    return saved ? JSON.parse(saved) : INITIAL_COUPONS;
+    try {
+      const saved = localStorage.getItem('royal_admin_coupons');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return INITIAL_COUPONS;
   });
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('royal_admin_settings');
     return saved ? JSON.parse(saved) : INITIAL_SETTINGS;
   });
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // 1. Fetch Categories from Database
   const fetchCategories = async () => {
@@ -207,17 +265,59 @@ export function AdminDataProvider({ children }) {
     }
   };
 
+  // 6. Fetch Coupons from Database
+  const fetchCoupons = async () => {
+    try {
+      const res = await api.get('/coupons');
+      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+        const mapped = res.data.data.map((c) => ({ ...c, id: c._id || c.id }));
+        setCoupons(mapped);
+        localStorage.setItem('royal_admin_coupons', JSON.stringify(mapped));
+        return;
+      }
+    } catch (err) {
+      console.log('Error fetching coupons:', err.message);
+    }
+
+    try {
+      const saved = localStorage.getItem('royal_admin_coupons');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCoupons(parsed);
+          return;
+        }
+      }
+    } catch {}
+
+    setCoupons(INITIAL_COUPONS);
+    localStorage.setItem('royal_admin_coupons', JSON.stringify(INITIAL_COUPONS));
+  };
+
   // Load all data on mount and on storage events
   useEffect(() => {
-    fetchCategories();
-    fetchProducts();
-    fetchOrders();
-    fetchReviews();
-    fetchUsers();
+    const loadAll = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.allSettled([
+          fetchCategories(),
+          fetchProducts(),
+          fetchOrders(),
+          fetchReviews(),
+          fetchUsers(),
+          fetchCoupons(),
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAll();
 
     const handleStorage = () => {
       fetchOrders();
       fetchReviews();
+      fetchCoupons();
     };
 
     window.addEventListener('storage', handleStorage);
@@ -227,6 +327,7 @@ export function AdminDataProvider({ children }) {
       window.removeEventListener('royal_storage_update', handleStorage);
     };
   }, []);
+
 
   // Category Operations
   const addCategory = async (catData) => {
@@ -366,6 +467,7 @@ export function AdminDataProvider({ children }) {
     try {
       await api.patch(`/orders/${apiId}/status`, {
         orderStatus: backendStatus,
+        fulfillmentStatus: newStatus,
         trackingNumber,
       });
     } catch (err) {
@@ -383,7 +485,31 @@ export function AdminDataProvider({ children }) {
             }
           : o
       );
-      localStorage.setItem('royal_admin_orders', JSON.stringify(updated));
+      try {
+        localStorage.setItem('royal_admin_orders', JSON.stringify(updated));
+        
+        // Also sync client local storage if order exists there
+        const userSaved = localStorage.getItem('royal_user_orders');
+        if (userSaved) {
+          const parsedUser = JSON.parse(userSaved);
+          const updatedUser = parsedUser.map((uo) =>
+            uo.id === orderId || uo._id === apiId || uo.orderNumber === orderId
+              ? {
+                  ...uo,
+                  fulfillmentStatus: newStatus || uo.fulfillmentStatus,
+                  orderStatus: backendStatus,
+                  trackingNumber: trackingNumber !== undefined ? trackingNumber : uo.trackingNumber,
+                }
+              : uo
+          );
+          localStorage.setItem('royal_user_orders', JSON.stringify(updatedUser));
+        }
+
+        // Fire cross-window and in-window storage events
+        window.dispatchEvent(new Event('royal_storage_update'));
+        window.dispatchEvent(new Event('storage'));
+      } catch {}
+
       return updated;
     });
   };
@@ -421,27 +547,51 @@ export function AdminDataProvider({ children }) {
   };
 
   // Coupon Operations
-  const addCoupon = (coupon) => {
-    const newCoupon = {
-      ...coupon,
-      id: `CPN-${Date.now().toString().slice(-4)}`,
-      usageCount: 0,
-      active: true,
-    };
-    setCoupons((prev) => [newCoupon, ...prev]);
+  const addCoupon = async (couponData) => {
+    try {
+      const res = await api.post('/coupons', couponData);
+      if (res.data?.success && res.data.data) {
+        const newCpn = { ...res.data.data, id: res.data.data._id || res.data.data.id };
+        setCoupons((prev) => [newCpn, ...prev.filter((c) => c.code !== newCpn.code)]);
+        return newCpn;
+      }
+    } catch (err) {
+      console.error('API create coupon error:', err);
+      throw err;
+    }
   };
 
-  const toggleCouponStatus = (id) => {
+  const toggleCouponStatus = async (id) => {
+    const target = coupons.find((c) => c.id === id || c._id === id);
+    const apiId = target?._id || target?.id || id;
+    try {
+      const res = await api.patch(`/coupons/${apiId}/toggle`);
+      if (res.data?.success && res.data.data) {
+        const updated = { ...res.data.data, id: res.data.data._id || res.data.data.id };
+        setCoupons((prev) => prev.map((c) => (c.id === id || c._id === apiId ? updated : c)));
+        return updated;
+      }
+    } catch (err) {
+      console.error('API toggle coupon error:', err);
+    }
     setCoupons((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, active: !c.active } : c))
+      prev.map((c) => (c.id === id || c._id === apiId ? { ...c, active: !c.active } : c))
     );
   };
 
-  const deleteCoupon = (id) => {
-    setCoupons((prev) => prev.filter((c) => c.id !== id));
+  const deleteCoupon = async (id) => {
+    const target = coupons.find((c) => c.id === id || c._id === id);
+    const apiId = target?._id || target?.id || id;
+    try {
+      await api.delete(`/coupons/${apiId}`);
+    } catch (err) {
+      console.error('API delete coupon error:', err);
+    }
+    setCoupons((prev) => prev.filter((c) => c.id !== id && c._id !== apiId));
   };
 
   const updateSettings = (newSettings) => {
+
     setSettings((prev) => ({ ...prev, ...newSettings }));
   };
 

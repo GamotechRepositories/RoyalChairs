@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import ProductCard from '../ui/ProductCard';
+import { ProductDetailSkeleton } from '../ui/Skeletons';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useAuth } from '../../context/AuthContext';
@@ -379,6 +380,14 @@ export default function ProductDetailPage({
     });
     return dist;
   }, [productReviews]);
+
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-cream-soft py-6 px-3 sm:px-6 lg:px-8">
+        <ProductDetailSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-cream-soft py-6 px-3 sm:px-6 lg:px-8 text-slate-800">

@@ -1,8 +1,33 @@
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Mail, Calendar, Shield, ShoppingBag, DollarSign, UserCheck, Activity, Key, CheckCircle } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
 
 export default function CustomerDetailModal({ customer, isOpen, onClose }) {
   const { orders } = useAdminData();
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   if (!isOpen || !customer) return null;
 
@@ -11,9 +36,14 @@ export default function CustomerDetailModal({ customer, isOpen, onClose }) {
     (o) => o.customer?.email?.toLowerCase() === customer.email?.toLowerCase()
   );
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-      <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+  return createPortal(
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-900/60 backdrop-blur-xs animate-fadeIn cursor-pointer overflow-y-auto"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] cursor-default my-auto">
         {/* Header */}
         <div className="p-6 sm:p-8 bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white flex items-start justify-between relative overflow-hidden">
           <div className="flex items-center space-x-4 z-10">
@@ -180,6 +210,7 @@ export default function CustomerDetailModal({ customer, isOpen, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

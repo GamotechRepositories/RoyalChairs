@@ -9,8 +9,10 @@ import productRoutes from './routes/productRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import bannerRoutes from './routes/bannerRoutes.js';
+import couponRoutes from './routes/couponRoutes.js';
 
 const app = express();
+
 
 // Trust proxy for Render / Vercel reverse proxy headers (e.g. X-Forwarded-Proto)
 app.set('trust proxy', 1);
@@ -97,8 +99,10 @@ app.use('/api/products', productRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/banners', bannerRoutes);
+app.use('/api/coupons', couponRoutes);
 
 // Catch 404 Not Found Handler
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,

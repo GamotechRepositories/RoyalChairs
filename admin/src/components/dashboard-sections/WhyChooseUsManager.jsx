@@ -34,56 +34,40 @@ export default function WhyChooseUsManager() {
   const fileInputRef = useRef(null);
   const avatarInputRef = useRef(null);
 
-
   // 2. Craft banner state
-  const [craftBanner, setCraftBanner] = useState(() => {
-    try {
-      const saved = localStorage.getItem('royal_admin_craft_banner');
-      if (saved) return { ...DEFAULT_CRAFT_BANNER, ...JSON.parse(saved) };
-    } catch {
-      // fallback
-    }
-    return DEFAULT_CRAFT_BANNER;
-  });
+  const [craftBanner, setCraftBanner] = useState(DEFAULT_CRAFT_BANNER);
 
-  // 3. Reviews state (Loaded via API or local storage, no hardcoded defaults)
-  const [reviewsList, setReviewsList] = useState(() => {
-    try {
-      const saved = localStorage.getItem('royal_admin_reviews');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch {
-      // fallback
-    }
-    return [];
-  });
+  // 3. Reviews state
+  const [reviewsList, setReviewsList] = useState([]);
 
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [editingReview, setEditingReview] = useState(null);
   const [saveToast, setSaveToast] = useState('');
+  const [isSavingCraft, setIsSavingCraft] = useState(false);
 
   const triggerToast = (msg) => {
     setSaveToast(msg);
     setTimeout(() => setSaveToast(''), 3000);
   };
 
-  const dispatchStorageUpdate = () => {
-    try {
-      window.dispatchEvent(new Event('royal_storage_update'));
-    } catch {
-      // ignore
-    }
-  };
-
-  // Load reviews directly from API on mount
+  // Load reviews and craft banner directly from MongoDB API on mount
   useEffect(() => {
-    const loadReviewsFromAPI = async () => {
+    const loadDataFromAPI = async () => {
+      // 1. Fetch craft banner from MongoDB
       try {
-        const res = await api.get('/reviews?status=all');
-        if (res.data?.success && Array.isArray(res.data.data)) {
-          const formatted = res.data.data.map((r) => ({
+        const bannerRes = await api.get('/banners?type=craft&status=all');
+        if (bannerRes.data?.success && Array.isArray(bannerRes.data.data) && bannerRes.data.data.length > 0) {
+          setCraftBanner(bannerRes.data.data[0]);
+        }
+      } catch (err) {
+        console.log('Error loading craft banner from MongoDB:', err.message);
+      }
+
+      // 2. Fetch reviews from MongoDB
+      try {
+        const revRes = await api.get('/reviews?status=all');
+        if (revRes.data?.success && Array.isArray(revRes.data.data)) {
+          const formatted = revRes.data.data.map((r) => ({
             id: r.id || r._id,
             name: r.userName || r.name || r.customer || '',
             role: r.userRole || r.role || 'Verified Buyer',
@@ -96,22 +80,38 @@ export default function WhyChooseUsManager() {
               'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
           }));
           setReviewsList(formatted);
-          localStorage.setItem('royal_admin_reviews', JSON.stringify(formatted));
-          dispatchStorageUpdate();
         }
       } catch (err) {
-        console.log('Using local reviews cache:', err.message);
+        console.log('Error loading reviews from MongoDB:', err.message);
       }
     };
-    loadReviewsFromAPI();
+    loadDataFromAPI();
   }, []);
 
-
-  // Save Craftsmanship Banner
-  const handleSaveCraftBanner = () => {
-    localStorage.setItem('royal_admin_craft_banner', JSON.stringify(craftBanner));
-    dispatchStorageUpdate();
-    triggerToast('Craftsmanship Story Banner saved and synced to store!');
+  // Save Craftsmanship Banner directly to MongoDB
+  const handleSaveCraftBanner = async () => {
+    setIsSavingCraft(true);
+    try {
+      const res = await api.post('/banners', {
+        type: 'craft',
+        banners: [
+          {
+            ...craftBanner,
+            type: 'craft',
+            link: craftBanner.link || '#craftsmanship',
+          },
+        ],
+      });
+      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+        setCraftBanner(res.data.data[0]);
+      }
+      triggerToast('Craftsmanship Story Banner saved and synced to live store!');
+    } catch (err) {
+      console.error('Error saving craft banner to MongoDB:', err);
+      triggerToast('Error saving to database. Please try again.');
+    } finally {
+      setIsSavingCraft(false);
+    }
   };
 
   const handleBannerFileUpload = (e) => {

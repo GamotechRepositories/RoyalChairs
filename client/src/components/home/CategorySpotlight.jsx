@@ -16,39 +16,13 @@ const DEFAULT_SPOTLIGHT = {
 };
 
 export default function CategorySpotlight({ onSelectCategory, onOpenProduct }) {
-  const [spotlight, setSpotlight] = useState(() => {
-    try {
-      const saved = localStorage.getItem('royal_admin_spotlight');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') {
-          return {
-            ...DEFAULT_SPOTLIGHT,
-            ...parsed,
-          };
-        }
-      }
-    } catch {}
-    return DEFAULT_SPOTLIGHT;
-  });
-
+  const [spotlight, setSpotlight] = useState(DEFAULT_SPOTLIGHT);
   const [storageTick, setStorageTick] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Sync with storage updates from Admin
+  // Sync with live updates from Admin
   useEffect(() => {
-    const handleStorage = () => {
-      try {
-        const saved = localStorage.getItem('royal_admin_spotlight');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed && typeof parsed === 'object') {
-            setSpotlight((prev) => ({ ...prev, ...parsed }));
-          }
-        }
-      } catch {}
-      setStorageTick((t) => t + 1);
-    };
-
+    const handleStorage = () => setStorageTick((t) => t + 1);
     window.addEventListener('storage', handleStorage);
     window.addEventListener('royal_storage_update', handleStorage);
     return () => {
@@ -57,7 +31,7 @@ export default function CategorySpotlight({ onSelectCategory, onOpenProduct }) {
     };
   }, []);
 
-  // Fetch live spotlight data from MongoDB via API
+  // Fetch live spotlight data directly from MongoDB via API
   useEffect(() => {
     const fetchSpotlight = async () => {
       try {
@@ -76,11 +50,23 @@ export default function CategorySpotlight({ onSelectCategory, onOpenProduct }) {
           }));
         }
       } catch (err) {
-        console.log('Error loading spotlight banner:', err.message);
+        console.log('Error loading spotlight banner from MongoDB API:', err.message);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchSpotlight();
   }, [storageTick]);
+
+  if (isLoading) {
+    return (
+      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="rounded-3xl bg-slate-100 animate-pulse h-96 flex items-center justify-center border border-slate-200">
+          <div className="w-12 h-12 rounded-full border-2 border-emerald-600/30 border-t-emerald-600 animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   if (spotlight.active === false) {
     return null;

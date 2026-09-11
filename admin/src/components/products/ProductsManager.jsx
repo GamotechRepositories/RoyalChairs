@@ -12,9 +12,10 @@ import {
 } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
 import ProductFormPage from './ProductFormPage';
+import { TableSkeleton } from '../ui/AdminSkeletons';
 
 export default function ProductsManager() {
-  const { products, categories, deleteProduct, toggleAvailability, reviews } = useAdminData();
+  const { products, categories, deleteProduct, toggleAvailability, reviews, isLoading } = useAdminData();
 
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'form'
   const [editingProduct, setEditingProduct] = useState(null);
@@ -191,7 +192,9 @@ export default function ProductsManager() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredProducts.length === 0 ? (
+              {isLoading ? (
+                <TableSkeleton rows={6} cols={6} />
+              ) : filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="py-12 text-center text-slate-400 font-medium">
                     <p className="font-bold text-sm">No chairs matched the selected criteria.</p>

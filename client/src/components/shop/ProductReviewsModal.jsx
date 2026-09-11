@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Star,
@@ -28,6 +29,17 @@ export default function ProductReviewsModal({
     };
   }, [isOpen]);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   // Star breakdown calculation
   const breakdown = useMemo(() => {
     const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
@@ -45,8 +57,8 @@ export default function ProductReviewsModal({
 
   if (!isOpen || !product) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
       {/* Backdrop */}
       <div
         onClick={onClose}
@@ -54,7 +66,7 @@ export default function ProductReviewsModal({
       />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col z-10">
+      <div className="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col z-10 my-auto">
         {/* Header */}
         <div className="p-5 sm:p-6 bg-gradient-to-r from-emerald-900 to-emerald-950 text-white flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -231,6 +243,7 @@ export default function ProductReviewsModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

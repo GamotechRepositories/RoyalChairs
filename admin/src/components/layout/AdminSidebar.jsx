@@ -11,17 +11,19 @@ import {
   ExternalLink,
   Image,
   Sparkles,
+  Tag,
 } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import LogoImg from '../../assets/logo.svg';
 
 export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose }) {
-  const { products, orders, reviews } = useAdminData();
+  const { products, orders, reviews, coupons = [] } = useAdminData();
   const { adminUser, logout } = useAdminAuth();
 
   const pendingOrders = orders.filter((o) => o.fulfillmentStatus === 'Pending' || o.fulfillmentStatus === 'In Production').length;
   const pendingReviews = reviews.filter((r) => r.status === 'Pending').length;
+  const activeCoupons = coupons.filter((c) => c.active !== false).length;
 
   const NAV_ITEMS = [
     {
@@ -49,6 +51,13 @@ export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose 
       icon: Armchair,
       badge: `${products.length}`,
       badgeColor: 'bg-slate-100 text-slate-700 font-bold',
+    },
+    {
+      id: 'coupons',
+      label: 'Promotions & Vouchers',
+      icon: Tag,
+      badge: activeCoupons > 0 ? `${activeCoupons} Active` : null,
+      badgeColor: 'bg-amber-100 text-amber-900 font-black',
     },
     {
       id: 'banner-slideshow',

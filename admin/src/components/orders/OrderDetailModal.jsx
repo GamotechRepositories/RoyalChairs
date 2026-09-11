@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -15,11 +15,36 @@ import {
   ShieldCheck,
   Crown,
   User,
+  Tag,
+  Sparkles,
 } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
 
 export default function OrderDetailModal({ isOpen, onClose, order }) {
   const { updateOrderStatus } = useAdminData();
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   if (!isOpen || !order) return null;
 
@@ -38,14 +63,26 @@ export default function OrderDetailModal({ isOpen, onClose, order }) {
     window.print();
   };
 
+  // Safe Financial Computations
+  const safeItems = Array.isArray(order.items) ? order.items : [];
+  const itemsSubtotal = safeItems.reduce((acc, item) => acc + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+  const totalPaid = Number(order.totalAmount !== undefined ? order.totalAmount : (order.total || 0));
+
+  let discount = Number(order.discountAmount !== undefined ? order.discountAmount : (order.discount || 0));
+  if (discount === 0 && itemsSubtotal > totalPaid) {
+    discount = itemsSubtotal - totalPaid;
+  }
+
+  const grossSubtotal = Number(order.subtotal && order.subtotal > totalPaid ? order.subtotal : (itemsSubtotal > 0 ? itemsSubtotal : (totalPaid + discount)));
+
   return createPortal(
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn cursor-pointer"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer overflow-y-auto"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white border border-slate-200 w-full max-w-3xl rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto overscroll-contain relative p-6 sm:p-8 cursor-default space-y-6 text-slate-800"
+        className="bg-white border border-slate-200 w-full max-w-3xl rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto overscroll-contain relative p-6 sm:p-8 cursor-default space-y-6 text-slate-800 my-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -58,7 +95,7 @@ export default function OrderDetailModal({ isOpen, onClose, order }) {
                 <h3 className="text-xl font-black text-slate-900 font-serif tracking-wide">
                   Order #{order.orderNumber || order.id}
                 </h3>
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-bold">
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-bold uppercase">
                   {order.paymentStatus || 'PAID'}
                 </span>
               </div>
@@ -106,7 +143,7 @@ export default function OrderDetailModal({ isOpen, onClose, order }) {
             </div>
           </div>
 
-          {/* Shipping Address Card */}
+          {/* Shipping Address & Payment Gateway Card */}
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
             <div className="flex items-center space-x-2 text-emerald-800 font-bold uppercase tracking-wider text-[10px]">
               <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
@@ -114,10 +151,13 @@ export default function OrderDetailModal({ isOpen, onClose, order }) {
             </div>
             <p className="text-slate-700 leading-relaxed font-medium">
               {order.customer?.address || 'Royal Villa, Luxury Estate, Mayfair, London'}
+              {order.customer?.city ? `, ${order.customer.city}` : ''}
+              {order.customer?.state ? `, ${order.customer.state}` : ''}
+              {order.customer?.pincode ? ` - ${order.customer.pincode}` : ''}
             </p>
-            <div className="flex items-center space-x-2 text-slate-500 pt-1 font-medium">
-              <CreditCard className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span>{order.paymentMethod || 'Online Payment'}</span>
+            <div className="flex items-center space-x-2 text-slate-700 pt-1 font-bold">
+              <CreditCard className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+              <span className="uppercase">{order.paymentMethod || 'Online Payment'}</span>
             </div>
           </div>
         </div>
@@ -125,10 +165,10 @@ export default function OrderDetailModal({ isOpen, onClose, order }) {
         {/* Purchased Items List */}
         <div className="space-y-3">
           <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-            Itemized Luxury Chairs ({(order.items || []).length})
+            Itemized Luxury Chairs ({safeItems.length})
           </h4>
           <div className="space-y-2">
-            {(order.items || []).map((item, i) => (
+            {safeItems.map((item, i) => (
               <div
                 key={i}
                 className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between space-x-4"
@@ -140,7 +180,7 @@ export default function OrderDetailModal({ isOpen, onClose, order }) {
                     onError={(e) => {
                       e.target.src = 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80';
                     }}
-                    className="w-12 h-12 rounded-xl object-cover border border-slate-200"
+                    className="w-12 h-12 rounded-xl object-cover border border-slate-200 bg-white"
                   />
                   <div>
                     <p className="text-xs font-bold text-slate-900">{item.name || 'Royal Luxury Chair'}</p>
@@ -152,9 +192,9 @@ export default function OrderDetailModal({ isOpen, onClose, order }) {
                 </div>
 
                 <div className="text-right font-mono">
-                  <p className="text-xs font-bold text-slate-600">₹{(item.price || 0).toLocaleString()} each</p>
+                  <p className="text-xs font-bold text-slate-600">₹{(Number(item.price) || 0).toLocaleString()} each</p>
                   <p className="text-xs font-black text-emerald-800">
-                    ₹{((item.price || 0) * (item.quantity || 1)).toLocaleString()}
+                    ₹{((Number(item.price) || 0) * (Number(item.quantity) || 1)).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -162,30 +202,46 @@ export default function OrderDetailModal({ isOpen, onClose, order }) {
           </div>
         </div>
 
-        {/* Order Financial Totals */}
-        <div className="p-4 rounded-2xl bg-slate-100 border border-slate-200 space-y-2 text-xs">
+        {/* Order Financial Breakdown with Promo Voucher & Final Total */}
+        <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
           <div className="flex justify-between text-slate-600 font-medium">
-            <span>Subtotal</span>
-            <span className="font-mono">₹{Number(order.subtotal || order.total || order.totalAmount || 0).toLocaleString()}</span>
+            <span>Gross Items Subtotal</span>
+            <span className="font-mono font-bold text-slate-900">₹{grossSubtotal.toLocaleString()}</span>
           </div>
-          {order.discount > 0 && (
-            <div className="flex justify-between text-emerald-700 font-bold">
-              <span>Promotional Discount</span>
-              <span className="font-mono">-₹{Number(order.discount).toLocaleString()}</span>
+
+          {/* Promo Voucher Discount Row */}
+          {discount > 0 && (
+            <div className="flex justify-between items-center bg-emerald-50 text-emerald-800 p-2.5 rounded-xl border border-emerald-200/90 font-bold">
+              <span className="flex items-center space-x-1.5">
+                <Tag className="w-3.5 h-3.5 text-emerald-700" />
+                <span>
+                  Promo Voucher Applied {order.couponCode ? `(${order.couponCode})` : ''}
+                </span>
+              </span>
+              <span className="font-mono font-black text-emerald-900">-₹{discount.toLocaleString()}</span>
             </div>
           )}
+
           <div className="flex justify-between text-slate-600 font-medium">
-            <span>Courier & Packaging</span>
-            <span className="text-emerald-700 font-bold">Complimentary</span>
+            <span>Courier & White-Glove Packaging</span>
+            <span className="text-emerald-700 font-bold">Complimentary (Free)</span>
           </div>
-          <div className="pt-2 border-t border-slate-200 flex justify-between text-sm font-black text-slate-900">
-            <span>Total Paid</span>
-            <span className="text-emerald-800 font-mono">₹{Number(order.total || order.totalAmount || 0).toLocaleString()}</span>
+
+          <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline text-sm font-black text-slate-900">
+            <div>
+              <span>Final Money Paid / Collectable</span>
+              <span className="text-[11px] font-normal text-slate-500 block">
+                via {order.paymentMethod || 'Online'} ({order.paymentStatus || 'PAID'})
+              </span>
+            </div>
+            <span className="text-base text-emerald-950 font-mono font-black">
+              ₹{totalPaid.toLocaleString()}
+            </span>
           </div>
         </div>
 
         {/* Update Order Status & Tracking Form */}
-        <form onSubmit={handleSaveStatus} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+        <form onSubmit={handleSaveStatus} className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
           <div className="flex items-center space-x-2 text-xs font-bold text-emerald-800 uppercase tracking-wider">
             <Truck className="w-4 h-4" />
             <span>Fulfillment & Courier Logistics</span>
@@ -230,7 +286,7 @@ export default function OrderDetailModal({ isOpen, onClose, order }) {
                 Status updated successfully!
               </span>
             ) : (
-              <span className="text-[11px] text-slate-500 font-medium">Carrier: {order.carrier}</span>
+              <span className="text-[11px] text-slate-500 font-medium">Carrier: {order.carrier || 'Royal Express Logistics'}</span>
             )}
 
             <button

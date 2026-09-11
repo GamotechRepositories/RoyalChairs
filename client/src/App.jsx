@@ -20,6 +20,7 @@ import CategoryShopPage from './components/shop/CategoryShopPage';
 import CartPage from './components/shop/CartPage';
 import WishlistPage from './components/shop/WishlistPage';
 import AccountPage from './components/shop/AccountPage';
+import CheckoutPage from './components/shop/CheckoutPage';
 import SearchModal from './components/layout/SearchModal';
 import TrackOrderModal from './components/layout/TrackOrderModal';
 import AccountModal from './components/layout/AccountModal';
@@ -29,16 +30,18 @@ import QuickViewModal from './components/home/QuickViewModal';
 import { Sparkles } from 'lucide-react';
 
 function DashboardContent() {
-  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard', 'category-page', 'cart-page', 'wishlist-page', 'account-page', 'product-page'
+  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard', 'category-page', 'cart-page', 'wishlist-page', 'account-page', 'product-page', 'checkout-page'
   const [previousView, setPreviousView] = useState('dashboard');
   const [selectedCategoryId, setSelectedCategoryId] = useState('gaming');
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [appliedCouponForCheckout, setAppliedCouponForCheckout] = useState(null);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [trackOrderOpen, setTrackOrderOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
+  const [pendingPostLoginAction, setPendingPostLoginAction] = useState(null);
 
   const { toastMessage } = useCart();
   const { isAuthenticated } = useAuth();
@@ -60,6 +63,21 @@ function DashboardContent() {
     setSelectedProduct(product);
     setActiveView('product-page');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleRequireLogin = (actionCallback) => {
+    setPendingPostLoginAction(() => actionCallback);
+    setAccountOpen(true);
+  };
+
+  const handleLoginSuccess = () => {
+    if (pendingPostLoginAction && typeof pendingPostLoginAction === 'function') {
+      const action = pendingPostLoginAction;
+      setPendingPostLoginAction(null);
+      action();
+    } else {
+      handleNavigateView('account-page');
+    }
   };
 
   return (
@@ -111,6 +129,19 @@ function DashboardContent() {
           <CartPage
             onBackToHome={() => handleNavigateView('dashboard')}
             onQuickView={(prod) => handleOpenProduct(prod)}
+            onProceedToCheckout={(coupon) => {
+              setAppliedCouponForCheckout(coupon);
+              handleNavigateView('checkout-page');
+            }}
+            onRequireLogin={handleRequireLogin}
+          />
+        ) : activeView === 'checkout-page' ? (
+          /* DEDICATED CHECKOUT & PAYMENT PAGE VIEW (COD & RAZORPAY) */
+          <CheckoutPage
+            appliedCoupon={appliedCouponForCheckout}
+            onBackToCart={() => handleNavigateView('cart-page')}
+            onNavigateHome={() => handleNavigateView('dashboard')}
+            onNavigateAccount={() => handleNavigateView('account-page')}
           />
         ) : activeView === 'wishlist-page' ? (
           /* DEDICATED MY WISHLIST PAGE VIEW */
@@ -181,8 +212,8 @@ function DashboardContent() {
 
       <AccountModal
         isOpen={accountOpen}
-        onClose={() => setAccountOpen(false)}
-        onLoginSuccess={() => handleNavigateView('account-page')}
+        onClose={() => setSearchOpen(false) || setAccountOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
       />
 
       <WishlistModal
@@ -191,7 +222,11 @@ function DashboardContent() {
         onQuickView={(prod) => handleOpenProduct(prod)}
       />
 
-      <CartDrawer />
+      <CartDrawer
+        onNavigateCheckout={() => handleNavigateView('checkout-page')}
+        onRequireLogin={handleRequireLogin}
+        onOpenCartPage={() => handleNavigateView('cart-page')}
+      />
 
       <QuickViewModal
         product={quickViewProduct}

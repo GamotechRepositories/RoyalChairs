@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Search, RotateCw, ExternalLink } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
 import CustomerDetailModal from './CustomerDetailModal';
+import { TableSkeleton } from '../ui/AdminSkeletons';
 
 export default function CustomersManager() {
-  const { customers, refetchUsers } = useAdminData();
+  const { customers, refetchUsers, isLoading } = useAdminData();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -84,7 +85,16 @@ export default function CustomersManager() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredCustomers.map((cust) => (
+              {isLoading ? (
+                <TableSkeleton rows={4} cols={5} />
+              ) : filteredCustomers.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="py-12 text-center text-slate-400 font-medium">
+                    No registered customers found.
+                  </td>
+                </tr>
+              ) : (
+                filteredCustomers.map((cust) => (
                 <tr
                   key={cust.id}
                   onClick={() => handleUserClick(cust)}
@@ -143,7 +153,7 @@ export default function CustomersManager() {
                     </button>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

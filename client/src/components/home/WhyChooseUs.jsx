@@ -10,6 +10,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
+import api from '../../services/api';
 
 const STATIC_PILLARS = [
   {
@@ -38,8 +39,18 @@ const STATIC_PILLARS = [
   },
 ];
 
+const DEFAULT_CRAFT_BANNER = {
+  badge: 'THE MATERIALS & CRAFT',
+  title: 'From FSC English Oak Forests to Hand-Stitched Italian Nappa Leather',
+  description:
+    'Unlike mass-market plastic chairs that break easily, every RoyalChairs model features an internal heavy-duty steel backbone encased in high-density molded memory foam.',
+  image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1000&q=80',
+  caption: 'Master Craftsman Workshop • Gloucestershire, UK',
+};
+
 export default function WhyChooseUs() {
   const { reviews } = useStore();
+  const [craftBanner, setCraftBanner] = useState(DEFAULT_CRAFT_BANNER);
   const [storageTick, setStorageTick] = useState(0);
   const reviewsScrollRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -50,7 +61,7 @@ export default function WhyChooseUs() {
   const [isPillarPaused, setIsPillarPaused] = useState(false);
   const pillarsScrollRef = useRef(null);
 
-  // Synchronize with storage updates from Admin
+  // Synchronize with live updates from Admin
   useEffect(() => {
     const handleStorage = () => setStorageTick((t) => t + 1);
     window.addEventListener('storage', handleStorage);
@@ -61,69 +72,28 @@ export default function WhyChooseUs() {
     };
   }, []);
 
-  // Auto-scroll pillars on mobile every 2 seconds
+  // Fetch live craft banner directly from MongoDB via API
   useEffect(() => {
-    if (isPillarPaused) return;
-
-    const timer = setInterval(() => {
-      if (typeof window !== 'undefined' && window.innerWidth < 768) {
-        setPillarIndex((prev) => (prev + 1) % STATIC_PILLARS.length);
+    const fetchCraftBanner = async () => {
+      try {
+        const res = await api.get('/banners?type=craft');
+        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          setCraftBanner((prev) => ({
+            ...prev,
+            ...res.data.data[0],
+          }));
+        }
+      } catch (err) {
+        console.log('Error loading craft banner from MongoDB API:', err.message);
       }
-    }, 2000);
-
-    return () => clearInterval(timer);
-  }, [isPillarPaused]);
-
-  // Sync scroll position on mobile
-  useEffect(() => {
-    if (pillarsScrollRef.current && typeof window !== 'undefined' && window.innerWidth < 768) {
-      const container = pillarsScrollRef.current;
-      const card = container.firstElementChild;
-      if (card) {
-        const cardWidth = card.offsetWidth;
-        const gap = 16;
-        container.scrollTo({
-          left: pillarIndex * (cardWidth + gap),
-          behavior: 'smooth',
-        });
-      }
-    }
-  }, [pillarIndex]);
-
-  // Craftsmanship Story Banner from Admin / default
-  const craftBanner = useMemo(() => {
-    try {
-      const saved = localStorage.getItem('royal_admin_craft_banner');
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return {
-      badge: 'THE MATERIALS & CRAFT',
-      title: 'From FSC English Oak Forests to Hand-Stitched Italian Nappa Leather',
-      description:
-        'Unlike mass-market plastic chairs that break easily, every RoyalChairs model features an internal heavy-duty steel backbone encased in high-density molded memory foam.',
-      image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1000&q=80',
-      caption: 'Master Craftsman Workshop • Gloucestershire, UK',
     };
+    fetchCraftBanner();
   }, [storageTick]);
 
-  // 3. Dynamic Reviews from API / Database or Admin Local Storage
+  // Dynamic Reviews from MongoDB Store Context
   const reviewsList = useMemo(() => {
-    if (Array.isArray(reviews) && reviews.length > 0) {
-      return reviews;
-    }
-    try {
-      const saved = localStorage.getItem('royal_admin_reviews');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {
-      // fallback
-    }
-    return [];
-  }, [reviews, storageTick]);
+    return Array.isArray(reviews) ? reviews : [];
+  }, [reviews]);
 
   // Check scroll position for review carousel arrows
   const checkReviewScroll = () => {

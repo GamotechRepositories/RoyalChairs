@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { HERO_SLIDES } from '../../data/chairProductsData';
 import api from '../../services/api';
 
 export default function BannerSlideshow() {
@@ -8,8 +7,9 @@ export default function BannerSlideshow() {
   const [isPaused, setIsPaused] = useState(false);
   const [storageTick, setStorageTick] = useState(0);
   const [apiBanners, setApiBanners] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Synchronize with storage updates from Admin
+  // Synchronize with storage & live events from Admin
   useEffect(() => {
     const handleStorage = () => setStorageTick((t) => t + 1);
     window.addEventListener('storage', handleStorage);
@@ -24,34 +24,22 @@ export default function BannerSlideshow() {
   useEffect(() => {
     const fetchBanners = async () => {
       try {
-        const res = await api.get('/banners');
+        const res = await api.get('/banners?type=hero');
         if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
           setApiBanners(res.data.data);
         }
       } catch (err) {
-        console.log('Error loading banners from API:', err.message);
+        console.log('Error loading hero banners from MongoDB API:', err.message);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchBanners();
   }, [storageTick]);
 
-  // Load slides from MongoDB API, or localStorage, or fallback
   const activeSlides = useMemo(() => {
-    if (apiBanners.length > 0) {
-      return apiBanners.filter((s) => s.active !== false);
-    }
-    try {
-      const saved = localStorage.getItem('royal_admin_slides');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const filtered = parsed.filter((s) => s.active !== false);
-        if (filtered.length > 0) return filtered;
-      }
-    } catch {
-      // Fallback
-    }
-    return HERO_SLIDES;
-  }, [apiBanners, storageTick]);
+    return (apiBanners || []).filter((s) => s.active !== false);
+  }, [apiBanners]);
 
   useEffect(() => {
     if (isPaused || activeSlides.length <= 1) return;
@@ -68,6 +56,15 @@ export default function BannerSlideshow() {
   const handlePrev = () => {
     setCurrentSlide((prev) => (prev - 1 + activeSlides.length) % activeSlides.length);
   };
+
+  if (isLoading) {
+    return (
+      <div className="relative w-full aspect-square sm:aspect-[1920/600] max-h-[600px] bg-slate-900 animate-pulse overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+        <div className="w-16 h-16 rounded-full border-2 border-emerald-500/20 border-t-emerald-400 animate-spin" />
+      </div>
+    );
+  }
 
   if (!activeSlides.length) return null;
 

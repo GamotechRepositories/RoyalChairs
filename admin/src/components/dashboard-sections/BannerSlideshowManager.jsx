@@ -32,29 +32,11 @@ const DEFAULT_BANNER_IMAGES = [
 ];
 
 export default function BannerSlideshowManager() {
-  const [slides, setSlides] = useState(() => {
-    try {
-      const saved = localStorage.getItem('royal_admin_slides');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((s, idx) => ({
-            id: s.id || s._id || `banner-${idx + 1}`,
-            image: s.image || '',
-            link: s.link || '',
-            active: s.active !== false,
-          }));
-        }
-      }
-    } catch {
-      // fallback
-    }
-    return DEFAULT_BANNER_IMAGES;
-  });
-
+  const [slides, setSlides] = useState(DEFAULT_BANNER_IMAGES);
   const [editingSlide, setEditingSlide] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
   const cardFileInputRefs = useRef({});
 
@@ -63,44 +45,50 @@ export default function BannerSlideshowManager() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  // Fetch banners from API on mount
+  // Fetch banners directly from MongoDB API on mount
+  const loadBannersFromAPI = async () => {
+    try {
+      const res = await api.get('/banners?type=hero&status=all');
+      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+        const formatted = res.data.data.map((b, idx) => ({
+          id: b.id || b._id || `banner-${idx + 1}`,
+          image: b.image,
+          link: b.link || '#shop-by-category',
+          active: b.active !== false,
+        }));
+        setSlides(formatted);
+      }
+    } catch (err) {
+      console.log('Error loading hero banners from MongoDB API:', err.message);
+    }
+  };
+
   useEffect(() => {
-    const loadBannersFromAPI = async () => {
-      try {
-        const res = await api.get('/banners?status=all');
-        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
-          const formatted = res.data.data.map((b, idx) => ({
+    loadBannersFromAPI();
+  }, []);
+
+  const saveSlides = async (newSlides, toastText = 'Banner photos updated and synced to live store!') => {
+    setSlides(newSlides);
+    setIsSaving(true);
+    try {
+      const res = await api.post('/banners', { banners: newSlides, type: 'hero' });
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setSlides(
+          res.data.data.map((b, idx) => ({
             id: b.id || b._id || `banner-${idx + 1}`,
             image: b.image,
             link: b.link || '#shop-by-category',
             active: b.active !== false,
-          }));
-          setSlides(formatted);
-          localStorage.setItem('royal_admin_slides', JSON.stringify(formatted));
-        }
-      } catch (err) {
-        console.log('Using local banner slides cache:', err.message);
+          }))
+        );
       }
-    };
-    loadBannersFromAPI();
-  }, []);
-
-  const saveSlides = async (newSlides, toastText = 'Banner photos updated and synced to store!') => {
-    setSlides(newSlides);
-    localStorage.setItem('royal_admin_slides', JSON.stringify(newSlides));
-    try {
-      window.dispatchEvent(new Event('royal_storage_update'));
-    } catch {
-      // ignore
-    }
-
-    try {
-      await api.post('/banners', { banners: newSlides });
+      showToast(toastText);
     } catch (err) {
-      console.log('API banner save note (saved locally):', err.message);
+      console.error('Error saving hero banners to MongoDB:', err);
+      showToast('Error saving to database. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
-
-    showToast(toastText);
   };
 
   const handleToggleActive = (id) => {

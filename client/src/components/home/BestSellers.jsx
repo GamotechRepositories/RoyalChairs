@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import ProductCard from '../ui/ProductCard';
+import { ProductCardSkeleton } from '../ui/Skeletons';
 
 export default function BestSellers({ onQuickView }) {
-  const { products, categories } = useStore();
+  const { products, categories, isLoading } = useStore();
   const [activeTab, setActiveTab] = useState('all');
 
   // Horizontal product scroll state
@@ -43,7 +44,7 @@ export default function BestSellers({ onQuickView }) {
       };
     }
     return () => clearTimeout(timeout);
-  }, [filteredProducts]);
+  }, [filteredProducts, isLoading]);
 
   const scroll = (direction) => {
     if (scrollRef.current) {
@@ -55,6 +56,26 @@ export default function BestSellers({ onQuickView }) {
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <section id="best-sellers" className="py-16 bg-cream-soft animate-fadeIn">
+        <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="text-left sm:text-center mb-6 sm:mb-8 space-y-2">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
+              Best Seller Chairs
+            </h2>
+            <div className="h-4 w-48 bg-slate-200 rounded-full mx-auto animate-pulse" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (bestSellersList.length === 0) {
     return null; // Only show when Best Seller chairs exist in Database

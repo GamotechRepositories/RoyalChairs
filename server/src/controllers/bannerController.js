@@ -64,6 +64,21 @@ const DEFAULT_SPOTLIGHT_BANNERS = [
   },
 ];
 
+const DEFAULT_CRAFT_BANNERS = [
+  {
+    badge: 'THE MATERIALS & CRAFT',
+    title: 'From FSC English Oak Forests to Hand-Stitched Italian Nappa Leather',
+    description:
+      'Unlike mass-market plastic chairs that break easily, every RoyalChairs model features an internal heavy-duty steel backbone encased in high-density molded memory foam.',
+    image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1000&q=80',
+    caption: 'Master Craftsman Workshop • Gloucestershire, UK',
+    link: '#craftsmanship',
+    active: true,
+    order: 0,
+    type: 'craft',
+  },
+];
+
 // @desc    Get banners by type
 // @route   GET /api/banners
 // @access  Public
@@ -73,7 +88,9 @@ export const getBanners = async (req, res) => {
     let bannerType = type;
     if (
       bannerType !== 'new_collection' &&
-      bannerType !== 'spotlight'
+      bannerType !== 'spotlight' &&
+      bannerType !== 'craft' &&
+      bannerType !== 'instagram'
     ) {
       bannerType = 'hero';
     }
@@ -92,6 +109,8 @@ export const getBanners = async (req, res) => {
           ? DEFAULT_NEWCOLL_BANNERS
           : bannerType === 'spotlight'
           ? DEFAULT_SPOTLIGHT_BANNERS
+          : bannerType === 'craft'
+          ? DEFAULT_CRAFT_BANNERS
           : DEFAULT_HERO_BANNERS;
       await Banner.insertMany(defaults);
       banners = await Banner.find(query).sort({ order: 1, createdAt: 1 });
@@ -121,6 +140,7 @@ export const saveBanners = async (req, res) => {
     if (
       bannerType !== 'new_collection' &&
       bannerType !== 'spotlight' &&
+      bannerType !== 'craft' &&
       bannerType !== 'instagram'
     ) {
       bannerType = 'hero';
@@ -150,12 +170,16 @@ export const saveBanners = async (req, res) => {
           ? '#new-collection'
           : bannerType === 'instagram'
           ? 'https://instagram.com/royalchairs'
+          : bannerType === 'craft'
+          ? '#craftsmanship'
           : '#shop-by-category'),
       title: b.title || '',
       subtitle: b.subtitle || '',
       description: b.description || '',
       buttonText: b.buttonText || 'SHOP NOW',
       categorySlug: b.categorySlug || '',
+      badge: b.badge || '',
+      caption: b.caption || '',
       type: bannerType,
       active: b.active !== false,
       order: idx,

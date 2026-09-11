@@ -14,9 +14,10 @@ import {
 } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
 import OrderDetailModal from './OrderDetailModal';
+import { TableSkeleton } from '../ui/AdminSkeletons';
 
 export default function OrdersManager() {
-  const { orders } = useAdminData();
+  const { orders, isLoading } = useAdminData();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
@@ -133,7 +134,9 @@ export default function OrdersManager() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredOrders.length === 0 ? (
+              {isLoading ? (
+                <TableSkeleton rows={5} cols={7} />
+              ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="py-12 text-center text-slate-500 font-medium">
                     No client orders found in this status category.
@@ -194,10 +197,18 @@ export default function OrdersManager() {
                         <p className="font-black text-emerald-800 text-sm">
                           ₹{orderTotal.toLocaleString()}
                         </p>
-                        <span className="text-[10px] text-emerald-700 font-sans font-bold">
-                          {order.paymentStatus || 'PAID'}
-                        </span>
+                        <div className="flex flex-col gap-0.5 mt-0.5">
+                          <span className="text-[10px] text-emerald-700 font-sans font-bold">
+                            {order.paymentStatus || 'PAID'}
+                          </span>
+                          {(order.couponCode || order.discount > 0 || order.discountAmount > 0) && (
+                            <span className="text-[9px] font-bold text-emerald-900 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-flex items-center w-fit">
+                              🏷️ {order.couponCode || 'PROMO'} (-₹{Number(order.discount || order.discountAmount || 0).toLocaleString()})
+                            </span>
+                          )}
+                        </div>
                       </td>
+
 
                       {/* Fulfillment Status */}
                       <td className="py-4 px-4">

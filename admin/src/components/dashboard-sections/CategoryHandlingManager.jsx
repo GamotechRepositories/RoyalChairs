@@ -14,9 +14,10 @@ import {
   Tag,
 } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
+import { TableSkeleton } from '../ui/AdminSkeletons';
 
 export default function CategoryHandlingManager() {
-  const { categories, products, addCategory, updateCategory, deleteCategory } = useAdminData();
+  const { categories, products, addCategory, updateCategory, deleteCategory, isLoading } = useAdminData();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('default');
   const [editingCategory, setEditingCategory] = useState(null);
@@ -248,7 +249,9 @@ export default function CategoryHandlingManager() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredCategories.length === 0 ? (
+              {isLoading ? (
+                <TableSkeleton rows={4} cols={5} />
+              ) : filteredCategories.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="py-12 text-center text-slate-400">
                     <p className="font-bold text-sm">No categories found matching "{searchQuery}"</p>

@@ -1,12 +1,13 @@
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
+import Coupon from '../models/Coupon.js';
 
 // @desc    Create new order (Checkout)
 // @route   POST /api/orders
 // @access  Public / Authenticated
 export const createOrder = async (req, res) => {
   try {
-    const { customer, items, totalAmount, paymentMethod, paymentStatus } = req.body;
+    const { customer, items, totalAmount, paymentMethod, paymentStatus, couponCode } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
@@ -15,7 +16,20 @@ export const createOrder = async (req, res) => {
       });
     }
 
+    // Increment coupon usage count if coupon was applied
+    if (couponCode) {
+      try {
+        await Coupon.findOneAndUpdate(
+          { code: String(couponCode).toUpperCase().trim() },
+          { $inc: { usageCount: 1 } }
+        );
+      } catch (err) {
+        console.warn('Coupon usage increment note:', err.message);
+      }
+    }
+
     const safeCustomer = {
+
       name: customer?.name || (req.user?.name || 'Valued Client'),
       email: customer?.email || (req.user?.email || 'client@royalchairs.com'),
       phone: customer?.phone || '+91 98765 43210',
@@ -25,15 +39,24 @@ export const createOrder = async (req, res) => {
       pincode: customer?.pincode || 'SW1A 1AA',
     };
 
+    const calculatedSubtotal =
+      Number(req.body.subtotal) ||
+      items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+
     const orderData = {
       user: req.user ? req.user._id : null,
       customer: safeCustomer,
       items,
-      totalAmount: Number(totalAmount) || 0,
+      subtotal: calculatedSubtotal,
+      couponCode: couponCode ? String(couponCode).toUpperCase().trim() : null,
+      discountAmount: Number(req.body.discountAmount) || 0,
+      deliveryFee: Number(req.body.deliveryFee) || 0,
+      totalAmount: Number(totalAmount) || Math.max(0, calculatedSubtotal - (Number(req.body.discountAmount) || 0)),
       paymentMethod: paymentMethod || 'online',
       paymentStatus: paymentStatus || 'paid',
       orderStatus: req.body.orderStatus || 'confirmed',
     };
+
 
     if (req.body.orderNumber) {
       orderData.orderNumber = req.body.orderNumber;
@@ -72,9 +95,9 @@ export const createOrder = async (req, res) => {
   }
 };
 
-// @desc    Get all orders (Admin)
+// @desc    Get all orders (Admin / Client)
 // @route   GET /api/orders
-// @access  Admin
+// @access  Public / Admin
 export const getOrders = async (req, res) => {
   try {
     const { status, search } = req.query;
@@ -108,27 +131,32 @@ export const getOrders = async (req, res) => {
       count: orders.length,
       data: orders.map((o) => {
         const obj = o.toObject();
+        const rawStatus = (obj.orderStatus || 'confirmed').toLowerCase();
+        let displayFulfillment = 'Pending';
+        if (rawStatus === 'in production' || rawStatus === 'confirmed') displayFulfillment = 'In Production';
+        else if (rawStatus === 'dispatched' || rawStatus === 'shipped') displayFulfillment = 'Dispatched';
+        else if (rawStatus === 'delivered') displayFulfillment = 'Delivered';
+        else if (rawStatus === 'cancelled') displayFulfillment = 'Cancelled';
+        else displayFulfillment = 'Pending';
+
+        const total = Number(obj.totalAmount) || 0;
+        const subtotal = Number(obj.subtotal) > 0 ? Number(obj.subtotal) : total;
+        const discountAmount = Number(obj.discountAmount) || 0;
+
         return {
           ...obj,
           id: obj.orderNumber || obj._id.toString(),
           _id: obj._id.toString(),
           date: obj.createdAt,
-          total: obj.totalAmount,
-          subtotal: obj.totalAmount,
-          discount: 0,
-          carrier: 'Royal Express Logistics',
-          fulfillmentStatus:
-            obj.orderStatus === 'placed' || obj.orderStatus === 'pending'
-              ? 'Pending'
-              : obj.orderStatus === 'confirmed' || obj.orderStatus === 'in production'
-              ? 'In Production'
-              : obj.orderStatus === 'shipped' || obj.orderStatus === 'dispatched'
-              ? 'Dispatched'
-              : obj.orderStatus === 'delivered'
-              ? 'Delivered'
-              : obj.orderStatus === 'cancelled'
-              ? 'Cancelled'
-              : 'Pending',
+          total,
+          totalAmount: total,
+          subtotal,
+          discount: discountAmount,
+          discountAmount,
+          couponCode: obj.couponCode || null,
+          carrier: obj.carrier || 'Royal Express Logistics',
+          trackingNumber: obj.trackingNumber || `TRK-${obj._id.toString().slice(-8).toUpperCase()}`,
+          fulfillmentStatus: displayFulfillment,
         };
       }),
     });
@@ -153,6 +181,8 @@ export const trackOrder = async (req, res) => {
       $or: [
         { orderNumber: new RegExp(`^${cleanId}$`, 'i') },
         { trackingNumber: new RegExp(`^${cleanId}$`, 'i') },
+        { orderNumber: new RegExp(cleanId, 'i') },
+        { trackingNumber: new RegExp(cleanId, 'i') },
       ],
     });
 
@@ -163,11 +193,84 @@ export const trackOrder = async (req, res) => {
       });
     }
 
+    const obj = order.toObject();
+    const rawStatus = (obj.orderStatus || 'confirmed').toLowerCase();
+    
+    let displayStatus = 'In Production (Benchcrafting)';
+    let fulfillmentStatus = 'In Production';
+    if (rawStatus === 'placed' || rawStatus === 'pending') {
+      displayStatus = 'Pending Assignment';
+      fulfillmentStatus = 'Pending';
+    } else if (rawStatus === 'confirmed' || rawStatus === 'in production') {
+      displayStatus = 'In Production (Benchcrafting)';
+      fulfillmentStatus = 'In Production';
+    } else if (rawStatus === 'shipped' || rawStatus === 'dispatched') {
+      displayStatus = 'Dispatched (Express Courier)';
+      fulfillmentStatus = 'Dispatched';
+    } else if (rawStatus === 'delivered') {
+      displayStatus = 'Delivered & Assembled';
+      fulfillmentStatus = 'Delivered';
+    } else if (rawStatus === 'cancelled') {
+      displayStatus = 'Order Cancelled';
+      fulfillmentStatus = 'Cancelled';
+    }
+
+    const placedDateStr = new Date(obj.createdAt).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const isPending = fulfillmentStatus === 'Pending';
+    const isProduction = fulfillmentStatus === 'In Production';
+    const isDispatched = fulfillmentStatus === 'Dispatched';
+    const isDelivered = fulfillmentStatus === 'Delivered';
+    const isCancelled = fulfillmentStatus === 'Cancelled';
+
+    const steps = [
+      {
+        title: 'Order Placed & Verified',
+        description: 'Your bespoke order was received and payment was confirmed.',
+        date: placedDateStr,
+        completed: !isCancelled,
+        current: isPending,
+      },
+      {
+        title: 'Artisan Benchcrafting & Quality Check',
+        description: 'Handcrafted by master woodworkers with ergonomic certification.',
+        date: isPending ? 'Pending Workshop Allocation' : 'Benchcrafting in Progress',
+        completed: isProduction || isDispatched || isDelivered,
+        current: isProduction,
+      },
+      {
+        title: `Dispatched via Royal Express (${obj.trackingNumber || 'TRK-EXP'})`,
+        description: 'Package secured in protective white-glove transit packaging.',
+        date: isDispatched || isDelivered ? 'Dispatched from Central Logistics Hub' : 'Awaiting Courier Handover',
+        completed: isDispatched || isDelivered,
+        current: isDispatched,
+      },
+      {
+        title: 'Doorstep White-Glove Delivery & Assembly',
+        description: 'Carefully delivered and assembled in your designated room.',
+        date: isDelivered ? 'Delivered & Completed' : 'Estimated within 3-5 business days',
+        completed: isDelivered,
+        current: isDelivered,
+      },
+    ];
+
     res.status(200).json({
       success: true,
       data: {
-        ...order.toObject(),
-        id: order._id.toString(),
+        ...obj,
+        id: obj.orderNumber || obj._id.toString(),
+        _id: obj._id.toString(),
+        fulfillmentStatus,
+        displayStatus,
+        carrier: obj.carrier || 'Royal Express Logistics',
+        trackingNumber: obj.trackingNumber || `TRK-${obj._id.toString().slice(-8).toUpperCase()}`,
+        steps,
       },
     });
   } catch (error) {
@@ -185,12 +288,20 @@ export const trackOrder = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { orderStatus, paymentStatus, trackingNumber } = req.body;
+    const { orderStatus, status, fulfillmentStatus, paymentStatus, trackingNumber } = req.body;
+
+    const rawStatus = (orderStatus || status || fulfillmentStatus || '').toLowerCase();
+    let backendStatus = rawStatus;
+    if (rawStatus === 'pending' || rawStatus === 'pending assignment') backendStatus = 'placed';
+    else if (rawStatus === 'in production' || rawStatus === 'in production (benchcrafting)') backendStatus = 'confirmed';
+    else if (rawStatus === 'dispatched' || rawStatus === 'dispatched (express courier)' || rawStatus === 'shipped') backendStatus = 'shipped';
+    else if (rawStatus === 'delivered' || rawStatus === 'delivered & assembled') backendStatus = 'delivered';
+    else if (rawStatus === 'cancelled') backendStatus = 'cancelled';
 
     const updates = {};
-    if (orderStatus) updates.orderStatus = orderStatus.toLowerCase();
+    if (backendStatus) updates.orderStatus = backendStatus;
     if (paymentStatus) updates.paymentStatus = paymentStatus.toLowerCase();
-    if (trackingNumber) updates.trackingNumber = trackingNumber;
+    if (trackingNumber !== undefined) updates.trackingNumber = trackingNumber;
 
     let order = null;
     if (/^[0-9a-fA-F]{24}$/.test(id)) {
@@ -209,7 +320,7 @@ export const updateOrderStatus = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Order updated successfully',
+      message: 'Order status updated successfully',
       data: {
         ...order.toObject(),
         id: order.orderNumber || order._id.toString(),

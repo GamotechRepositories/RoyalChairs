@@ -30,10 +30,25 @@ export function AdminAuthProvider({ children }) {
         return;
       }
       try {
-        const res = await api.get('/admin/me');
-        if (res.data?.success && res.data?.user) {
-          setAdminUser(res.data.user);
-          localStorage.setItem('royal_admin_user', JSON.stringify(res.data.user));
+        let res;
+        try {
+          res = await api.get('/admin/me');
+        } catch (err1) {
+          if (err1.response?.status === 404) {
+            try {
+              res = await api.get('/auth/admin/me');
+            } catch (err2) {
+              res = await api.get('/auth/me');
+            }
+          } else {
+            throw err1;
+          }
+        }
+
+        if (res?.data?.success && (res.data.user || res.data.admin)) {
+          const userData = res.data.user || res.data.admin;
+          setAdminUser(userData);
+          localStorage.setItem('royal_admin_user', JSON.stringify(userData));
           setIsAuthenticated(true);
         }
       } catch (err) {
@@ -52,15 +67,38 @@ export function AdminAuthProvider({ children }) {
     setLoading(true);
     setAuthError(null);
     try {
-      // Authenticate via dedicated Admin API with bcrypt verification
-      const res = await api.post('/admin/login', { email, password });
+      // Authenticate via dedicated Admin API with multi-endpoint fallback
+      let res;
+      try {
+        res = await api.post('/admin/login', { email, password });
+      } catch (err1) {
+        if (err1.response?.status === 404) {
+          try {
+            res = await api.post('/auth/admin/login', { email, password });
+          } catch (err2) {
+            if (err2.response?.status === 404) {
+              res = await api.post('/auth/login', { email, password });
+            } else {
+              throw err2;
+            }
+          }
+        } else {
+          throw err1;
+        }
+      }
+
       if (res.data?.success && res.data?.token) {
+        const userData = res.data.user || {
+          email,
+          name: 'Super Admin',
+          role: 'Super Administrator',
+        };
         localStorage.setItem('royal_admin_token', res.data.token);
-        localStorage.setItem('royal_admin_user', JSON.stringify(res.data.user));
-        setAdminUser(res.data.user);
+        localStorage.setItem('royal_admin_user', JSON.stringify(userData));
+        setAdminUser(userData);
         setIsAuthenticated(true);
         setLoading(false);
-        return { success: true, user: res.data.user };
+        return { success: true, user: userData };
       } else {
         throw new Error(res.data?.message || 'Authentication failed');
       }

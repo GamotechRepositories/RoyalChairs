@@ -5,56 +5,71 @@ const AdminAuthContext = createContext();
 
 export function AdminAuthProvider({ children }) {
   const [adminUser, setAdminUser] = useState(() => {
-    const saved = localStorage.getItem('royal_admin_user');
-    return saved ? JSON.parse(saved) : {
-      name: 'Lord Director Sterling',
-      email: 'admin@royalchairs.co.uk',
-      role: 'Super Administrator',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-    };
+    try {
+      const saved = localStorage.getItem('royal_admin_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('royal_admin_token') ? true : true; // Default authorized for demonstration
+    return Boolean(localStorage.getItem('royal_admin_token'));
   });
 
   const [authError, setAuthError] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Check admin session on mount
+  useEffect(() => {
+    const verifySession = async () => {
+      const token = localStorage.getItem('royal_admin_token');
+      if (!token) {
+        setIsAuthenticated(false);
+        setAdminUser(null);
+        return;
+      }
+      try {
+        const res = await api.get('/admin/me');
+        if (res.data?.success && res.data?.user) {
+          setAdminUser(res.data.user);
+          localStorage.setItem('royal_admin_user', JSON.stringify(res.data.user));
+          setIsAuthenticated(true);
+        }
+      } catch (err) {
+        console.warn('Admin token validation failed, resetting session:', err.message);
+        localStorage.removeItem('royal_admin_token');
+        localStorage.removeItem('royal_admin_user');
+        setIsAuthenticated(false);
+        setAdminUser(null);
+      }
+    };
+
+    verifySession();
+  }, []);
+
   const login = async (email, password) => {
     setLoading(true);
     setAuthError(null);
     try {
-      // Attempt backend login
-      const res = await api.post('/auth/login', { email, password });
-      if (res.data?.token) {
+      // Authenticate via dedicated Admin API with bcrypt verification
+      const res = await api.post('/admin/login', { email, password });
+      if (res.data?.success && res.data?.token) {
         localStorage.setItem('royal_admin_token', res.data.token);
         localStorage.setItem('royal_admin_user', JSON.stringify(res.data.user));
         setAdminUser(res.data.user);
         setIsAuthenticated(true);
         setLoading(false);
-        return { success: true };
+        return { success: true, user: res.data.user };
+      } else {
+        throw new Error(res.data?.message || 'Authentication failed');
       }
     } catch (err) {
-      console.warn('Backend login fallback to local admin session:', err.message);
-      // Fallback for admin credentials
-      if (email === 'admin@royalchairs.co.uk' && password === 'admin123') {
-        const mockAdmin = {
-          name: 'Lord Director Sterling',
-          email: 'admin@royalchairs.co.uk',
-          role: 'Super Administrator',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-        };
-        localStorage.setItem('royal_admin_token', 'mock_admin_jwt_token_2026');
-        localStorage.setItem('royal_admin_user', JSON.stringify(mockAdmin));
-        setAdminUser(mockAdmin);
-        setIsAuthenticated(true);
-        setLoading(false);
-        return { success: true };
-      }
-      setAuthError(err.response?.data?.message || 'Invalid admin credentials');
+      const errorMessage =
+        err.response?.data?.message || err.message || 'Invalid administrator email or password';
+      setAuthError(errorMessage);
       setLoading(false);
-      return { success: false, error: err.message };
+      return { success: false, error: errorMessage };
     }
   };
 
@@ -63,6 +78,7 @@ export function AdminAuthProvider({ children }) {
     localStorage.removeItem('royal_admin_user');
     setIsAuthenticated(false);
     setAdminUser(null);
+    setAuthError(null);
   };
 
   return (

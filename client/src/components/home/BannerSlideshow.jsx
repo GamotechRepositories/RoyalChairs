@@ -74,7 +74,7 @@ export default function BannerSlideshow() {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* Full Width Photo Banner Carousel Box (Mobile: 1080x1080 / aspect-square, Website: 1920x600 / aspect-[1920/600]) */}
+      {/* Photo Banner Carousel Box (Mobile: aspect-square 1080x1080; Desktop: aspect-[1920/600] 1920x600) */}
       <div className="relative w-full aspect-square sm:aspect-[1920/600] max-h-[600px] flex items-center overflow-hidden">
         {activeSlides.map((slide, idx) => {
           const isActive = idx === currentSlide;

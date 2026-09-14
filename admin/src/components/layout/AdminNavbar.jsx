@@ -5,7 +5,6 @@ import {
   ExternalLink,
   Crown,
   LogOut,
-  ShieldCheck,
   CheckCircle2,
   AlertTriangle,
   Clock,
@@ -38,20 +37,8 @@ export default function AdminNavbar({ onToggleSidebar, activeTab }) {
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="hidden sm:flex items-center space-x-2 text-xs font-semibold">
-          <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-            <span className="hidden md:inline">HQ Command Portal</span>
-          </div>
-          <span className="text-slate-400">/</span>
-          <span className="text-emerald-900 capitalize tracking-wide font-mono font-black">
-            {activeTab.replace('-', ' ')}
-          </span>
-        </div>
-
-        {/* Mobile: show active tab only */}
-        <div className="sm:hidden">
-          <span className="text-sm font-black text-emerald-900 capitalize font-mono">
+        <div>
+          <span className="text-sm sm:text-base font-black text-slate-800 capitalize font-mono tracking-wide">
             {activeTab.replace('-', ' ')}
           </span>
         </div>

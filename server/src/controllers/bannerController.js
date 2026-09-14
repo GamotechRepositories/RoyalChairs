@@ -164,6 +164,7 @@ export const saveBanners = async (req, res) => {
 
     const docsToInsert = banners.map((b, idx) => ({
       image: b.image,
+      mobileImage: b.mobileImage || '',
       link:
         b.link ||
         (bannerType === 'new_collection'

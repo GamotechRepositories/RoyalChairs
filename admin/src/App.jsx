@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AdminAuthProvider, useAdminAuth } from './context/AdminAuthContext';
 import { AdminDataProvider } from './context/AdminDataContext';
 import AdminNavbar from './components/layout/AdminNavbar';
@@ -24,10 +24,60 @@ import SpotlightManager from './components/dashboard-sections/SpotlightManager';
 import OffersDiscountsManager from './components/dashboard-sections/OffersDiscountsManager';
 import WhyChooseUsManager from './components/dashboard-sections/WhyChooseUsManager';
 
+const VALID_TABS = [
+  'overview',
+  'banner-slideshow',
+  'category-handling',
+  'best-seller',
+  'new-collection',
+  'category-spotlight',
+  'offers-discounts',
+  'why-choose-us',
+  'products',
+  'orders',
+  'categories',
+  'customers',
+  'coupons',
+  'reviews',
+  'settings',
+];
+
+const getInitialTab = () => {
+  const hash = window.location.hash.replace('#', '').trim();
+  if (hash && VALID_TABS.includes(hash)) {
+    return hash;
+  }
+  const saved = localStorage.getItem('royal_admin_active_tab');
+  if (saved && VALID_TABS.includes(saved)) {
+    return saved;
+  }
+  return 'overview';
+};
+
 function AdminShell() {
   const { isAuthenticated } = useAdminAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Sync activeTab with URL hash & localStorage on tab changes
+  useEffect(() => {
+    localStorage.setItem('royal_admin_active_tab', activeTab);
+    if (window.location.hash.replace('#', '') !== activeTab) {
+      window.location.hash = activeTab;
+    }
+  }, [activeTab]);
+
+  // Support browser Back/Forward navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '').trim();
+      if (hash && VALID_TABS.includes(hash) && hash !== activeTab) {
+        setActiveTab(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [activeTab]);
 
   if (!isAuthenticated) {
     return <AdminLogin />;

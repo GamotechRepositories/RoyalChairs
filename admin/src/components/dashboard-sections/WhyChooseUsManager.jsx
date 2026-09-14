@@ -287,9 +287,7 @@ export default function WhyChooseUsManager() {
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
             Why Choose Us & Reviews
           </h1>
-          <p className="text-slate-500 text-xs sm:text-sm mt-1">
-            Manage Craftsmanship Story Banner and Verified Customer Reviews.
-          </p>
+
         </div>
 
         {/* Sub-tab Navigation */}
@@ -297,11 +295,10 @@ export default function WhyChooseUsManager() {
 
           <button
             onClick={() => setActiveSubTab('craftsmanship')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center space-x-1.5 ${
-              activeSubTab === 'craftsmanship'
+            className={`px-3.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center space-x-1.5 ${activeSubTab === 'craftsmanship'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-slate-600 hover:text-emerald-800 hover:bg-white'
-            }`}
+              }`}
           >
             <FileText className="w-3.5 h-3.5" />
             <span>Craft Story</span>
@@ -309,11 +306,10 @@ export default function WhyChooseUsManager() {
 
           <button
             onClick={() => setActiveSubTab('reviews')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center space-x-1.5 ${
-              activeSubTab === 'reviews'
+            className={`px-3.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center space-x-1.5 ${activeSubTab === 'reviews'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-slate-600 hover:text-emerald-800 hover:bg-white'
-            }`}
+              }`}
           >
             <MessageSquareQuote className="w-3.5 h-3.5" />
             <span>Reviews ({reviewsList.length})</span>

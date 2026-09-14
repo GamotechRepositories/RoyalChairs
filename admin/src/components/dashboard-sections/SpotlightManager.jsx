@@ -130,19 +130,16 @@ export default function SpotlightManager() {
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif">
             Category / Product Spotlight
           </h1>
-          <p className="text-slate-500 text-xs sm:text-sm mt-1">
-            Configure the full-width split showcase positioned between New Arrivals and Royal Offers on the client storefront.
-          </p>
+
         </div>
 
         <div className="flex items-center space-x-3">
           <button
             onClick={() => setSpotlight((prev) => ({ ...prev, active: !prev.active }))}
-            className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center space-x-2 transition border cursor-pointer ${
-              spotlight.active
+            className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center space-x-2 transition border cursor-pointer ${spotlight.active
                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                 : 'bg-slate-100 text-slate-600 border-slate-300'
-            }`}
+              }`}
           >
             <Check className={`w-4 h-4 ${spotlight.active ? 'opacity-100' : 'opacity-40'}`} />
             <span>{spotlight.active ? 'Section Active' : 'Section Hidden'}</span>
@@ -161,7 +158,7 @@ export default function SpotlightManager() {
 
       {/* Editor & Live Preview Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
+
         {/* Left 6 Columns: Form Controls */}
         <form onSubmit={handleSave} className="lg:col-span-6 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-5">
           <h2 className="text-lg font-bold text-slate-900 font-serif border-b border-slate-100 pb-3 flex items-center space-x-2">
@@ -300,7 +297,7 @@ export default function SpotlightManager() {
 
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="grid grid-cols-1 sm:grid-cols-2 min-h-[320px]">
-              
+
               {/* Preview Left Content */}
               <div className="p-6 sm:p-8 flex flex-col justify-center items-center text-center space-y-3 bg-white">
                 <h3 className="text-base sm:text-lg font-black text-slate-900 font-serif leading-tight">

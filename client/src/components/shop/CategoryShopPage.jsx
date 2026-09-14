@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, SlidersHorizontal, ArrowUpDown, Tag } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import ProductCard from '../ui/ProductCard';
@@ -11,6 +11,13 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
   );
   const [activeSubcategory, setActiveSubcategory] = useState('All');
   const [sortBy, setSortBy] = useState('recommended');
+
+  // Synchronize when initialCategory prop changes from routing or hash
+  useEffect(() => {
+    if (initialCategory) {
+      setActiveCategoryId(initialCategory);
+    }
+  }, [initialCategory]);
 
   const activeCategoryObj =
     (categories || []).find((c) => c.slug === activeCategoryId || c.id === activeCategoryId || c._id === activeCategoryId) ||
@@ -32,6 +39,12 @@ export default function CategoryShopPage({ initialCategory, onBackToHome, onQuic
   const handleCategorySwitch = (catId) => {
     setActiveCategoryId(catId);
     setActiveSubcategory('All');
+    try {
+      localStorage.setItem('royal_client_selected_category', catId);
+      window.location.hash = `category/${catId}`;
+    } catch (e) {
+      // ignore
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

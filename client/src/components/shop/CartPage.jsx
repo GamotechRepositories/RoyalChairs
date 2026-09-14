@@ -314,10 +314,10 @@ export default function CartPage({
                   <div className="flex space-x-2">
                     <input
                       type="text"
-                      placeholder="Enter promo code (e.g. ROYAL50)"
+                      placeholder="Enter promo code"
                       value={promoCode}
                       onChange={(e) => setPromoCode(e.target.value)}
-                      className="flex-1 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold uppercase focus:outline-hidden focus:border-emerald-700 font-mono"
+                      className="flex-1 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:outline-hidden focus:border-emerald-700 font-mono"
                     />
                     <button
                       type="submit"

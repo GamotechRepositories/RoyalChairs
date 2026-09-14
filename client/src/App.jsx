@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { StoreProvider } from './context/StoreContext';
+import { useState, useEffect, useCallback } from 'react';
+import { StoreProvider, useStore } from './context/StoreContext';
 import { CartProvider, useCart } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -27,15 +27,87 @@ import AccountModal from './components/layout/AccountModal';
 import WishlistModal from './components/layout/WishlistModal';
 import CartDrawer from './components/ui/CartDrawer';
 import QuickViewModal from './components/home/QuickViewModal';
+import { ProductDetailSkeleton } from './components/ui/Skeletons';
 import { Sparkles } from 'lucide-react';
 
-function DashboardContent() {
-  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard', 'category-page', 'cart-page', 'wishlist-page', 'account-page', 'product-page', 'checkout-page'
-  const [previousView, setPreviousView] = useState('dashboard');
-  const [selectedCategoryId, setSelectedCategoryId] = useState('gaming');
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [appliedCouponForCheckout, setAppliedCouponForCheckout] = useState(null);
+const HOMEPAGE_ANCHORS = [
+  'shop-by-category',
+  'best-sellers',
+  'new-collection',
+  'category-spotlight',
+  'special-offers',
+  'lifestyle-gallery',
+  'why-choose-us',
+];
 
+function parseClientHash() {
+  try {
+    const raw = (window.location.hash || '').replace(/^#\/?/, '').trim();
+    if (!raw || raw === 'home') {
+      return { view: 'dashboard', categoryId: null, productSlugOrId: null, isAnchor: false };
+    }
+    if (raw === 'cart') {
+      return { view: 'cart-page', categoryId: null, productSlugOrId: null, isAnchor: false };
+    }
+    if (raw === 'wishlist') {
+      return { view: 'wishlist-page', categoryId: null, productSlugOrId: null, isAnchor: false };
+    }
+    if (raw === 'account') {
+      return { view: 'account-page', categoryId: null, productSlugOrId: null, isAnchor: false };
+    }
+    if (raw === 'checkout') {
+      return { view: 'checkout-page', categoryId: null, productSlugOrId: null, isAnchor: false };
+    }
+    if (raw.startsWith('category/')) {
+      const catId = decodeURIComponent(raw.replace('category/', '').trim());
+      return { view: 'category-page', categoryId: catId || 'gaming', productSlugOrId: null, isAnchor: false };
+    }
+    if (raw.startsWith('product/')) {
+      const prodId = decodeURIComponent(raw.replace('product/', '').trim());
+      return { view: 'product-page', categoryId: null, productSlugOrId: prodId, isAnchor: false };
+    }
+    if (HOMEPAGE_ANCHORS.includes(raw)) {
+      return { view: 'dashboard', categoryId: null, productSlugOrId: null, isAnchor: true, anchorId: raw };
+    }
+  } catch (e) {
+    // fallback
+  }
+  return { view: 'dashboard', categoryId: null, productSlugOrId: null, isAnchor: false };
+}
+
+function DashboardContent() {
+  const { products, isLoading: isStoreLoading } = useStore();
+
+  const [activeView, setActiveView] = useState(() => {
+    const parsed = parseClientHash();
+    if (parsed.view !== 'dashboard' || parsed.isAnchor) {
+      return parsed.view;
+    }
+    const saved = localStorage.getItem('royal_client_active_view');
+    return saved || 'dashboard';
+  });
+
+  const [previousView, setPreviousView] = useState('dashboard');
+
+  const [selectedCategoryId, setSelectedCategoryId] = useState(() => {
+    const parsed = parseClientHash();
+    if (parsed.categoryId) return parsed.categoryId;
+    return localStorage.getItem('royal_client_selected_category') || 'gaming';
+  });
+
+  const [selectedProduct, setSelectedProduct] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('royal_client_selected_product');
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null;
+  });
+
+  const [appliedCouponForCheckout, setAppliedCouponForCheckout] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [trackOrderOpen, setTrackOrderOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -46,14 +118,136 @@ function DashboardContent() {
   const { toastMessage } = useCart();
   const { isAuthenticated } = useAuth();
 
+  // Listen to browser hash changes (Back/Forward navigation and in-page anchor jumps)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const parsed = parseClientHash();
+      setActiveView(parsed.view);
+      try {
+        localStorage.setItem('royal_client_active_view', parsed.view);
+      } catch (e) {}
+
+      if (parsed.categoryId) {
+        setSelectedCategoryId(parsed.categoryId);
+        try {
+          localStorage.setItem('royal_client_selected_category', parsed.categoryId);
+        } catch (e) {}
+      }
+
+      if (parsed.view === 'product-page' && parsed.productSlugOrId) {
+        if (products && products.length > 0) {
+          const match = products.find(
+            (p) =>
+              p._id === parsed.productSlugOrId ||
+              p.id === parsed.productSlugOrId ||
+              p.slug === parsed.productSlugOrId
+          );
+          if (match) {
+            setSelectedProduct(match);
+            try {
+              sessionStorage.setItem('royal_client_selected_product', JSON.stringify(match));
+            } catch (e) {}
+          }
+        }
+      }
+
+      if (parsed.isAnchor && parsed.anchorId) {
+        setTimeout(() => {
+          const el = document.getElementById(parsed.anchorId);
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [products]);
+
+  // Synchronize URL hash and localStorage on initial mount if opened with saved view but empty hash
+  useEffect(() => {
+    const parsed = parseClientHash();
+    if (!window.location.hash || window.location.hash === '#') {
+      const saved = localStorage.getItem('royal_client_active_view');
+      if (saved && saved !== 'dashboard') {
+        if (saved === 'cart-page') window.location.hash = 'cart';
+        else if (saved === 'wishlist-page') window.location.hash = 'wishlist';
+        else if (saved === 'account-page') window.location.hash = 'account';
+        else if (saved === 'checkout-page') window.location.hash = 'checkout';
+        else if (saved === 'category-page') {
+          const cat = localStorage.getItem('royal_client_selected_category') || 'gaming';
+          window.location.hash = `category/${cat}`;
+        } else if (saved === 'product-page' && selectedProduct) {
+          const id = selectedProduct.slug || selectedProduct.id || selectedProduct._id;
+          if (id) window.location.hash = `product/${id}`;
+        }
+      }
+    } else if (parsed.isAnchor && parsed.anchorId) {
+      setTimeout(() => {
+        const el = document.getElementById(parsed.anchorId);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
+    }
+  }, []);
+
+  // Hydrate product from database products list when visiting #product/:id
+  useEffect(() => {
+    const parsed = parseClientHash();
+    if (parsed.view === 'product-page' && parsed.productSlugOrId) {
+      if (products && products.length > 0) {
+        const match = products.find(
+          (p) =>
+            p._id === parsed.productSlugOrId ||
+            p.id === parsed.productSlugOrId ||
+            p.slug === parsed.productSlugOrId
+        );
+        if (match) {
+          setSelectedProduct(match);
+          try {
+            sessionStorage.setItem('royal_client_selected_product', JSON.stringify(match));
+          } catch (e) {}
+        }
+      }
+    }
+  }, [products]);
+
   const handleOpenCategory = (catId) => {
-    setSelectedCategoryId(catId || 'gaming');
+    const target = catId || 'gaming';
+    setSelectedCategoryId(target);
     setActiveView('category-page');
+    try {
+      localStorage.setItem('royal_client_active_view', 'category-page');
+      localStorage.setItem('royal_client_selected_category', target);
+      window.location.hash = `category/${target}`;
+    } catch (e) {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleNavigateView = (viewName) => {
     setActiveView(viewName);
+    try {
+      localStorage.setItem('royal_client_active_view', viewName);
+    } catch (e) {}
+
+    if (viewName === 'dashboard') {
+      const currentHash = (window.location.hash || '').replace(/^#\/?/, '').trim();
+      if (!HOMEPAGE_ANCHORS.includes(currentHash)) {
+        if (window.history.pushState) {
+          window.history.pushState(null, '', window.location.pathname);
+        } else {
+          window.location.hash = '';
+        }
+      }
+    } else if (viewName === 'cart-page') {
+      window.location.hash = 'cart';
+    } else if (viewName === 'wishlist-page') {
+      window.location.hash = 'wishlist';
+    } else if (viewName === 'account-page') {
+      window.location.hash = 'account';
+    } else if (viewName === 'checkout-page') {
+      window.location.hash = 'checkout';
+    } else if (viewName === 'category-page') {
+      window.location.hash = `category/${selectedCategoryId || 'gaming'}`;
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -62,6 +256,17 @@ function DashboardContent() {
     setPreviousView(activeView);
     setSelectedProduct(product);
     setActiveView('product-page');
+    try {
+      localStorage.setItem('royal_client_active_view', 'product-page');
+      sessionStorage.setItem('royal_client_selected_product', JSON.stringify(product));
+    } catch (e) {}
+
+    const id = product.slug || product.id || product._id;
+    if (id) {
+      window.location.hash = `product/${id}`;
+    } else {
+      window.location.hash = 'product/item';
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -108,15 +313,19 @@ function DashboardContent() {
       />
 
       <main>
-        {activeView === 'product-page' && selectedProduct ? (
-          /* DEDICATED PRODUCT DETAIL PAGE VIEW */
-          <ProductDetailPage
-            product={selectedProduct}
-            onBack={() => handleNavigateView(previousView || 'dashboard')}
-            onNavigateHome={() => handleNavigateView('dashboard')}
-            onNavigateCategory={(catId) => handleOpenCategory(catId)}
-            onOpenProduct={(prod) => handleOpenProduct(prod)}
-          />
+        {activeView === 'product-page' ? (
+          selectedProduct ? (
+            /* DEDICATED PRODUCT DETAIL PAGE VIEW */
+            <ProductDetailPage
+              product={selectedProduct}
+              onBack={() => handleNavigateView(previousView || 'dashboard')}
+              onNavigateHome={() => handleNavigateView('dashboard')}
+              onNavigateCategory={(catId) => handleOpenCategory(catId)}
+              onOpenProduct={(prod) => handleOpenProduct(prod)}
+            />
+          ) : (
+            <ProductDetailSkeleton />
+          )
         ) : activeView === 'category-page' ? (
           /* DEDICATED CATEGORY SHOP PAGE VIEW */
           <CategoryShopPage

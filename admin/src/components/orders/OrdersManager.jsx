@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ShoppingBag,
   Search,
@@ -11,25 +11,56 @@ import {
   AlertCircle,
   ExternalLink,
   ChevronRight,
+  RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
 import OrderDetailModal from './OrderDetailModal';
 import { TableSkeleton } from '../ui/AdminSkeletons';
 
+const getOrderStatusCategory = (order) => {
+  const raw = (order?.fulfillmentStatus || order?.orderStatus || 'Pending').toLowerCase();
+  if (raw === 'in production' || raw === 'confirmed' || raw === 'in production (benchcrafting)') return 'In Production';
+  if (raw === 'dispatched' || raw === 'shipped' || raw === 'dispatched (express courier)') return 'Dispatched';
+  if (raw === 'delivered' || raw === 'delivered & assembled') return 'Delivered';
+  if (raw === 'cancelled') return 'Cancelled';
+  return 'Pending';
+};
+
 export default function OrdersManager() {
-  const { orders, isLoading } = useAdminData();
+  const { orders, isLoading, refetchOrders } = useAdminData();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const STATUS_TABS = ['All', 'Pending', 'In Production', 'Dispatched', 'Delivered', 'Cancelled'];
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      if (refetchOrders) await refetchOrders();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
+
+  const getCountForTab = (tab) => {
+    const list = Array.isArray(orders) ? orders : [];
+    if (tab === 'All') return list.length;
+    return list.filter((o) => getOrderStatusCategory(o) === tab).length;
+  };
 
   const filteredOrders = (Array.isArray(orders) ? orders : []).filter((o) => {
     const orderIdStr = (o.orderNumber || o.id || o._id || '').toLowerCase();
     const customerName = (o.customer?.name || '').toLowerCase();
     const customerEmail = (o.customer?.email || '').toLowerCase();
+    const customerPhone = (o.customer?.phone || '').toLowerCase();
     const tracking = (o.trackingNumber || '').toLowerCase();
+    const itemNames = (Array.isArray(o.items) ? o.items.map((i) => i.name || '').join(' ') : '').toLowerCase();
     const q = searchQuery.toLowerCase().trim();
 
     const matchesSearch =
@@ -37,20 +68,24 @@ export default function OrdersManager() {
       orderIdStr.includes(q) ||
       customerName.includes(q) ||
       customerEmail.includes(q) ||
-      tracking.includes(q);
+      customerPhone.includes(q) ||
+      tracking.includes(q) ||
+      itemNames.includes(q);
 
-    const currentStatus = (o.fulfillmentStatus || o.orderStatus || 'Pending').toLowerCase();
-    const matchesStatus =
-      activeFilter === 'All' ||
-      currentStatus === activeFilter.toLowerCase() ||
-      (activeFilter === 'Pending' && (currentStatus === 'placed' || currentStatus === 'pending')) ||
-      (activeFilter === 'In Production' && (currentStatus === 'confirmed' || currentStatus === 'in production')) ||
-      (activeFilter === 'Dispatched' && (currentStatus === 'shipped' || currentStatus === 'dispatched')) ||
-      (activeFilter === 'Delivered' && currentStatus === 'delivered') ||
-      (activeFilter === 'Cancelled' && currentStatus === 'cancelled');
+    const matchesStatus = activeFilter === 'All' || getOrderStatusCategory(o) === activeFilter;
 
     return matchesSearch && matchesStatus;
   });
+
+  // Keep selected order in sync with latest orders state
+  const activeModalOrder = selectedOrder
+    ? (Array.isArray(orders) ? orders : []).find(
+        (o) =>
+          (o._id && o._id === selectedOrder._id) ||
+          (o.id && o.id === selectedOrder.id) ||
+          (o.orderNumber && o.orderNumber === selectedOrder.orderNumber)
+      ) || selectedOrder
+    : null;
 
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
@@ -60,19 +95,29 @@ export default function OrdersManager() {
           <div className="flex items-center space-x-2">
             <h2 className="text-2xl font-bold text-slate-900 font-serif">Orders & Logistics</h2>
             <span className="bg-emerald-50 text-emerald-800 text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-              {orders.length} Active
+              {(Array.isArray(orders) ? orders.length : 0)} Active
             </span>
           </div>
           <p className="text-xs text-slate-500">
-            Track benchcrafted seating orders, customer requests, and courier deliveries
+            Real-time client checkout orders, courier tracking updates, and dispatch management.
           </p>
         </div>
 
         <div className="flex items-center space-x-3 text-xs">
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+            title="Refresh Orders List"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-emerald-700' : ''}`} />
+            <span className="font-bold hidden sm:inline">Refresh</span>
+          </button>
+
           <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-right">
             <p className="text-slate-500 text-[10px] font-medium">Total Order Volume</p>
             <p className="text-sm font-black text-emerald-800 font-mono">
-              ₹{orders.reduce((s, o) => s + (o.total || 0), 0).toLocaleString()}
+              ₹{(Array.isArray(orders) ? orders : []).reduce((s, o) => s + (Number(o.totalAmount !== undefined ? o.totalAmount : o.total) || 0), 0).toLocaleString()}
             </p>
           </div>
         </div>
@@ -84,7 +129,7 @@ export default function OrdersManager() {
           {/* Status Tabs — scrollable on mobile */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
             {STATUS_TABS.map((tab) => {
-              const count = tab === 'All' ? orders.length : orders.filter((o) => o.fulfillmentStatus.toLowerCase() === tab.toLowerCase()).length;
+              const count = getCountForTab(tab);
               return (
                 <button
                   key={tab}
@@ -96,7 +141,13 @@ export default function OrdersManager() {
                   }`}
                 >
                   <span>{tab}</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeFilter === tab ? 'bg-amber-300 text-emerald-950 font-black' : 'bg-slate-200 text-slate-700 font-bold'}`}>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      activeFilter === tab
+                        ? 'bg-amber-300 text-emerald-950 font-black'
+                        : 'bg-slate-200 text-slate-700 font-bold'
+                    }`}
+                  >
                     {count}
                   </span>
                 </button>
@@ -147,6 +198,7 @@ export default function OrdersManager() {
                   const safeItems = Array.isArray(order.items) ? order.items : [];
                   const orderDate = order.createdAt || order.date || new Date().toISOString();
                   const orderTotal = Number(order.totalAmount !== undefined ? order.totalAmount : (order.total || 0));
+                  const statusCategory = getOrderStatusCategory(order);
 
                   return (
                     <tr key={order._id || order.id || orderIdx} className="hover:bg-slate-50/80 transition group">
@@ -209,21 +261,22 @@ export default function OrdersManager() {
                         </div>
                       </td>
 
-
                       {/* Fulfillment Status */}
                       <td className="py-4 px-4">
                         <span
                           className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-extrabold ${
-                            order.fulfillmentStatus === 'Delivered'
+                            statusCategory === 'Delivered'
                               ? 'bg-emerald-100 text-emerald-800'
-                              : order.fulfillmentStatus === 'Dispatched'
-                              ? 'bg-blue-100 text-blue-800'
-                              : order.fulfillmentStatus === 'In Production'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-purple-100 text-purple-800'
+                              : statusCategory === 'Dispatched'
+                                ? 'bg-blue-100 text-blue-800'
+                                : statusCategory === 'In Production'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : statusCategory === 'Cancelled'
+                                    ? 'bg-rose-100 text-rose-800'
+                                    : 'bg-purple-100 text-purple-800'
                           }`}
                         >
-                          {order.fulfillmentStatus || 'Pending'}
+                          {order.fulfillmentStatus || statusCategory}
                         </span>
                       </td>
 
@@ -253,9 +306,9 @@ export default function OrdersManager() {
 
       {/* Order Detail Modal */}
       <OrderDetailModal
-        isOpen={!!selectedOrder}
+        isOpen={!!activeModalOrder}
         onClose={() => setSelectedOrder(null)}
-        order={selectedOrder}
+        order={activeModalOrder}
       />
     </div>
   );

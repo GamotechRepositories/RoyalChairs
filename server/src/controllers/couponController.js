@@ -75,8 +75,7 @@ export const createCoupon = async (req, res) => {
       });
     }
 
-    const cleanCode = code.toUpperCase().trim();
-
+    const cleanCode = code.trim();
     const existing = await Coupon.findOne({ code: cleanCode });
     if (existing) {
       return res.status(400).json({
@@ -150,7 +149,7 @@ export const updateCoupon = async (req, res) => {
     const updateData = { ...req.body };
 
     if (updateData.code) {
-      updateData.code = updateData.code.toUpperCase().trim();
+      updateData.code = updateData.code.trim();
     }
     if (updateData.minSpend !== undefined) {
       updateData.minSpend = Number(updateData.minSpend) || 0;
@@ -228,15 +227,15 @@ export const validateCoupon = async (req, res) => {
       });
     }
 
-    const cleanCode = code.toUpperCase().trim();
+    const cleanCode = code.trim();
     const currentTotal = Number(cartTotal) || 0;
 
     const coupon = await Coupon.findOne({ code: cleanCode });
 
-    if (!coupon) {
+    if (!coupon || coupon.code !== cleanCode) {
       return res.status(404).json({
         success: false,
-        message: `Voucher '${cleanCode}' is invalid. Please check and try again.`,
+        message: `Voucher '${cleanCode}' is invalid. Please check code and case.`,
       });
     }
 

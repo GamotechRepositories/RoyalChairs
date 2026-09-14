@@ -14,7 +14,6 @@ const startServer = async () => {
     await seedBanners();
 
     const server = app.listen(PORT, () => {
-
       console.log(`[RoyalChairs API] Server listening on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
     });
 

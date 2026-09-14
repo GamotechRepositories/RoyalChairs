@@ -561,6 +561,22 @@ export function AdminDataProvider({ children }) {
     }
   };
 
+  const updateCoupon = async (id, couponData) => {
+    const target = coupons.find((c) => c.id === id || c._id === id);
+    const apiId = target?._id || target?.id || id;
+    try {
+      const res = await api.put(`/coupons/${apiId}`, couponData);
+      if (res.data?.success && res.data.data) {
+        const updated = { ...res.data.data, id: res.data.data._id || res.data.data.id };
+        setCoupons((prev) => prev.map((c) => (c.id === id || c._id === apiId ? updated : c)));
+        return updated;
+      }
+    } catch (err) {
+      console.error('API update coupon error:', err);
+      throw err;
+    }
+  };
+
   const toggleCouponStatus = async (id) => {
     const target = coupons.find((c) => c.id === id || c._id === id);
     const apiId = target?._id || target?.id || id;
@@ -621,6 +637,7 @@ export function AdminDataProvider({ children }) {
         toggleAvailability,
         updateOrderStatus,
         addCoupon,
+        updateCoupon,
         toggleCouponStatus,
         deleteCoupon,
         moderateReview,

@@ -41,6 +41,16 @@ const userSchema = new mongoose.Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
+    lifetimeOrders: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    totalSpent: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   {
     timestamps: true,

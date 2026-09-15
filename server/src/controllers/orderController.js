@@ -1,6 +1,7 @@
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import Coupon from '../models/Coupon.js';
+import User from '../models/User.js';
 
 // @desc    Create new order (Checkout)
 // @route   POST /api/orders
@@ -29,7 +30,6 @@ export const createOrder = async (req, res) => {
     }
 
     const safeCustomer = {
-
       name: customer?.name || (req.user?.name || 'Valued Client'),
       email: customer?.email || (req.user?.email || 'client@royalchairs.com'),
       phone: customer?.phone || '+91 98765 43210',
@@ -43,8 +43,17 @@ export const createOrder = async (req, res) => {
       Number(req.body.subtotal) ||
       items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
 
+    // Identify user if logged in or by email
+    let matchedUser = null;
+    if (req.user?._id) {
+      matchedUser = await User.findById(req.user._id);
+    }
+    if (!matchedUser && safeCustomer?.email) {
+      matchedUser = await User.findOne({ email: new RegExp(`^${safeCustomer.email.trim()}$`, 'i') });
+    }
+
     const orderData = {
-      user: req.user ? req.user._id : null,
+      user: matchedUser ? matchedUser._id : (req.user ? req.user._id : null),
       customer: safeCustomer,
       items,
       subtotal: calculatedSubtotal,
@@ -57,11 +66,11 @@ export const createOrder = async (req, res) => {
       orderStatus: req.body.orderStatus || 'confirmed',
     };
 
-
     if (req.body.orderNumber) {
       orderData.orderNumber = req.body.orderNumber;
     }
 
+    let isNewOrder = false;
     let order;
     if (req.body.orderNumber) {
       order = await Order.findOne({ orderNumber: req.body.orderNumber });
@@ -73,6 +82,18 @@ export const createOrder = async (req, res) => {
 
     if (!order) {
       order = await Order.create(orderData);
+      isNewOrder = true;
+    }
+
+    // Professional lifecycle: Increment user lifetime orders (+1) and total spent (+ amount) for new active orders
+    if (matchedUser && isNewOrder && order.orderStatus !== 'cancelled') {
+      const orderAmt = Number(order.totalAmount) || 0;
+      await User.findByIdAndUpdate(matchedUser._id, {
+        $inc: {
+          lifetimeOrders: 1,
+          totalSpent: orderAmt,
+        },
+      });
     }
 
     const obj = order.toObject();
@@ -298,33 +319,79 @@ export const updateOrderStatus = async (req, res) => {
     else if (rawStatus === 'delivered' || rawStatus === 'delivered & assembled') backendStatus = 'delivered';
     else if (rawStatus === 'cancelled') backendStatus = 'cancelled';
 
-    const updates = {};
-    if (backendStatus) updates.orderStatus = backendStatus;
-    if (paymentStatus) updates.paymentStatus = paymentStatus.toLowerCase();
-    if (trackingNumber !== undefined) updates.trackingNumber = trackingNumber;
-
-    let order = null;
+    let existingOrder = null;
     if (/^[0-9a-fA-F]{24}$/.test(id)) {
-      order = await Order.findByIdAndUpdate(id, updates, { new: true });
+      existingOrder = await Order.findById(id);
     }
-    if (!order) {
-      order = await Order.findOneAndUpdate({ orderNumber: id }, updates, { new: true });
+    if (!existingOrder) {
+      existingOrder = await Order.findOne({ orderNumber: id });
     }
 
-    if (!order) {
+    if (!existingOrder) {
       return res.status(404).json({
         success: false,
         message: 'Order not found',
       });
     }
 
+    const previousStatus = (existingOrder.orderStatus || '').toLowerCase();
+    const targetStatus = backendStatus || previousStatus;
+
+    if (backendStatus) existingOrder.orderStatus = backendStatus;
+    if (paymentStatus) existingOrder.paymentStatus = paymentStatus.toLowerCase();
+    if (trackingNumber !== undefined) existingOrder.trackingNumber = trackingNumber;
+
+    await existingOrder.save();
+
+    // Lifecycle Hook: If order transitioned to/from cancelled, update user's lifetime stats
+    const wasCancelled = previousStatus === 'cancelled';
+    const isNowCancelled = targetStatus === 'cancelled';
+
+    if (!wasCancelled && isNowCancelled) {
+      // Order Cancelled -> Decrement lifetimeOrders by 1 and decrement totalSpent by order value
+      const user = await User.findOne({
+        $or: [
+          ...(existingOrder.user ? [{ _id: existingOrder.user }] : []),
+          { email: new RegExp(`^${existingOrder.customer?.email?.trim()}$`, 'i') },
+        ],
+      });
+
+      if (user) {
+        const orderAmt = Number(existingOrder.totalAmount) || 0;
+        await User.findByIdAndUpdate(user._id, {
+          $set: {
+            lifetimeOrders: Math.max(0, (user.lifetimeOrders || 0) - 1),
+            totalSpent: Math.max(0, (user.totalSpent || 0) - orderAmt),
+          },
+        });
+      }
+    } else if (wasCancelled && !isNowCancelled) {
+      // Order Re-activated -> Increment lifetimeOrders by 1 and increment totalSpent by order value
+      const user = await User.findOne({
+        $or: [
+          ...(existingOrder.user ? [{ _id: existingOrder.user }] : []),
+          { email: new RegExp(`^${existingOrder.customer?.email?.trim()}$`, 'i') },
+        ],
+      });
+
+      if (user) {
+        const orderAmt = Number(existingOrder.totalAmount) || 0;
+        await User.findByIdAndUpdate(user._id, {
+          $inc: {
+            lifetimeOrders: 1,
+            totalSpent: orderAmt,
+          },
+        });
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: 'Order status updated successfully',
       data: {
-        ...order.toObject(),
-        id: order.orderNumber || order._id.toString(),
-        _id: order._id.toString(),
+        ...existingOrder.toObject(),
+        id: existingOrder.orderNumber || existingOrder._id.toString(),
+        _id: existingOrder._id.toString(),
       },
     });
   } catch (error) {

@@ -248,8 +248,9 @@ export function AdminDataProvider({ children }) {
           email: u.email,
           role: u.role,
           tier: u.role === 'admin' ? 'Admin / Executive' : 'Registered Member',
-          ordersCount: 0,
-          totalSpent: 0,
+          ordersCount: Number(u.lifetimeOrders !== undefined ? u.lifetimeOrders : (u.ordersCount || 0)),
+          lifetimeOrders: Number(u.lifetimeOrders !== undefined ? u.lifetimeOrders : (u.ordersCount || 0)),
+          totalSpent: Number(u.totalSpent || 0),
           joinedDate: new Date(u.createdAt).toLocaleDateString('en-US', {
             month: 'short',
             year: 'numeric',

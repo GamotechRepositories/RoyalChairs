@@ -16,14 +16,37 @@ import {
   Plus,
   Tag,
   Download,
+  Calendar,
+  ChevronDown,
 } from 'lucide-react';
 import { useAdminData } from '../../context/AdminDataContext';
 import { StatCardSkeleton, TableRowSkeleton } from '../ui/AdminSkeletons';
 
+// Helper to format large revenue values compactly (e.g. ₹70k, ₹52.5k, ₹1.5L)
+const formatCompactRevenue = (val) => {
+  if (!val || val === 0) return '₹0';
+  const num = Number(val);
+  if (isNaN(num)) return '₹0';
+  if (num >= 10000000) {
+    const formatted = (num / 10000000).toFixed(1).replace(/\.0$/, '');
+    return `₹${formatted}Cr`;
+  }
+  if (num >= 100000) {
+    const formatted = (num / 100000).toFixed(1).replace(/\.0$/, '');
+    return `₹${formatted}L`;
+  }
+  if (num >= 1000) {
+    const formatted = (num / 1000).toFixed(1).replace(/\.0$/, '');
+    return `₹${formatted}k`;
+  }
+  return `₹${num}`;
+};
+
 export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal }) {
   const { products, orders, customers, coupons, reviews, isLoading } = useAdminData();
 
-  const [timeRange, setTimeRange] = useState('monthly'); // 'weekly' or 'monthly'
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
 
   // 1. Core Dynamic Metrics Computed 100% from MongoDB Real Data
   const totalRevenue = orders.reduce((sum, o) => {
@@ -32,97 +55,87 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
   }, 0);
 
   const activeOrdersCount = orders.length;
-  const avgOrderValue = activeOrdersCount > 0 ? Math.round(totalRevenue / activeOrdersCount) : 0;
+  const todayStr = new Date().toDateString();
+  const todaysOrdersCount = orders.filter((o) => {
+    const d = new Date(o.createdAt || o.date);
+    return !isNaN(d.getTime()) && d.toDateString() === todayStr;
+  }).length;
   const outOfStockChairs = products.filter((p) => p.isAvailable === false || Number(p.stock) === 0);
   const pendingOrders = orders.filter((o) => {
     const st = (o.fulfillmentStatus || o.orderStatus || '').toLowerCase();
     return st === 'pending' || st === 'placed' || st === 'in production' || st === 'confirmed';
   });
 
-  // 2. Dynamic Monthly Performance Chart (Last 8 Months ending in Current Month)
+  // Compute available years from real orders data + current year
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set([currentYear, currentYear - 1, currentYear - 2]);
+    orders.forEach((o) => {
+      const d = new Date(o.createdAt || o.date);
+      if (!isNaN(d.getTime())) {
+        yearsSet.add(d.getFullYear());
+      }
+    });
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  }, [orders, currentYear]);
+
+  // 2. Dynamic 12-Month Performance Chart (Jan - Dec) for Selected Year
   const monthlyData = useMemo(() => {
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const fullMonthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
     const now = new Date();
-    const currentMonthIdx = now.getMonth();
-    const currentYear = now.getFullYear();
+    const isCurrentYear = Number(selectedYear) === now.getFullYear();
+    const currentMonthIdx = isCurrentYear ? now.getMonth() : -1;
 
-    const months = [];
-    for (let i = 7; i >= 0; i--) {
-      const d = new Date(currentYear, currentMonthIdx - i, 1);
-      const mIdx = d.getMonth();
-      const yr = d.getFullYear();
-      const isCurrent = i === 0;
-      months.push({
-        label: isCurrent ? `${monthNames[mIdx]} (Now)` : monthNames[mIdx],
-        monthIndex: mIdx,
-        year: yr,
-        revenue: 0,
-        orders: 0,
-      });
-    }
+    const months = monthNames.map((name, idx) => ({
+      label: name,
+      fullName: `${fullMonthNames[idx]} ${selectedYear}`,
+      monthIndex: idx,
+      year: selectedYear,
+      isCurrentMonth: idx === currentMonthIdx,
+      revenue: 0,
+      orders: 0,
+    }));
 
-    // Aggregate real orders into their respective month
+    // Aggregate real orders into their respective calendar month (Jan - Dec) for selectedYear
     orders.forEach((o) => {
       const oDate = new Date(o.createdAt || o.date || now);
       if (isNaN(oDate.getTime())) return;
       const oMonth = oDate.getMonth();
       const oYear = oDate.getFullYear();
-      const match = months.find((m) => m.monthIndex === oMonth && m.year === oYear);
-      if (match) {
+      if (oYear === Number(selectedYear) && oMonth >= 0 && oMonth < 12) {
         const amt = Number(o.totalAmount !== undefined ? o.totalAmount : (o.total || 0));
-        match.revenue += isNaN(amt) ? 0 : amt;
-        match.orders += 1;
+        months[oMonth].revenue += isNaN(amt) ? 0 : amt;
+        months[oMonth].orders += 1;
       }
     });
 
     return months;
-  }, [orders]);
+  }, [orders, selectedYear]);
 
-  // 3. Dynamic Weekly Performance Chart (Last 7 Days)
-  const weeklyData = useMemo(() => {
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const now = new Date();
-    const days = [];
+  const activeChartData = monthlyData;
+  const rawMaxOrders = Math.max(...activeChartData.map((d) => d.orders), 0);
+  const rawMaxRevenue = Math.max(...activeChartData.map((d) => d.revenue), 0);
 
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(now.getDate() - i);
-      const isToday = i === 0;
-      days.push({
-        label: isToday ? 'Today' : dayNames[d.getDay()],
-        dateStr: d.toDateString(),
-        revenue: 0,
-        orders: 0,
-      });
-    }
+  // Clean scale ceilings for dual axes
+  const maxOrdersScale = rawMaxOrders > 0 ? (rawMaxOrders <= 5 ? 5 : Math.ceil(rawMaxOrders / 5) * 5) : 5;
+  const maxRevenueScale = rawMaxRevenue > 0 ? (rawMaxRevenue <= 10000 ? 10000 : Math.ceil(rawMaxRevenue / 10000) * 10000) : 50000;
 
-    orders.forEach((o) => {
-      const oDate = new Date(o.createdAt || o.date || now);
-      if (isNaN(oDate.getTime())) return;
-      const match = days.find((d) => d.dateStr === oDate.toDateString());
-      if (match) {
-        const amt = Number(o.totalAmount !== undefined ? o.totalAmount : (o.total || 0));
-        match.revenue += isNaN(amt) ? 0 : amt;
-        match.orders += 1;
-      }
-    });
-
-    return days;
-  }, [orders]);
-
-  const activeChartData = timeRange === 'monthly' ? monthlyData : weeklyData;
-  const maxRevenue = Math.max(...activeChartData.map((d) => d.revenue), 0);
-  const currentTotalChartRevenue = activeChartData.reduce((s, d) => s + d.revenue, 0);
+  const totalYearRevenue = monthlyData.reduce((s, d) => s + d.revenue, 0);
+  const totalYearOrders = monthlyData.reduce((s, d) => s + d.orders, 0);
 
   // Month-over-month growth calculations
-  const currentMonthRevenue = monthlyData[monthlyData.length - 1]?.revenue || 0;
-  const prevMonthRevenue = monthlyData[monthlyData.length - 2]?.revenue || 0;
+  const nowMonthIdx = new Date().getMonth();
+  const currentMonthRevenue = monthlyData[nowMonthIdx]?.revenue || 0;
+  const prevMonthRevenue = nowMonthIdx > 0 ? monthlyData[nowMonthIdx - 1]?.revenue || 0 : 0;
   const revenueGrowth = prevMonthRevenue > 0
     ? Math.round(((currentMonthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100)
     : null;
 
-  const currentMonthOrders = monthlyData[monthlyData.length - 1]?.orders || 0;
-  const prevMonthOrders = monthlyData[monthlyData.length - 2]?.orders || 0;
+  const currentMonthOrders = monthlyData[nowMonthIdx]?.orders || 0;
+  const prevMonthOrders = nowMonthIdx > 0 ? monthlyData[nowMonthIdx - 1]?.orders || 0 : 0;
   const ordersGrowth = prevMonthOrders > 0
     ? Math.round(((currentMonthOrders - prevMonthOrders) / prevMonthOrders) * 100)
     : null;
@@ -184,36 +197,6 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
 
   return (
     <div className="space-y-8 animate-fadeIn pb-12">
-      {/* Top Banner: Executive Greeting & Quick Actions */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-emerald-900 via-emerald-800 to-emerald-950 border border-emerald-800 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2 relative z-10">
-          <h2 className="text-2xl sm:text-3xl font-black text-white font-serif tracking-tight">
-            RoyalChairs Executive Dashboard
-          </h2>
-          <p className="text-emerald-200 text-xs sm:text-sm font-medium">
-            Live business intelligence & operational command center
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 relative z-10">
-          <button
-            onClick={() => onOpenNewProductModal()}
-            className="px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-emerald-950 text-xs font-black shadow-lg flex items-center space-x-2 transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add New Chair</span>
-          </button>
-
-          <button
-            onClick={() => onNavigateTab('coupons')}
-            className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 shadow-md flex items-center space-x-2 transition cursor-pointer"
-          >
-            <Tag className="w-4 h-4" />
-            <span>Create Promo</span>
-          </button>
-        </div>
-      </div>
-
       {/* KPI Metric Cards */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -238,25 +221,6 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
               <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
                 ₹{totalRevenue.toLocaleString()}
               </h3>
-              <div className="mt-2 flex items-center space-x-2 text-xs">
-                {revenueGrowth !== null ? (
-                  <span className={`flex items-center font-bold px-2 py-0.5 rounded-full border ${
-                    revenueGrowth >= 0
-                      ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
-                      : 'text-rose-700 bg-rose-50 border-rose-200'
-                  }`}>
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                    {revenueGrowth >= 0 ? `+${revenueGrowth}%` : `${revenueGrowth}%`}
-                  </span>
-                ) : (
-                  <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    Live Real-time
-                  </span>
-                )}
-                <span className="text-slate-500 font-medium">
-                  {revenueGrowth !== null ? 'vs last month' : 'from database'}
-                </span>
-              </div>
             </div>
           </div>
 
@@ -264,7 +228,7 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
           <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md hover:border-emerald-300 transition">
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
-                Orders Processed
+                Total Orders
               </span>
               <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shadow-xs">
                 <ShoppingBag className="w-5 h-5" />
@@ -274,47 +238,23 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
               <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
                 {activeOrdersCount}
               </h3>
-              <div className="mt-2 flex items-center space-x-2 text-xs">
-                {ordersGrowth !== null ? (
-                  <span className={`flex items-center font-bold px-2 py-0.5 rounded-full border ${
-                    ordersGrowth >= 0
-                      ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
-                      : 'text-rose-700 bg-rose-50 border-rose-200'
-                  }`}>
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                    {ordersGrowth >= 0 ? `+${ordersGrowth}%` : `${ordersGrowth}%`}
-                  </span>
-                ) : (
-                  <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    {pendingOrders.length} Pending
-                  </span>
-                )}
-                <span className="text-slate-500 font-medium">
-                  {pendingOrders.length} pending dispatch
-                </span>
-              </div>
             </div>
           </div>
 
-          {/* Card 3: Average Order Value */}
+          {/* Card 3: Today's Orders */}
           <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md hover:border-emerald-300 transition">
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
-                Avg. Order Value
+                Today's Orders
               </span>
               <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-xs">
-                <Crown className="w-5 h-5" />
+                <Clock className="w-5 h-5" />
               </div>
             </div>
             <div className="mt-4">
               <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
-                ₹{avgOrderValue.toLocaleString()}
+                {todaysOrdersCount}
               </h3>
-              <div className="mt-2 flex items-center space-x-2 text-xs">
-                <span className="text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                  {avgOrderValue > 10000 ? 'High Basket Value' : 'Standard Basket'}
-                </span>
-              </div>
             </div>
           </div>
 
@@ -332,103 +272,199 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
               <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
                 {products.length} Chairs
               </h3>
-              <div className="mt-2 flex items-center space-x-2 text-xs">
-                {outOfStockChairs.length > 0 ? (
-                  <span className="text-rose-800 font-bold bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 flex items-center">
-                    <AlertTriangle className="w-3 h-3 mr-1" />
-                    {outOfStockChairs.length} Out of Stock
-                  </span>
-                ) : (
-                  <span className="text-emerald-700 font-bold">100% Available</span>
-                )}
-              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Analytics Section: Revenue Performance Chart & Category Share */}
+      {/* Analytics Section: 12-Month Dual Bar Performance Chart & Category Share */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Revenue Chart (2 Columns) */}
+        {/* Main 12-Column Dual-Bar Chart (Orders & Revenue) */}
         <div className="lg:col-span-2 p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-lg font-bold text-slate-900 font-serif">
-                Revenue & Sales Performance ({timeRange === 'monthly' ? new Date().getFullYear() : 'Last 7 Days'})
+                Order & Revenue Analytics
               </h3>
-              <p className="text-xs text-slate-500">
-                {timeRange === 'monthly' ? 'Monthly gross sales from customer orders' : 'Daily sales over the last 7 days'}
+              <p className="text-xs text-slate-500 mt-0.5">
+                Annual monthly performance data
               </p>
             </div>
 
-            <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
-              <button
-                onClick={() => setTimeRange('monthly')}
-                className={`px-3 py-1 rounded-lg font-bold transition cursor-pointer ${timeRange === 'monthly'
-                  ? 'bg-white text-emerald-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setTimeRange('weekly')}
-                className={`px-3 py-1 rounded-lg font-bold transition cursor-pointer ${timeRange === 'weekly'
-                  ? 'bg-white text-emerald-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                Weekly
-              </button>
+            {/* Top Right: Year Dropdown FIRST, Legend SECOND */}
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 self-start sm:self-auto">
+              {/* 1. Year Dropdown */}
+              <div className="relative">
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  aria-label="Filter by Year"
+                  className="appearance-none bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold pl-8 pr-7 py-1.5 rounded-xl border border-slate-200 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-600 cursor-pointer transition"
+                >
+                  {availableYears.map((yr) => (
+                    <option key={yr} value={yr}>
+                      {yr}
+                    </option>
+                  ))}
+                </select>
+                <Calendar className="w-3.5 h-3.5 text-emerald-800 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {/* 2. Legend */}
+              <div className="flex items-center space-x-3 text-xs bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                {/* Green Legend (Orders) */}
+                <div className="flex items-center space-x-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-600 shadow-2xs" />
+                  <span className="font-bold text-slate-700 text-[11px]">Orders (Qty)</span>
+                </div>
+
+                {/* Yellow Legend (Revenue) */}
+                <div className="flex items-center space-x-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-2xs" />
+                  <span className="font-bold text-slate-700 text-[11px]">Revenue (₹)</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* SVG Bar / Trend Chart — scrollable on mobile */}
-          <div className="overflow-x-auto">
-            <div className="h-64 flex items-end justify-between space-x-3 sm:space-x-4 pt-6 border-b border-slate-100 pb-4 min-w-[420px]">
-              {activeChartData.map((d, index) => {
-                const heightPercent = maxRevenue > 0 ? Math.max(Math.round((d.revenue / maxRevenue) * 100), 4) : 4;
-                const isCurrent = index === activeChartData.length - 1;
-                return (
-                  <div key={d.label} className="flex-1 flex flex-col items-center h-full justify-end group relative">
-                    {/* Tooltip */}
-                    <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-lg pointer-events-none shadow-xl whitespace-nowrap z-20">
-                      ₹{d.revenue.toLocaleString()} ({d.orders} orders)
-                    </div>
+          {/* Dual Bar Chart with Dedicated Side Y-Axes and Axis Grid Lines */}
+          <div className="overflow-x-auto no-scrollbar pt-2">
+            <div className="min-w-[720px] flex items-stretch">
+              {/* Left Y-Axis: Orders (Green Scale) */}
+              <div className="w-8 sm:w-9 flex flex-col justify-between items-end pr-2.5 text-[10px] sm:text-[11px] font-mono font-bold text-emerald-700 pb-8 pt-2 select-none shrink-0">
+                <span>{maxOrdersScale}</span>
+                <span>{Math.round(maxOrdersScale * 0.75)}</span>
+                <span>{Math.round(maxOrdersScale * 0.5)}</span>
+                <span>{Math.round(maxOrdersScale * 0.25)}</span>
+                <span>0</span>
+              </div>
 
-                    <div className="w-full max-w-[42px] bg-slate-100 rounded-t-xl overflow-hidden flex flex-col justify-end h-full">
+              {/* Center Canvas: Grid lines + 12-Month Bars */}
+              <div className="flex-1 relative mx-2">
+                {/* Background Horizontal Grid Lines (Only dashed grid lines above 0, no solid line at bottom) */}
+                <div className="absolute inset-x-0 top-2 bottom-8 pointer-events-none flex flex-col justify-between">
+                  <div className="w-full border-b border-dashed border-slate-200/80" />
+                  <div className="w-full border-b border-dashed border-slate-200/80" />
+                  <div className="w-full border-b border-dashed border-slate-200/80" />
+                  <div className="w-full border-b border-dashed border-slate-200/80" />
+                </div>
+
+                {/* 12 Month Dual-Column Bars Container - Increased Height */}
+                <div className="h-80 flex items-end justify-between px-1 sm:px-2 relative z-10 pb-8">
+                  {activeChartData.map((d, index) => {
+                    const ordersHeightPct =
+                      maxOrdersScale > 0
+                        ? Math.max(Math.round((d.orders / maxOrdersScale) * 100), d.orders > 0 ? 6 : 2)
+                        : 2;
+
+                    const revenueHeightPct =
+                      maxRevenueScale > 0
+                        ? Math.max(Math.round((d.revenue / maxRevenueScale) * 100), d.revenue > 0 ? 6 : 2)
+                        : 2;
+
+                    // Anchor tooltips to left or right when near chart edges so they don't overflow
+                    const isNearRight = index >= activeChartData.length - 2;
+                    const isNearLeft = index === 0;
+
+                    return (
                       <div
-                        style={{ height: `${heightPercent}%` }}
-                        className={`w-full rounded-t-xl transition-all duration-500 ${isCurrent
-                          ? 'bg-gradient-to-t from-emerald-800 via-emerald-600 to-amber-400 shadow-md shadow-emerald-700/30'
-                          : 'bg-gradient-to-t from-emerald-700 to-emerald-500 group-hover:from-emerald-600 group-hover:to-emerald-400'
+                        key={d.label + index}
+                        className="flex-1 flex flex-col items-center h-full justify-end group relative cursor-pointer px-0.5"
+                      >
+                        {/* Interactive Column Hover Highlight Box */}
+                        <div className="absolute inset-x-0.5 inset-y-0 bg-transparent group-hover:bg-slate-100/90 rounded-2xl transition border border-transparent group-hover:border-slate-200 -z-10" />
+
+                        {/* Tooltip Card on Hover */}
+                        <div
+                          className={`absolute -top-14 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-30 bg-slate-900 text-white shadow-2xl rounded-xl p-2.5 min-w-[130px] text-left transform -translate-y-1 ${
+                            isNearRight
+                              ? 'right-0'
+                              : isNearLeft
+                                ? 'left-0'
+                                : 'left-1/2 -translate-x-1/2'
                           }`}
-                      />
-                    </div>
+                        >
+                          <div className="text-[11px] font-bold text-amber-300 border-b border-slate-700/80 pb-1 mb-1.5 flex items-center justify-between">
+                            <span>{d.label} {selectedYear}</span>
+                            {d.isCurrentMonth && (
+                              <span className="text-[9px] bg-emerald-700 text-white px-1.5 py-0.2 rounded font-black">
+                                Now
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-1 text-[10px]">
+                            <div className="flex items-center justify-between text-emerald-300 font-bold">
+                              <span className="flex items-center space-x-1.5">
+                                <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block shrink-0" />
+                                <span>Orders:</span>
+                              </span>
+                              <span className="font-mono font-black">{d.orders}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-amber-300 font-bold">
+                              <span className="flex items-center space-x-1.5">
+                                <span className="w-2 h-2 rounded-full bg-amber-400 inline-block shrink-0" />
+                                <span>Sales:</span>
+                              </span>
+                              <span className="font-mono font-black">₹{d.revenue.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
 
-                    <span className="text-[10px] font-bold text-slate-500 mt-2 truncate">
-                      {d.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                        {/* Dual Bars: Green (Orders) & Yellow (Revenue) - Touching Side-by-Side */}
+                        <div className="w-full flex items-end justify-center gap-0 h-full pb-1">
+                          {/* 1. Green Column (Orders) */}
+                          <div className="w-3.5 sm:w-4 md:w-4.5 flex flex-col justify-end h-full">
+                            <div
+                              style={{ height: `${ordersHeightPct}%` }}
+                              className={`w-full rounded-tl-md transition-all duration-500 ${
+                                d.orders > 0
+                                  ? 'bg-gradient-to-t from-emerald-700 via-emerald-600 to-emerald-400 shadow-xs group-hover:brightness-110'
+                                  : 'bg-slate-200/60 rounded-t-xs'
+                              }`}
+                              title={`Orders: ${d.orders}`}
+                            />
+                          </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-md bg-emerald-600" />
-                <span>Historical Sales</span>
+                          {/* 2. Yellow Column (Revenue / Sales) */}
+                          <div className="w-3.5 sm:w-4 md:w-4.5 flex flex-col justify-end h-full">
+                            <div
+                              style={{ height: `${revenueHeightPct}%` }}
+                              className={`w-full rounded-tr-md transition-all duration-500 ${
+                                d.revenue > 0
+                                  ? 'bg-gradient-to-t from-amber-600 via-amber-500 to-yellow-300 shadow-xs group-hover:brightness-110'
+                                  : 'bg-slate-200/60 rounded-t-xs'
+                              }`}
+                              title={`Revenue: ₹${d.revenue.toLocaleString()}`}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Month Label below the X-axis */}
+                        <span
+                          className={`text-[10.5px] font-bold mt-2 truncate transition ${
+                            d.isCurrentMonth
+                              ? 'text-emerald-950 font-black scale-105'
+                              : 'text-slate-500 group-hover:text-slate-900'
+                          }`}
+                        >
+                          {d.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-md bg-amber-400" />
-                <span>Current Trajectory</span>
+
+              {/* Right Y-Axis: Sales Revenue in 70k format (Amber Scale) */}
+              <div className="w-14 sm:w-16 flex flex-col justify-between items-start pl-2.5 text-[10px] sm:text-[11px] font-mono font-bold text-amber-700 pb-8 pt-2 select-none shrink-0">
+                <span>{formatCompactRevenue(maxRevenueScale)}</span>
+                <span>{formatCompactRevenue(Math.round(maxRevenueScale * 0.75))}</span>
+                <span>{formatCompactRevenue(Math.round(maxRevenueScale * 0.5))}</span>
+                <span>{formatCompactRevenue(Math.round(maxRevenueScale * 0.25))}</span>
+                <span>₹0</span>
               </div>
             </div>
-            <span className="text-emerald-800 font-bold font-mono">
-              Peak: ₹{maxRevenue.toLocaleString()}
-            </span>
           </div>
         </div>
 
@@ -475,19 +511,24 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
 
       {/* Live Recent Orders & Low Stock Widget */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Orders Table (2 Columns) */}
+        {/* Recent Orders Table (2 Columns) - Displays Last 5 Orders */}
         <div className="lg:col-span-2 p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 font-serif">Recent Customer Orders</h3>
-              <p className="text-xs text-slate-500">Live order fulfillment stream</p>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-lg font-bold text-slate-900 font-serif">Recent Customer Orders</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  Last 5
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Live order fulfillment stream</p>
             </div>
             <button
               onClick={() => onNavigateTab('orders')}
-              className="text-xs text-emerald-700 font-bold hover:underline flex items-center"
+              className="text-xs text-emerald-800 hover:text-emerald-950 font-bold flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition cursor-pointer"
             >
-              <span>Manage All Orders ({orders.length})</span>
-              <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              <span>View All</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -510,52 +551,67 @@ export default function DashboardOverview({ onNavigateTab, onOpenNewProductModal
                     </td>
                   </tr>
                 ) : (
-                  orders.slice(0, 4).map((order) => {
-                    const safeItems = Array.isArray(order.items) ? order.items : [];
-                    const orderTotal = Number(order.totalAmount !== undefined ? order.totalAmount : (order.total || 0));
-                    const orderId = order.orderNumber || order.id || order._id || 'ORD';
-                    const customerName = order.customer?.name || order.shippingAddress?.fullName || 'Valued Client';
-                    const customerEmail = order.customer?.email || order.shippingAddress?.email || 'N/A';
-                    const status = order.fulfillmentStatus || 'Pending';
+                  [...orders]
+                    .sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0))
+                    .slice(0, 5)
+                    .map((order) => {
+                      const safeItems = Array.isArray(order.items) ? order.items : [];
+                      const orderTotal = Number(order.totalAmount !== undefined ? order.totalAmount : (order.total || 0));
+                      const orderId = order.orderNumber || order.id || order._id || 'ORD';
+                      const customerName = order.customer?.name || order.shippingAddress?.fullName || 'Valued Client';
+                      const customerEmail = order.customer?.email || order.shippingAddress?.email || 'N/A';
+                      const status = order.fulfillmentStatus || 'Pending';
 
-                    return (
-                      <tr key={order._id || order.id || orderId} className="hover:bg-slate-50/80 transition">
-                        <td className="py-3.5 px-3 font-mono font-bold text-slate-900">
-                          {orderId}
-                        </td>
-                        <td className="py-3.5 px-3">
-                          <p className="font-bold text-slate-900">{customerName}</p>
-                          <p className="text-[10px] text-slate-500 truncate max-w-[140px]">
-                            {customerEmail}
-                          </p>
-                        </td>
-                        <td className="py-3.5 px-3 font-medium text-slate-600">
-                          {safeItems.reduce((s, i) => s + (Number(i.quantity) || 1), 0)} Chairs
-                        </td>
-                        <td className="py-3.5 px-3 font-mono font-black text-emerald-800 text-sm">
-                          ₹{orderTotal.toLocaleString()}
-                        </td>
-                        <td className="py-3.5 px-3">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold ${status === 'Delivered'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : status === 'Dispatched'
-                                ? 'bg-blue-100 text-blue-800'
-                                : status === 'In Production'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-purple-100 text-purple-800'
-                              }`}
-                          >
-                            {status}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })
+                      return (
+                        <tr key={order._id || order.id || orderId} className="hover:bg-slate-50/80 transition">
+                          <td className="py-3.5 px-3 font-mono font-bold text-slate-900">
+                            {orderId}
+                          </td>
+                          <td className="py-3.5 px-3">
+                            <p className="font-bold text-slate-900">{customerName}</p>
+                            <p className="text-[10px] text-slate-500 truncate max-w-[140px]">
+                              {customerEmail}
+                            </p>
+                          </td>
+                          <td className="py-3.5 px-3 font-medium text-slate-600">
+                            {safeItems.reduce((s, i) => s + (Number(i.quantity) || 1), 0)} Chairs
+                          </td>
+                          <td className="py-3.5 px-3 font-mono font-black text-emerald-800 text-sm">
+                            ₹{orderTotal.toLocaleString()}
+                          </td>
+                          <td className="py-3.5 px-3">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold ${status === 'Delivered'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : status === 'Dispatched'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : status === 'In Production'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-purple-100 text-purple-800'
+                                }`}
+                            >
+                              {status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
                 )}
               </tbody>
             </table>
           </div>
+
+          {orders.length > 5 && (
+            <div className="pt-2 border-t border-slate-100">
+              <button
+                onClick={() => onNavigateTab('orders')}
+                className="w-full py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <span>View All</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Catalog Availability Status Widget (1 Column) */}

@@ -4,6 +4,7 @@ import app from './app.js';
 import connectDB from './config/db.js';
 import { seedDefaultCoupons } from './scripts/seedCoupons.js';
 import { seedBanners } from './scripts/seedBanners.js';
+import { syncUserLifetimeStats } from './scripts/syncUserLifetimeStats.js';
 
 const PORT = process.env.PORT || 5000;
 
@@ -12,6 +13,7 @@ const startServer = async () => {
     await connectDB();
     await seedDefaultCoupons();
     await seedBanners();
+    await syncUserLifetimeStats();
 
     const server = app.listen(PORT, () => {
       console.log(`[RoyalChairs API] Server listening on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);

@@ -5,7 +5,7 @@ import CustomerDetailModal from './CustomerDetailModal';
 import { TableSkeleton } from '../ui/AdminSkeletons';
 
 export default function CustomersManager() {
-  const { customers, refetchUsers, isLoading } = useAdminData();
+  const { customers, orders, refetchUsers, isLoading } = useAdminData();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -94,66 +94,99 @@ export default function CustomersManager() {
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map((cust) => (
-                <tr
-                  key={cust.id}
-                  onClick={() => handleUserClick(cust)}
-                  className="hover:bg-emerald-50/50 transition cursor-pointer group"
-                >
-                  <td className="py-4 px-5">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-800 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-600 shadow-2xs group-hover:scale-105 transition">
-                        {cust.name
-                          ? cust.name
-                              .split(' ')
-                              .map((n) => n[0])
-                              .join('')
-                              .toUpperCase()
-                              .slice(0, 2)
-                          : 'U'}
-                      </div>
-                      <div>
-                        <div className="flex items-center space-x-1.5">
-                          <p className="font-bold text-slate-900 text-sm group-hover:text-emerald-800 transition">
-                            {cust.name}
-                          </p>
-                          {cust.role === 'admin' && (
-                            <span className="text-[9px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.5 rounded border border-emerald-200">
-                              Admin
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-slate-500">{cust.email}</p>
-                      </div>
-                    </div>
-                  </td>
+                filteredCustomers.map((cust) => {
+                  const userActiveOrders = (orders || []).filter((o) => {
+                    const emailMatch =
+                      o.customer?.email &&
+                      cust.email &&
+                      o.customer.email.toLowerCase().trim() === cust.email.toLowerCase().trim();
+                    const idMatch = o.user && (o.user === cust.id || o.user?._id === cust.id);
+                    return emailMatch || idMatch;
+                  }).filter((o) => (o.orderStatus || o.fulfillmentStatus || '').toLowerCase() !== 'cancelled');
 
-                  <td className="py-4 px-4 font-mono font-bold text-slate-800">
-                    {cust.ordersCount || 0} Orders
-                  </td>
+                  const displayOrdersCount =
+                    cust.lifetimeOrders !== undefined && cust.lifetimeOrders > 0
+                      ? cust.lifetimeOrders
+                      : userActiveOrders.length > 0
+                        ? userActiveOrders.length
+                        : (cust.ordersCount || 0);
 
-                  <td className="py-4 px-4 font-mono font-black text-emerald-800 text-sm">
-                    ₹{(cust.totalSpent || 0).toLocaleString()}
-                  </td>
+                  const displayTotalSpent =
+                    cust.totalSpent !== undefined && cust.totalSpent > 0
+                      ? cust.totalSpent
+                      : userActiveOrders.length > 0
+                        ? userActiveOrders.reduce((sum, o) => sum + (Number(o.totalAmount || o.total) || 0), 0)
+                        : (cust.totalSpent || 0);
 
-                  <td className="py-4 px-4 text-slate-500 font-medium">
-                    {cust.joinedDate || 'Recent'}
-                  </td>
+                  const enrichedCust = {
+                    ...cust,
+                    lifetimeOrders: displayOrdersCount,
+                    totalSpent: displayTotalSpent,
+                    ordersCount: displayOrdersCount,
+                  };
 
-                  <td className="py-4 px-5 text-right">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUserClick(cust);
-                      }}
-                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-100 group-hover:bg-emerald-600 group-hover:text-white text-slate-700 text-xs font-semibold transition cursor-pointer"
+                  return (
+                    <tr
+                      key={cust.id}
+                      onClick={() => handleUserClick(enrichedCust)}
+                      className="hover:bg-emerald-50/50 transition cursor-pointer group"
                     >
-                      <span>View Details</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </button>
-                  </td>
-                </tr>
-              )))}
+                      <td className="py-4 px-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-800 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-600 shadow-2xs group-hover:scale-105 transition">
+                            {cust.name
+                              ? cust.name
+                                  .split(' ')
+                                  .map((n) => n[0])
+                                  .join('')
+                                  .toUpperCase()
+                                  .slice(0, 2)
+                              : 'U'}
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-1.5">
+                              <p className="font-bold text-slate-900 text-sm group-hover:text-emerald-800 transition">
+                                {cust.name}
+                              </p>
+                              {cust.role === 'admin' && (
+                                <span className="text-[9px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.5 rounded border border-emerald-200">
+                                  Admin
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-500">{cust.email}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4 font-mono font-bold text-slate-800">
+                        {displayOrdersCount} Orders
+                      </td>
+
+                      <td className="py-4 px-4 font-mono font-black text-emerald-800 text-sm">
+                        ₹{displayTotalSpent.toLocaleString()}
+                      </td>
+
+                      <td className="py-4 px-4 text-slate-500 font-medium">
+                        {cust.joinedDate || 'Recent'}
+                      </td>
+
+                      <td className="py-4 px-5 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUserClick(enrichedCust);
+                          }}
+                          className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-100 group-hover:bg-emerald-600 group-hover:text-white text-slate-700 text-xs font-semibold transition cursor-pointer"
+                        >
+                          <span>View Details</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

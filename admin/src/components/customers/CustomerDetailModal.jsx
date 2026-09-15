@@ -93,7 +93,7 @@ export default function CustomerDetailModal({ customer, isOpen, onClose }) {
                 <ShoppingBag className="w-4 h-4 text-emerald-600" />
               </div>
               <p className="text-xl font-bold text-slate-900 font-mono">
-                {customerOrders.length || customer.ordersCount || 0} Orders
+                {customer.lifetimeOrders !== undefined ? customer.lifetimeOrders : (customer.ordersCount || customerOrders.length || 0)} Orders
               </p>
             </div>
 

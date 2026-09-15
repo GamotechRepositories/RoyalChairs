@@ -30,10 +30,40 @@ export const getDashboardStats = async (req, res) => {
 export const getAdminUsers = async (req, res) => {
   try {
     const users = await User.find({}).select('-password').sort({ createdAt: -1 });
+    const orders = await Order.find({ orderStatus: { $ne: 'cancelled' } });
+
+    const usersWithStats = users.map((u) => {
+      const uObj = u.toObject();
+      const emailLower = (u.email || '').trim().toLowerCase();
+
+      const userActiveOrders = orders.filter((o) => {
+        const orderUserMatch = o.user && o.user.toString() === u._id.toString();
+        const emailMatch = o.customer?.email && o.customer.email.trim().toLowerCase() === emailLower;
+        return orderUserMatch || emailMatch;
+      });
+
+      const lifetimeOrders =
+        uObj.lifetimeOrders !== undefined && uObj.lifetimeOrders > 0
+          ? uObj.lifetimeOrders
+          : userActiveOrders.length;
+
+      const totalSpent =
+        uObj.totalSpent !== undefined && uObj.totalSpent > 0
+          ? uObj.totalSpent
+          : userActiveOrders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+
+      return {
+        ...uObj,
+        lifetimeOrders,
+        totalSpent,
+        ordersCount: lifetimeOrders,
+      };
+    });
+
     return res.status(200).json({
       success: true,
-      count: users.length,
-      data: users,
+      count: usersWithStats.length,
+      data: usersWithStats,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -74,29 +104,71 @@ export const updateOrderStatus = async (req, res) => {
     else if (rawStatus === 'delivered' || rawStatus === 'delivered & assembled') backendStatus = 'delivered';
     else if (rawStatus === 'cancelled') backendStatus = 'cancelled';
 
-    const updates = {};
-    if (backendStatus) updates.orderStatus = backendStatus;
-    if (trackingNumber !== undefined) updates.trackingNumber = trackingNumber;
-
-    let order = null;
+    let existingOrder = null;
     if (/^[0-9a-fA-F]{24}$/.test(id)) {
-      order = await Order.findByIdAndUpdate(id, updates, { new: true });
+      existingOrder = await Order.findById(id);
     }
-    if (!order) {
-      order = await Order.findOneAndUpdate({ orderNumber: id }, updates, { new: true });
+    if (!existingOrder) {
+      existingOrder = await Order.findOne({ orderNumber: id });
     }
 
-    if (!order) {
+    if (!existingOrder) {
       return res.status(404).json({
         success: false,
         message: `Order #${id} not found in database`,
       });
     }
 
+    const previousStatus = (existingOrder.orderStatus || '').toLowerCase();
+    const targetStatus = backendStatus || previousStatus;
+
+    if (backendStatus) existingOrder.orderStatus = backendStatus;
+    if (trackingNumber !== undefined) existingOrder.trackingNumber = trackingNumber;
+
+    await existingOrder.save();
+
+    // Update user lifetime stats on cancel/reactivate
+    const wasCancelled = previousStatus === 'cancelled';
+    const isNowCancelled = targetStatus === 'cancelled';
+
+    if (!wasCancelled && isNowCancelled) {
+      const user = await User.findOne({
+        $or: [
+          ...(existingOrder.user ? [{ _id: existingOrder.user }] : []),
+          { email: new RegExp(`^${existingOrder.customer?.email?.trim()}$`, 'i') },
+        ],
+      });
+      if (user) {
+        const orderAmt = Number(existingOrder.totalAmount) || 0;
+        await User.findByIdAndUpdate(user._id, {
+          $set: {
+            lifetimeOrders: Math.max(0, (user.lifetimeOrders || 0) - 1),
+            totalSpent: Math.max(0, (user.totalSpent || 0) - orderAmt),
+          },
+        });
+      }
+    } else if (wasCancelled && !isNowCancelled) {
+      const user = await User.findOne({
+        $or: [
+          ...(existingOrder.user ? [{ _id: existingOrder.user }] : []),
+          { email: new RegExp(`^${existingOrder.customer?.email?.trim()}$`, 'i') },
+        ],
+      });
+      if (user) {
+        const orderAmt = Number(existingOrder.totalAmount) || 0;
+        await User.findByIdAndUpdate(user._id, {
+          $inc: {
+            lifetimeOrders: 1,
+            totalSpent: orderAmt,
+          },
+        });
+      }
+    }
+
     return res.status(200).json({
       success: true,
-      message: `Order #${order.orderNumber} logistics updated to ${status || backendStatus}`,
-      data: order,
+      message: `Order #${existingOrder.orderNumber} logistics updated to ${status || backendStatus}`,
+      data: existingOrder,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

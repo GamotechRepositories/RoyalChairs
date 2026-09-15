@@ -351,23 +351,28 @@ export default function WhyChooseUsManager() {
                     {craftBanner.badge || 'THE MATERIALS & CRAFT'}
                   </span>
                   <h3 className="text-xl sm:text-2xl font-black font-serif text-white leading-tight">
-                    {craftBanner.title}
+                    {craftBanner.title || 'From FSC English Oak Forests to Hand-Stitched Italian Nappa Leather'}
                   </h3>
                   <p className="text-emerald-100 text-xs leading-relaxed">
-                    {craftBanner.description}
+                    {craftBanner.description || 'Unlike mass-market plastic chairs that break easily, every RoyalChairs model features an internal heavy-duty steel backbone encased in high-density molded memory foam.'}
                   </p>
                 </div>
-                <div className="relative rounded-2xl overflow-hidden shadow-md h-48 sm:h-56">
+                <div className="relative rounded-2xl overflow-hidden shadow-md h-48 sm:h-56 bg-emerald-950">
                   <img
-                    src={craftBanner.image}
+                    src={craftBanner.image || 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1000&q=80'}
                     alt="Craftsmanship Preview"
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src = 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1000&q=80';
+                    }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/80 via-transparent to-transparent flex items-end p-3">
-                    <span className="text-[10px] font-bold text-amber-200 bg-emerald-950/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-amber-300/30">
-                      {craftBanner.caption}
-                    </span>
-                  </div>
+                  {craftBanner.caption ? (
+                    <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/90 via-transparent to-transparent flex items-end p-3 pointer-events-none">
+                      <span className="text-[10px] font-bold text-amber-200 bg-emerald-950/90 backdrop-blur-md px-2.5 py-1 rounded-lg border border-amber-300/40 shadow-sm">
+                        {craftBanner.caption}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -380,8 +385,8 @@ export default function WhyChooseUsManager() {
                 </label>
                 <input
                   type="text"
-                  value={craftBanner.badge}
-                  onChange={(e) => setCraftBanner({ ...craftBanner, badge: e.target.value })}
+                  value={craftBanner.badge || ''}
+                  onChange={(e) => setCraftBanner((prev) => ({ ...prev, badge: e.target.value }))}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-amber-800 focus:outline-hidden focus:border-emerald-700"
                 />
               </div>
@@ -392,8 +397,8 @@ export default function WhyChooseUsManager() {
                 </label>
                 <input
                   type="text"
-                  value={craftBanner.title}
-                  onChange={(e) => setCraftBanner({ ...craftBanner, title: e.target.value })}
+                  value={craftBanner.title || ''}
+                  onChange={(e) => setCraftBanner((prev) => ({ ...prev, title: e.target.value }))}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-900 focus:outline-hidden focus:border-emerald-700"
                 />
               </div>
@@ -404,8 +409,8 @@ export default function WhyChooseUsManager() {
                 </label>
                 <textarea
                   rows={3}
-                  value={craftBanner.description}
-                  onChange={(e) => setCraftBanner({ ...craftBanner, description: e.target.value })}
+                  value={craftBanner.description || ''}
+                  onChange={(e) => setCraftBanner((prev) => ({ ...prev, description: e.target.value }))}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-700"
                 />
               </div>
@@ -417,8 +422,8 @@ export default function WhyChooseUsManager() {
                 <div className="flex items-center space-x-2">
                   <input
                     type="url"
-                    value={craftBanner.image}
-                    onChange={(e) => setCraftBanner({ ...craftBanner, image: e.target.value })}
+                    value={craftBanner.image || ''}
+                    onChange={(e) => setCraftBanner((prev) => ({ ...prev, image: e.target.value }))}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-700"
                   />
                   <input
@@ -445,8 +450,9 @@ export default function WhyChooseUsManager() {
                 </label>
                 <input
                   type="text"
-                  value={craftBanner.caption}
-                  onChange={(e) => setCraftBanner({ ...craftBanner, caption: e.target.value })}
+                  value={craftBanner.caption || ''}
+                  placeholder="e.g. Pune, India or Workshop • London, UK"
+                  onChange={(e) => setCraftBanner((prev) => ({ ...prev, caption: e.target.value }))}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-emerald-700"
                 />
               </div>
